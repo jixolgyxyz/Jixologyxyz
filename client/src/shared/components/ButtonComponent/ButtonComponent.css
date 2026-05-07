@@ -1,3 +1,40 @@
 .button-component {
-    
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.45rem 0.875rem;
+  border-radius: 999px;
+  border: none;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.button-component--primary {
+  background: var(--color-mahindra-red);
+  color: #fff;
+}
+
+.button-component--secondary {
+  background: transparent;
+  color: var(--color-blueprint-navy, #0a0838);
+  border: 1.5px solid var(--color-blueprint-navy, #0a0838);
+}
+
+.button-component:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.button-component:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button-component__icon {
+  display: flex;
+  align-items: center;
 }

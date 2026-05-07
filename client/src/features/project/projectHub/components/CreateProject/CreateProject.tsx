@@ -9,8 +9,8 @@ import {
   ChevronUpIcon,
   PlusIcon,
   MinusIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
+import FormPopUp from '@/shared/components/FormPopUp';
 import './CreateProject.css';
 
 type Props = {
@@ -67,76 +67,20 @@ export default function CreateProject({ isOpen, onClose, onCreated, userId, isCr
   }, [handleReset, onClose]);
 
   useEffect(() => {
-    if (validationAttemptCount === 0 && feedback === null) {
-      return;
-    }
-
-    bodyRef.current?.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
+    if (validationAttemptCount === 0 && feedback === null) return;
+    bodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [validationAttemptCount, feedback]);
-  
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        handleClose();
-      }
-    };
-
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen, handleClose]);
-
-  if (!isOpen) {
-    return null;
-  }
 
   return (
-    <div className="create-project-modal__overlay" onClick={handleClose}>
-      <div
-        className={`create-project-modal__dialog ${
-          isAdditionalDataVisible ? 'create-project-modal__dialog--expanded' : ''
-        }`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-project-modal-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="create-project-modal__header">
-          <div>
-            <p className="create-project-modal__eyebrow">Proyectos</p>
-            <h2 id="create-project-modal-title" className="create-project-modal__title">
-              {isCreate ? "Crear Proyecto" : "Editar Proyecto"}
-            </h2>
-            <p className="create-project-modal__description">
-              {isCreate? "Captura" : "Edita"} primero los datos obligatorios y expande detalles solo cuando
-              realmente los necesites.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className="create-project-modal__close-button"
-            onClick={handleClose}
-            aria-label="Cerrar modal"
-          >
-            <XMarkIcon className="create-project-modal__close-icon" />
-          </button>
-        </div>
-
-        <div className="create-project-modal__body" ref={bodyRef}>
+    <FormPopUp
+      eyebrow="Proyectos"
+      title={isCreate ? 'Crear Proyecto' : 'Editar Proyecto'}
+      subtitle={`${isCreate ? 'Captura' : 'Edita'} primero los datos obligatorios y expande detalles solo cuando realmente los necesites.`}
+      isOpen={isOpen}
+      onClose={handleClose}
+      wide={isAdditionalDataVisible}
+      bodyRef={bodyRef}
+    >
           {isInitialLoading ? (
             <div className="create-project-modal__state" role="status" aria-live="polite">
               <div className="create-project-modal__spinner" />
@@ -795,8 +739,6 @@ export default function CreateProject({ isOpen, onClose, onCreated, userId, isCr
               </div>
             </form>
           ) : null}
-        </div>
-      </div>
-    </div>
+    </FormPopUp>
   );
 }

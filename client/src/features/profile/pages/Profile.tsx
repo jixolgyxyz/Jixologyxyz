@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { GiftIcon } from '@heroicons/react/24/outline';
 import './Profile.css';
+import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 
 import UserCard from '../components/UserCard';
 import InventoryCard from '../components/InventoryCard';
@@ -467,32 +468,18 @@ function ProfileContent({
             </div>
 
             <div className="section-footer">
-              <button
-                className="btn-lootbox"
-                onClick={() => {
-                  setShowLootbox(true);
-                  setPopup(null);
-                }}
-                disabled={
-                  !canEditAvatar ||
-                  isLoading ||
-                  hasError ||
-                  avatarSaving ||
-                  addingItem
-                }
-              >
-                <GiftIcon style={{ width: 16, height: 16 }} /> Abrir lootbox
-              </button>
-
-              <button
-                className="btn-save-avatar"
+              <ButtonComponent
+                label="Abrir lootbox"
+                icon={<GiftIcon width={16} height={16} />}
+                variant="secondary"
+                onClick={() => { setShowLootbox(true); setPopup(null); }}
+                disabled={!canEditAvatar || isLoading || hasError || avatarSaving || addingItem}
+              />
+              <ButtonComponent
+                label={avatarSaving ? 'Guardando…' : 'Guardar avatar'}
                 onClick={handleSaveAvatar}
-                disabled={
-                  !canEditAvatar || !showInventory || avatarSaving || addingItem
-                }
-              >
-                {avatarSaving ? 'Guardando…' : 'Guardar avatar'}
-              </button>
+                disabled={!canEditAvatar || !showInventory || avatarSaving || addingItem}
+              />
             </div>
           </div>
         </div>

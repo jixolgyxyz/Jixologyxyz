@@ -7,6 +7,7 @@ import { useRegisterUserOptions } from '../../hooks/useUserOptions';
 import { useAdminUsers } from '../../hooks/useAdminUsers';
 import type { AdminUserRoleBadge } from '../../types/admin.types';
 import FilterBar from '@/shared/components/FilterBar';
+import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import ListUserCard from '@/shared/components/ListUserCard';
 import UserCard from '@/features/profile/components/UserCard/UserCard';
 import { useUserProfile } from '@/features/user/services/user.service';
@@ -373,18 +374,15 @@ export default function RegisterUserPage() {
               }
               allLabel="Todos"
             >
-              <button
-                type="button"
-                className="admin-page__create-button"
+              <ButtonComponent
+                label="Crear usuario"
+                icon={<PlusIcon width={16} height={16} />}
                 onClick={() => {
                   setPageError('');
                   setPageSuccess('');
                   setIsCreateModalOpen(true);
                 }}
-              >
-                <PlusIcon className="admin-page__create-button-icon" aria-hidden="true" />
-                <span>Crear usuario</span>
-              </button>
+              />
             </FilterBar>
           </div>
 

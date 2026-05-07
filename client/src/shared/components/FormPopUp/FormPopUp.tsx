@@ -10,6 +10,8 @@ export interface FormPopUpProps {
   isOpen: boolean;
   onClose: () => void;
   children: ReactNode;
+  wide?: boolean;
+  bodyRef?: React.RefObject<HTMLDivElement>;
 }
 
 const FormPopUp: React.FC<FormPopUpProps> = ({
@@ -19,6 +21,8 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
   isOpen,
   onClose,
   children,
+  wide,
+  bodyRef,
 }) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -41,7 +45,7 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
       className={styles.overlay}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className={styles.modal} role="dialog" aria-modal="true">
+      <div className={`${styles.modal}${wide ? ` ${styles.modalWide}` : ''}`} role="dialog" aria-modal="true">
 
         {/* Header */}
         <div className={styles.header}>
@@ -62,7 +66,7 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
         </div>
 
         {/* Body */}
-        <div className={styles.body}>
+        <div className={styles.body} ref={bodyRef}>
           {children}
         </div>
 
