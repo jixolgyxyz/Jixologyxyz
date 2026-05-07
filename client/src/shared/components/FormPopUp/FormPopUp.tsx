@@ -11,7 +11,7 @@ export interface FormPopUpProps {
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
-  bodyRef?: React.RefObject<HTMLDivElement>;
+  bodyRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const FormPopUp: React.FC<FormPopUpProps> = ({
