@@ -44,10 +44,12 @@ interface StatusPillSelectProps {
   statuses: BacklogStatusRecord[];
   value: string;
   onChange: (id: string) => void;
+  onBlur?: () => void;
   required?: boolean;
+  hasError?: boolean;
 }
 
-function StatusPillSelect({ statuses, value, onChange, required }: StatusPillSelectProps) {
+function StatusPillSelect({ statuses, value, onChange, onBlur, required, hasError }: StatusPillSelectProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -67,9 +69,10 @@ function StatusPillSelect({ statuses, value, onChange, required }: StatusPillSel
     <div className={styles.customSelect} ref={ref}>
       <button
         type="button"
-        className={styles.pillTrigger}
+        className={`${styles.pillTrigger} ${hasError ? styles.pillTriggerError : ''}`}
         style={{ backgroundColor: bg, color: text }}
         onClick={() => setOpen(o => !o)}
+        onBlur={onBlur}
         aria-required={required}
       >
         <span>{selected ? selected.nombre : 'Seleccionar...'}</span>
@@ -174,6 +177,23 @@ function PriorityIconSelect({ priorities, value, onChange }: PriorityIconSelectP
   );
 }
 
+// ── Friendly error messages ───────────────────────────────────────
+function friendlyError(msg: string): string {
+  if (msg.includes('id_tipo') && msg.includes('not-null'))
+    return 'Debes seleccionar un tipo para el ítem.';
+  if (msg.includes('id_estatus') && msg.includes('not-null'))
+    return 'Debes seleccionar un estatus para el ítem.';
+  if (msg.includes('nombre') && msg.includes('not-null'))
+    return 'El nombre del ítem es obligatorio.';
+  if (msg.includes('violates not-null constraint'))
+    return 'Faltan campos obligatorios. Revisa el formulario e intenta de nuevo.';
+  if (msg.includes('duplicate key') || msg.includes('unique constraint'))
+    return 'Ya existe un ítem con esos datos. Cambia el nombre e intenta de nuevo.';
+  if (msg.includes('network') || msg.includes('fetch'))
+    return 'Error de conexión. Comprueba tu internet e intenta de nuevo.';
+  return 'Ocurrió un error al crear el ítem. Intenta de nuevo.';
+}
+
 // ── Hierarchy: which type can be parent of which ──────────────────
 const PARENT_TYPE_NAME: Record<string, string> = {
   'Historia de Usuario': 'Épica',
@@ -219,13 +239,19 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
   const { user } = useUser();
   const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [nombreTouched,  setNombreTouched]  = useState(false);
+  const [estatusTouched, setEstatusTouched] = useState(false);
+  const [tipoTouched,    setTipoTouched]    = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.nombre.trim() || !form.id_estatus) return;
+    setNombreTouched(true);
+    setEstatusTouched(true);
+    setTipoTouched(true);
+    if (!form.nombre.trim() || !form.id_estatus || !form.id_tipo) return;
     const payload: CreateBacklogItemPayload = {
       nombre:                 form.nombre.trim(),
       descripcion:            form.descripcion || null,
@@ -269,8 +295,18 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             <label className={styles.label} htmlFor="nombre">
               Nombre <span className={styles.required}>*</span>
             </label>
-            <input id="nombre" name="nombre" className={styles.input} type="text"
-              placeholder="Nombre del ítem" value={form.nombre} onChange={handleChange} required />
+            <input
+              id="nombre" name="nombre" type="text"
+              className={`${styles.input} ${nombreTouched && !form.nombre.trim() ? styles.inputError : ''}`}
+              placeholder="Nombre del ítem"
+              value={form.nombre}
+              onChange={handleChange}
+              onBlur={() => setNombreTouched(true)}
+              required
+            />
+            {nombreTouched && !form.nombre.trim() && (
+              <p className={styles.fieldError}>El nombre del ítem es obligatorio.</p>
+            )}
           </div>
 
           {/* Descripción */}
@@ -289,9 +325,14 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
               <StatusPillSelect
                 statuses={meta.statuses}
                 value={form.id_estatus}
-                onChange={v => setForm(f => ({ ...f, id_estatus: v }))}
+                onChange={v => { setEstatusTouched(true); setForm(f => ({ ...f, id_estatus: v })); }}
+                onBlur={() => setEstatusTouched(true)}
                 required
+                hasError={estatusTouched && !form.id_estatus}
               />
+              {estatusTouched && !form.id_estatus && (
+                <p className={styles.fieldError}>Selecciona un estatus para continuar.</p>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -341,16 +382,25 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
 
           {/* Tipo — determines parent options, so placed before Ítem padre */}
           <div className={styles.field}>
-            <label className={styles.label}>Tipo</label>
+            <label className={styles.label}>
+              Tipo <span className={styles.required}>*</span>
+            </label>
             <select
               name="id_tipo"
-              className={styles.select}
+              className={`${styles.select} ${tipoTouched && !form.id_tipo ? styles.inputError : ''}`}
               value={form.id_tipo}
-              onChange={e => setForm(f => ({ ...f, id_tipo: e.target.value, id_backlog_item_padre: '' }))}
+              onChange={e => {
+                setTipoTouched(true);
+                setForm(f => ({ ...f, id_tipo: e.target.value, id_backlog_item_padre: '' }));
+              }}
+              onBlur={() => setTipoTouched(true)}
             >
-              <option value="">Sin tipo</option>
+              <option value="">Seleccionar tipo...</option>
               {meta.types.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
             </select>
+            {tipoTouched && !form.id_tipo && (
+              <p className={styles.fieldError}>Selecciona un tipo para continuar.</p>
+            )}
           </div>
 
           {/* Ítem padre — only shown when a type that can have a parent is selected */}
@@ -397,14 +447,14 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             </div>
           </div>
 
-          {error && <p className={styles.error}>{error}</p>}
+          {error && <p className={styles.error}>{friendlyError(error)}</p>}
 
           <div className={styles.actions}>
             <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
               Cancelar
             </button>
             <button type="submit" className={styles.submitBtn}
-              disabled={submitting || !form.nombre.trim() || !form.id_estatus}>
+              disabled={submitting || !form.nombre.trim() || !form.id_estatus || !form.id_tipo}>
               {submitting ? 'Guardando...' : 'Crear ítem'}
             </button>
           </div>

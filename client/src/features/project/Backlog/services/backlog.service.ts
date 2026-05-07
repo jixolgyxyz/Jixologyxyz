@@ -7,6 +7,7 @@ import type {
   SprintRecord,
   UserRecord,
   SugerenciaRecord,
+  ProjectEtiquetaRecord,
   CreateBacklogItemPayload,
   UpdateBacklogItemPayload,
 } from '../types/backlog.types';
@@ -138,6 +139,16 @@ export async function fetchSugerencias(projectId: number): Promise<SugerenciaRec
     aceptada:          row.aceptada,
     id_usuario_acepto: row.id_usuario_acepto,
   }));
+}
+
+export async function fetchProjectEtiquetas(projectId: number): Promise<ProjectEtiquetaRecord[]> {
+  const { data, error } = await supabase
+    .from('etiqueta_proyecto_predeterminada')
+    .select('id_usuario, id_etiqueta_proyecto_predeterminada, id_proyecto')
+    .eq('id_proyecto', projectId);
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 export async function createSugerencia(itemId: number): Promise<void> {

@@ -7,10 +7,11 @@ import {
   fetchBacklogItems,
   fetchProjectMembers,
   fetchSugerencias,
+  fetchProjectEtiquetas,
 } from '../services/backlog.service';
 import type { BacklogMeta } from '../types/backlog.types';
 
-const EMPTY: BacklogMeta = { statuses: [], priorities: [], types: [], sprints: [], items: [], users: [], sugerencias: [] };
+const EMPTY: BacklogMeta = { statuses: [], priorities: [], types: [], sprints: [], items: [], users: [], sugerencias: [], etiquetas: [] };
 
 export function useBacklogMeta(projectId: number | null | undefined) {
   const [meta,         setMeta]         = useState<BacklogMeta>(EMPTY);
@@ -31,9 +32,10 @@ export function useBacklogMeta(projectId: number | null | undefined) {
       fetchBacklogItems(projectId),
       fetchProjectMembers(),
       fetchSugerencias(projectId),
+      fetchProjectEtiquetas(projectId),
     ])
-      .then(([statuses, priorities, types, sprints, items, users, sugerencias]) => {
-        setMeta({ statuses, priorities, types, sprints, items, users, sugerencias });
+      .then(([statuses, priorities, types, sprints, items, users, sugerencias, etiquetas]) => {
+        setMeta({ statuses, priorities, types, sprints, items, users, sugerencias, etiquetas });
         setError(null);
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))

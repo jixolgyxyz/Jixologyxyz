@@ -90,6 +90,12 @@ export interface SugerenciaRecord {
   id_usuario_acepto: number | null;
 }
 
+export interface ProjectEtiquetaRecord {
+  id_usuario: number;
+  id_etiqueta_proyecto_predeterminada: number;
+  id_proyecto: number;
+}
+
 export interface BacklogMeta {
   statuses:    BacklogStatusRecord[];
   priorities:  BacklogPriorityRecord[];
@@ -98,4 +104,5 @@ export interface BacklogMeta {
   items:       BacklogItemRecord[];
   users:       UserRecord[];
   sugerencias: SugerenciaRecord[];
+  etiquetas:   ProjectEtiquetaRecord[];
 }

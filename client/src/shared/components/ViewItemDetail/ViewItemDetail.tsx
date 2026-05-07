@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
 import { updateBacklogItem } from '@/features/project/Backlog/services/backlog.service';
+import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import type {
   BacklogItemRecord,
   BacklogMeta,
@@ -366,18 +367,21 @@ function itemToForm(item: BacklogItemRecord): FormState {
 interface ViewItemDetailProps {
   item: BacklogItemRecord;
   meta: BacklogMeta;
+  isSuggestion?: boolean;
   onClose: () => void;
   onUpdated?: () => void;
   onNavigate?: (item: BacklogItemRecord) => void;
+  onAcceptSuggestion?: () => Promise<void>;
   initialEditing?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────────
-const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, onClose, onUpdated, onNavigate, initialEditing = false }) => {
-  const [isEditing, setIsEditing]     = useState(initialEditing);
-  const [form, setForm]               = useState<FormState>(() => itemToForm(item));
-  const [submitting, setSubmitting]   = useState(false);
-  const [error, setError]             = useState<string | null>(null);
+const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestion = false, onClose, onUpdated, onNavigate, onAcceptSuggestion, initialEditing = false }) => {
+  const [isEditing, setIsEditing]         = useState(initialEditing);
+  const [form, setForm]                   = useState<FormState>(() => itemToForm(item));
+  const [submitting, setSubmitting]       = useState(false);
+  const [accepting, setAccepting]         = useState(false);
+  const [error, setError]                 = useState<string | null>(null);
   const [showTimePopup, setShowTimePopup] = useState(false);
 
   useEffect(() => { setForm(itemToForm(item)); setIsEditing(initialEditing); }, [item, initialEditing]);
@@ -408,6 +412,12 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, onClose, on
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Error al guardar');
     }
+  };
+
+  const handleAccept = async () => {
+    if (!onAcceptSuggestion) return;
+    setAccepting(true);
+    try { await onAcceptSuggestion(); } finally { setAccepting(false); }
   };
 
   const handleSave = async () => {
@@ -475,10 +485,15 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, onClose, on
 
         {/* ── Top bar ── */}
         <div className={styles.topBar}>
-          <span className={styles.codeBadge}>
-            {TYPE_ICONS[typeName] ?? null}
-            {code}
-          </span>
+          <div className={styles.topBarLeft}>
+            <span className={styles.codeBadge}>
+              {TYPE_ICONS[typeName] ?? null}
+              {code}
+            </span>
+            {isSuggestion && (
+              <span className={styles.suggestionBadge}>Sugerencia</span>
+            )}
+          </div>
           <div className={styles.topBarActions}>
             {isEditing ? (
               <>
@@ -497,8 +512,8 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, onClose, on
                 Editar
               </button>
             )}
-            <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Cerrar">
-              <XMarkIcon width={18} height={18} />
+            <button type="button" className={styles.closePanelBtn} onClick={onClose} aria-label="Cerrar">
+              <XMarkIcon style={{ width: '1.25rem', height: '1.25rem', display: 'block', flexShrink: 0 }} />
             </button>
           </div>
         </div>
@@ -724,6 +739,17 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, onClose, on
               <span className={styles.detailLabel}>Fecha de creación</span>
               <span className={styles.detailValue}><CalendarDaysIcon width={13} height={13} />{formatDate(item.fecha_creacion)}</span>
             </div>
+
+            {isSuggestion && onAcceptSuggestion && !isEditing && (
+              <div className={styles.acceptRow}>
+                <ButtonComponent
+                  label={accepting ? 'Aceptando...' : 'Aceptar sugerencia'}
+                  onClick={handleAccept}
+                  disabled={accepting}
+                  variant="primary"
+                />
+              </div>
+            )}
 
             {!isEditing && item.fecha_inicio && (
               <div className={styles.detailRow}>

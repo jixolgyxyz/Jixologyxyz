@@ -56,6 +56,28 @@
   font-family: 'Poppins', sans-serif;
 }
 
+.topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.acceptRow {
+  padding-top: 0.75rem;
+}
+
+.suggestionBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: #FEF3C7;
+  color: #92400E;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #FDE68A;
+}
+
 .topBarActions {
   display: flex;
   align-items: center;
@@ -79,6 +101,26 @@
 .iconBtn:hover {
   background: var(--color-clarity-gray-1);
   color: var(--color-blueprint-navy);
+}
+
+.closePanelBtn {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.0625rem solid var(--color-clarity-gray-2);
+  border-radius: 50%;
+  background-color: var(--color-white);
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.closePanelBtn:hover {
+  background-color: var(--color-clarity-gray-1);
+  border-color: var(--color-clarity-gray-1);
 }
 
 /* ── Body ────────────────────────────────────────────────────────── */

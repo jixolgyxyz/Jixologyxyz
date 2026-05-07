@@ -96,9 +96,11 @@ const ProjectBacklog: React.FC = () => {
   const PROJECT_ID = Number(id);
   const USER_ID = 1;
   const { user } = useUser();
-  const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
   const { items, loading: itemsLoading, refresh } = useBacklogItems(PROJECT_ID);
   const { meta, loading: metaLoading, refresh: refreshMeta } = useBacklogMeta(PROJECT_ID);
+  const isPM = user != null && meta.etiquetas.some(
+    e => e.id_usuario === user.id && e.id_etiqueta_proyecto_predeterminada === 1,
+  );
   const refreshAll = () => { refresh(); refreshMeta(); };
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expandedItems, setExpandedItems]   = useState<Set<number>>(new Set());
@@ -157,13 +159,17 @@ const ProjectBacklog: React.FC = () => {
   const allStatuses = meta.statuses.map(toBacklogStatus);
 
   const filteredItems = useMemo(() => {
+    const suggestionIds = new Set(
+      meta.sugerencias.filter(s => !s.aceptada).map(s => s.id),
+    );
     return items
+      .filter(item => isPM || !suggestionIds.has(item.id))
       .filter(item => filterStatus === null || item.id_estatus             === filterStatus)
       .filter(item => filterType   === null || item.id_tipo                === filterType)
       .filter(item => filterUser   === null || item.id_usuario_responsable === filterUser)
       .filter(item => filterSprint === null || item.id_sprint              === filterSprint)
       .filter(item => item.nombre.toLowerCase().includes(search.toLowerCase()));
-  }, [items, search, filterStatus, filterType, filterUser, filterSprint]);
+  }, [items, meta.sugerencias, isPM, search, filterStatus, filterType, filterUser, filterSprint]);
 
   const sprintGroups = useMemo<{ sprint: SprintRecord | null; items: BacklogItemRecord[] }[]>(() => {
     const map = new Map<number | null, BacklogItemRecord[]>();
@@ -245,7 +251,7 @@ const ProjectBacklog: React.FC = () => {
             priority={toPriority(priorityRecord)}
             itemType={typeRecord?.nombre as BacklogItemType | undefined}
             responsibleUserId={item.id_usuario_responsable ?? undefined}
-            isSuggestion={isSuggestion}
+            isSuggestion={isSuggestion && isPM}
             hasChildren={filterType !== null && children.length > 0}
             isExpanded={isExpanded}
             onToggle={() => toggleExpanded(item.id)}
@@ -273,7 +279,7 @@ const ProjectBacklog: React.FC = () => {
             }}
             onViewDetails={() => { setOpenInEditMode(false); setViewingItem(item); }}
             onEdit={() => { setOpenInEditMode(true); setViewingItem(item); }}
-            onAcceptSuggestion={isAdmin && isSuggestion ? async () => {
+            onAcceptSuggestion={isPM && isSuggestion ? async () => {
               await acceptSugerencia(item.id, user!.id);
               refreshAll();
             } : undefined}
@@ -348,16 +354,25 @@ const ProjectBacklog: React.FC = () => {
         onCreated={() => { refreshAll(); setShowCreateForm(false); }}
       />
 
-      {viewingItem && (
-        <ViewItemDetail
-          item={viewingItem}
-          meta={meta}
-          initialEditing={openInEditMode}
-          onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
-          onUpdated={() => refreshAll()}
-          onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}
-        />
-      )}
+      {viewingItem && (() => {
+        const sugerencia = meta.sugerencias.find(s => s.id === viewingItem.id);
+        const isSuggestion = !!sugerencia && !sugerencia.aceptada;
+        return (
+          <ViewItemDetail
+            item={viewingItem}
+            meta={meta}
+            isSuggestion={isSuggestion && isPM}
+            initialEditing={openInEditMode}
+            onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
+            onUpdated={() => refreshAll()}
+            onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}
+            onAcceptSuggestion={isPM && isSuggestion ? async () => {
+              await acceptSugerencia(viewingItem.id, user!.id);
+              refreshAll();
+            } : undefined}
+          />
+        );
+      })()}
     </div>
   );
 };
