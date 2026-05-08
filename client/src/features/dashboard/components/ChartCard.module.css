@@ -1,0 +1,126 @@
+/* ── Shared card shell ────────────────────────────────────────────── */
+.card {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 12px;
+  padding: 20px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: 'Poppins', 'Aptos', sans-serif;
+}
+
+.title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-anchor-gray-2);
+  margin: 0 0 4px;
+  letter-spacing: 0.01em;
+}
+
+.empty {
+  font-size: 0.8rem;
+  color: var(--color-anchor-gray-1);
+  text-align: center;
+  padding: 48px 0;
+  margin: 0;
+}
+
+/* ── Tooltip (ScatterChart) ───────────────────────────────────────── */
+.tooltipBox {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  color: var(--color-anchor-gray-2);
+  box-shadow: 0 4px 12px rgba(10,8,56,.08);
+}
+
+.tooltipName {
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+/* ── Overdue card specifics ───────────────────────────────────────── */
+.overdueCount {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 8px;
+}
+
+.countRed {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-mahindra-red);
+  line-height: 1;
+}
+
+.countGreen {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #10b981;
+  line-height: 1;
+}
+
+.countLabel {
+  font-size: 0.8rem;
+  color: var(--color-anchor-gray-1);
+}
+
+.iconRed {
+  color: var(--color-mahindra-red);
+  flex-shrink: 0;
+}
+
+.iconGreen {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.overdueList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.overdueItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-2);
+}
+
+.overdueItemName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+
+.overdueItemName:hover {
+  text-decoration: underline;
+  color: var(--color-anchor-gray-2);
+}
+
+.overdueItemDate {
+  flex-shrink: 0;
+  color: var(--color-mahindra-red);
+  font-weight: 500;
+}
+
+.overdueMore {
+  font-size: 0.75rem;
+  color: var(--color-anchor-gray-1);
+  text-align: center;
+  padding-top: 4px;
+}

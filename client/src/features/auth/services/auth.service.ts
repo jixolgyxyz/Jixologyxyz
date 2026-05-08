@@ -3,6 +3,8 @@ import { supabase } from '@/core/supabase/supabase.client';
 import type { SignInPayload, SignInResult } from '@/features/auth/types/auth.types';
 import { normalizeEmail } from '@/features/auth/utils/auth.utils';
 
+const INVALID_CREDENTIALS_MESSAGE = 'Credenciales inválidas.';
+
 export async function signInWithPasswordService(
   payload: SignInPayload
 ): Promise<SignInResult> {
@@ -11,12 +13,19 @@ export async function signInWithPasswordService(
     password: payload.password,
   });
 
-  if (error) {
-    throw new Error(error.message);
+  if (error || !data.session || !data.user) {
+    throw new Error(INVALID_CREDENTIALS_MESSAGE);
   }
 
-  if (!data.session || !data.user) {
-    throw new Error('No se recibió una sesión válida.');
+  const { data: profile, error: profileError } = await supabase
+    .from('usuario')
+    .select('id, activo')
+    .eq('auth_id', data.user.id)
+    .maybeSingle();
+
+  if (profileError || !profile || profile.activo !== true) {
+    await supabase.auth.signOut();
+    throw new Error(INVALID_CREDENTIALS_MESSAGE);
   }
 
   return {

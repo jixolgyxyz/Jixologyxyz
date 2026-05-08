@@ -1,0 +1,68 @@
+.admin-user-profile-page {
+  width: 100%;
+  min-height: calc(100vh - 55px);
+  box-sizing: border-box;
+  padding: 0 0 2rem; /* remove left/right gap */
+  position: relative;
+}
+
+.admin-user-profile-page__content {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-user-profile-page__floating-back-btn {
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--color-blueprint-navy);
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  box-shadow:
+    0 8px 24px rgba(10, 8, 56, 0.12),
+    0 2px 8px rgba(10, 8, 56, 0.08);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.admin-user-profile-page__floating-back-btn:hover {
+  transform: translateY(-1px);
+  background: var(--color-white);
+  box-shadow:
+    0 12px 28px rgba(10, 8, 56, 0.14),
+    0 4px 10px rgba(10, 8, 56, 0.1);
+}
+
+.admin-user-profile-page__floating-back-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .admin-user-profile-page {
+    padding: 0 0 1.5rem;
+  }
+
+  .admin-user-profile-page__floating-back-btn {
+    top: 64px;
+    right: 16px;
+    padding: 0.7rem 0.9rem;
+  }
+
+  .admin-user-profile-page__floating-back-btn span {
+    display: none;
+  }
+}

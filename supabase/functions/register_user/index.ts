@@ -18,8 +18,12 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
+
+const SUPERADMIN_ROLE_ID = 1;
+const ADMIN_ROLE_ID = 2;
+const ADMIN_ALLOWED_TARGET_ROLES = [3, 4];
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseAnonKey =
@@ -39,6 +43,20 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  if (req.method === 'GET') {
+    return Response.json(
+      { ok: true, service: 'register_user' },
+      { status: 200, headers: corsHeaders }
+    );
+  }
+
+  if (req.method !== 'POST') {
+    return Response.json(
+      { error: 'Method not allowed.' },
+      { status: 405, headers: corsHeaders }
+    );
+  }
+
   let createdAuthUserId: string | null = null;
 
   try {
@@ -46,8 +64,10 @@ Deno.serve(async (req) => {
 
     const email = body.email?.trim().toLowerCase();
     const password = body.password;
+    const requestedRole = Number(body.id_rol_global);
+    const requestedZonaHoraria = Number(body.id_zona_horaria);
 
-    if (!email || !password || !body.id_zona_horaria) {
+    if (!email || !password || !requestedZonaHoraria) {
       return Response.json(
         { error: 'Faltan campos obligatorios.' },
         { status: 400, headers: corsHeaders }
@@ -72,7 +92,7 @@ Deno.serve(async (req) => {
 
       if (!authHeader) {
         return Response.json(
-          { error: 'Necesitas iniciar sesión como administrador para crear usuarios.' },
+          { error: 'Necesitas iniciar sesión para crear usuarios.' },
           { status: 401, headers: corsHeaders }
         );
       }
@@ -114,15 +134,83 @@ Deno.serve(async (req) => {
         );
       }
 
-      if (!callerProfile || callerProfile.id_rol_global !== 1) {
+      if (!callerProfile) {
         return Response.json(
-          { error: 'Forbidden. Solo un administrador puede crear usuarios.' },
+          { error: 'No se encontró el perfil del usuario creador.' },
+          { status: 403, headers: corsHeaders }
+        );
+      }
+
+      const callerRole = callerProfile.id_rol_global;
+
+      if (callerRole !== SUPERADMIN_ROLE_ID && callerRole !== ADMIN_ROLE_ID) {
+        return Response.json(
+          { error: 'No tienes permisos para crear usuarios.' },
+          { status: 403, headers: corsHeaders }
+        );
+      }
+
+      if (
+        callerRole === ADMIN_ROLE_ID &&
+        (!requestedRole || !ADMIN_ALLOWED_TARGET_ROLES.includes(requestedRole))
+      ) {
+        return Response.json(
+          { error: 'Un administrador solo puede crear usuarios con rol 3 o 4.' },
           { status: 403, headers: corsHeaders }
         );
       }
     }
 
-    const roleToInsert = isBootstrapMode ? 1 : body.id_rol_global;
+    const roleToInsert = isBootstrapMode
+      ? SUPERADMIN_ROLE_ID
+      : requestedRole;
+
+    if (!roleToInsert) {
+      return Response.json(
+        { error: 'Debes seleccionar un rol global válido.' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    const { data: validRole, error: validRoleError } = await adminClient
+      .from('rol_global')
+      .select('id')
+      .eq('id', roleToInsert)
+      .maybeSingle();
+
+    if (validRoleError) {
+      return Response.json(
+        { error: validRoleError.message },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    if (!validRole) {
+      return Response.json(
+        { error: 'El rol global seleccionado no existe.' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    const { data: validZona, error: validZonaError } = await adminClient
+      .from('zona_horaria')
+      .select('id')
+      .eq('id', requestedZonaHoraria)
+      .maybeSingle();
+
+    if (validZonaError) {
+      return Response.json(
+        { error: validZonaError.message },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    if (!validZona) {
+      return Response.json(
+        { error: 'La zona horaria seleccionada no existe.' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     const { data: authData, error: authError } =
       await adminClient.auth.admin.createUser({
@@ -152,7 +240,7 @@ Deno.serve(async (req) => {
         sobre_mi: body.sobre_mi,
         jornada: body.jornada,
         fecha_creacion: new Date().toISOString(),
-        id_zona_horaria: body.id_zona_horaria,
+        id_zona_horaria: requestedZonaHoraria,
         id_rol_global: roleToInsert,
       })
       .select()
@@ -170,7 +258,7 @@ Deno.serve(async (req) => {
     return Response.json(
       {
         message: isBootstrapMode
-          ? 'Primer usuario administrador creado correctamente.'
+          ? 'Primer usuario superadministrador creado correctamente.'
           : 'Usuario creado correctamente.',
         auth_id: createdAuthUserId,
         usuario: usuarioData,

@@ -1,0 +1,16 @@
+.belowHeadbar {
+    display: flex;
+    flex-direction: row;
+    margin-top: 55px;
+    margin-left: 55px;
+    height: calc(100vh - 55px);
+    width: calc(100% - 55px);
+    box-sizing: border-box;
+}
+
+.innerProject {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}

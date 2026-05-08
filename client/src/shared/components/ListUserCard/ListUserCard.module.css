@@ -1,0 +1,209 @@
+/* ── Container query host ────────────────────────────────────── */
+.rowContainer {
+  container-type: inline-size;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(8rem, 1fr) minmax(0, 12rem) minmax(0, 9rem) 2.5rem;
+  align-items: center;
+  column-gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--color-white);
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  font-family: 'Poppins', 'Aptos', sans-serif;
+  font-size: 0.85rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.row:hover {
+  box-shadow: 0 4px 16px rgba(10, 8, 56, 0.08);
+  border-color: var(--color-anchor-gray-1);
+}
+
+/* ── Avatar icon ─────────────────────────────────────────────── */
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--color-clarity-gray-1);
+  color: var(--color-anchor-gray-1);
+  flex-shrink: 0;
+}
+
+.avatarSvg {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.avatarSvg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Name ────────────────────────────────────────────────────── */
+.name {
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nameLabel {
+  color: var(--color-anchor-gray-1);
+  font-weight: 400;
+}
+
+/* ── Roles ───────────────────────────────────────────────────── */
+.roles {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rolesLabel {
+  color: var(--color-anchor-gray-1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.overflowBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  background: var(--color-clarity-gray-2);
+  color: var(--color-anchor-gray-1);
+  border: 1px solid var(--color-clarity-gray-2);
+}
+
+/* ── Spacer ──────────────────────────────────────────────────── */
+.spacer {
+  display: none;
+}
+
+/* ── Email ───────────────────────────────────────────────────── */
+.email {
+  color: var(--color-anchor-gray-1);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emailLabel {
+  color: var(--color-anchor-gray-1);
+  font-weight: 400;
+}
+
+.emailValue {
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+}
+
+/* ── Options button ──────────────────────────────────────────── */
+.optionsButton {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.optionsButton:hover {
+  background: transparent;
+  color: var(--color-blueprint-navy);
+  opacity: 0.75;
+  transform: scale(1.08);
+}
+
+.optionsButtonIcon {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: block;
+  stroke-width: 2.4;
+}
+
+/* ── Clickable avatar ────────────────────────────────────────── */
+.avatarClickable {
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.avatarClickable:hover {
+  opacity: 0.8;
+  transform: scale(1.08);
+}
+
+/* ── Responsive: hide email, shrink roles, keep name visible ─── */
+@container (max-width: 38rem) {
+  .row {
+    grid-template-columns: 2.25rem minmax(6rem, 1fr) minmax(0, 8rem) 2.5rem;
+  }
+
+  .email {
+    display: none;
+  }
+
+  .badge {
+    font-size: 0.68rem;
+    padding: 0.1rem 0.4rem;
+  }
+
+  .overflowBadge {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+  }
+
+  .rolesLabel {
+    font-size: 0.78rem;
+  }
+}
+
+/* ── Responsive: hide roles too at very narrow widths ────────── */
+@container (max-width: 26rem) {
+  .row {
+    grid-template-columns: 2.25rem minmax(0, 1fr) 2.5rem;
+  }
+
+  .roles {
+    display: none;
+  }
+}

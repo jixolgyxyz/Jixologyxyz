@@ -1,0 +1,17 @@
+.iconBlue {
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.countBlue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #3b82f6;
+  line-height: 1;
+}
+
+.dateNormal {
+  flex-shrink: 0;
+  color: var(--color-anchor-gray-1);
+  font-size: 0.75rem;
+}

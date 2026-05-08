@@ -1,0 +1,62 @@
+.error-state {
+  width: 100%;
+  min-height: 16rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 2rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.error-state__icon {
+  width: 3rem;
+  height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(211, 47, 47, 0.1);
+  color: var(--accent, #d32f2f);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.error-state__title {
+  margin: 0;
+  color: var(--color-blueprint-navy, #0a0838);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.error-state__message {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--color-anchor-gray-2, #686a76);
+  line-height: 1.5;
+}
+
+.error-state__button {
+  margin-top: 0.5rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-blueprint-navy, #0a0838);
+  color: var(--color-white, #ffffff);
+  padding: 0.7rem 1.1rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.error-state__button:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 8px 20px rgba(10, 8, 56, 0.12),
+    0 2px 6px rgba(10, 8, 56, 0.08);
+}

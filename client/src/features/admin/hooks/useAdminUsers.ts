@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { getAdminUsers } from '../services/adminUsers.service';
 import type { AdminUserListItem } from '../types/admin.types';
 
-export function useAdminUsers(search: string) {
+export function useAdminUsers(
+  search: string,
+  statusFilter: 'active' | 'inactive' | 'all'
+) {
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,7 +15,7 @@ export function useAdminUsers(search: string) {
     setError('');
 
     try {
-      const data = await getAdminUsers(search);
+      const data = await getAdminUsers(search, statusFilter);
       setUsers(data);
     } catch (err) {
       setError(
@@ -21,7 +24,7 @@ export function useAdminUsers(search: string) {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {

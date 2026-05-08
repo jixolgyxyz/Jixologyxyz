@@ -1,0 +1,9 @@
+{
+  "folders": [
+    { "name": "client", "path": "client" },
+    { "name": "server", "path": "server" },
+    { "name": "scripts", "path": "scripts" },
+    { "name": "supabase", "path": "supabase" },
+    { "name": "tmp", "path": "tmp" }
+  ]
+}

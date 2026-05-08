@@ -1,2 +1,1 @@
-CREATE VIEW project_card as
-
+SELECT id, nombre, email FROM usuario LIMIT 10;

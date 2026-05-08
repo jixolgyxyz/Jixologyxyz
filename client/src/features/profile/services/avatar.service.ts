@@ -372,5 +372,8 @@ export function makeColorTileSvg(
   if (!meta.colorProp) return makeAvatarSvg(base);
   const probOverride  = meta.probProp ? { [meta.probProp]: 100 } : {};
   const colorOverride = { [meta.colorProp]: [colorValue] };
-  return makeAvatarSvg({ ...base, ...probOverride, ...colorOverride });
+  // Force solid type in tile previews so each color swatch clearly shows its
+  // own colour regardless of whether the user currently has gradient selected.
+  const typeOverride  = meta.typeProp ? { [meta.typeProp]: ['solid'] } : {};
+  return makeAvatarSvg({ ...base, ...probOverride, ...typeOverride, ...colorOverride });
 }

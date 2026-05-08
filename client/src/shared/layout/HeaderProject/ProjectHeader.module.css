@@ -1,0 +1,77 @@
+:root {
+  --bgHeader: #ffffff;
+  --bgHeaderProject: #f7f7f7;
+  --text: #2b2b2b;
+  --border: #e0e0e0;
+  --accent: #d32f2f;
+}
+
+.headerP {
+  display: flex;
+  width: 100%;
+  background: var(--bgHeaderProject);
+  margin: 0px 0px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.navContainer {
+  display: flex;
+  flex: 1; /* ocupa todo el espacio restante */
+  justify-content: space-around;
+}
+
+/* Cada elemento del header */
+.element {
+  display: flex;
+  padding: 8px 12px;
+  min-width: 250px;
+  cursor: pointer;
+  color: var(--text);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  justify-content: center;
+}
+
+/* Texto */
+.element .label {
+  position: relative;
+}
+
+/* Línea inferior animada */
+.element .label::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 0%;
+  height: 2px;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+/* Hover correcto */
+.element:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Animación al hacer hover */
+.element:hover .label::after {
+  width: 100%;
+}
+
+/* Active nav link */
+.elementActive {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.elementActive .label::after {
+  width: 100%;
+}
+
+.backArrow {
+  margin: 0px 16px;
+  min-width: unset;
+}

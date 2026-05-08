@@ -35,6 +35,7 @@ export type AdminUserListItem = {
   nombre: string | null;
   apellido: string | null;
   id_rol_global: number;
+  activo: boolean;
 };
 
 export type AdminUserRoleBadge = {

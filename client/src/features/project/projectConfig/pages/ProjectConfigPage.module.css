@@ -1,0 +1,366 @@
+/* ── 3-panel grid ────────────────────────────────────────────────── */
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(221, 0, 49, 0.04), transparent 28%),
+    var(--color-clarity-gray-1);
+}
+
+/* ── Panel base ──────────────────────────────────────────────────── */
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.panelLeft {
+  grid-column: 1;
+  grid-row: 1 / 3;
+}
+
+.panelTopRight {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.panelBottomRight {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* ── Panel header ────────────────────────────────────────────────── */
+.panelHeader {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.125rem 1.25rem 1rem;
+  border-bottom: 1px solid var(--color-clarity-gray-2);
+}
+
+.panelTitle {
+  margin: 0 0 0.125rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-blueprint-navy);
+}
+
+.panelSubtitle {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-1);
+}
+
+/* ── Panel scrollable body ───────────────────────────────────────── */
+.panelContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.875rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ── Primary button ──────────────────────────────────────────────── */
+.primaryBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.875rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--color-mahindra-red);
+  color: var(--color-white);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.primaryBtn:hover { opacity: 0.88; }
+
+/* ── Member rows ─────────────────────────────────────────────────── */
+@keyframes memberFadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.memberRow {
+  animation: memberFadeIn 0.18s ease-out both;
+}
+
+/* ── Skeleton ────────────────────────────────────────────────────── */
+.skeleton {
+  height: 60px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--color-clarity-gray-1) 25%, var(--color-clarity-gray-2) 50%, var(--color-clarity-gray-1) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  flex-shrink: 0;
+}
+
+.skeletonFte {
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--color-clarity-gray-1) 25%, var(--color-clarity-gray-2) 50%, var(--color-clarity-gray-1) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Empty ───────────────────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--color-anchor-gray-1);
+  font-size: 0.875rem;
+}
+
+/* ── FTE rows ────────────────────────────────────────────────────── */
+.fteRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  background: var(--color-white);
+  transition: border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.fteRow:hover {
+  border-color: var(--color-anchor-gray-1);
+}
+
+.fteName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.fteInputGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.fteInput {
+  width: 4.5rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--color-blueprint-navy);
+  text-align: right;
+  transition: border-color 0.15s ease;
+  -moz-appearance: textfield;
+}
+
+.fteInput::-webkit-inner-spin-button,
+.fteInput::-webkit-outer-spin-button {
+  opacity: 0.5;
+}
+
+.fteInput:focus {
+  outline: none;
+  border-color: var(--color-blueprint-navy);
+}
+
+.fteInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fteMax {
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-1);
+  white-space: nowrap;
+}
+
+.fteBadgeWrap {
+  min-width: 5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fteBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-clarity-gray-1);
+  color: var(--color-blueprint-navy);
+  border: 1px solid var(--color-clarity-gray-2);
+}
+
+.fteNoJornada {
+  font-size: 0.75rem;
+  color: var(--color-anchor-gray-1);
+}
+
+/* ── Etiquetas grid ──────────────────────────────────────────────── */
+.etiquetasGrid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.5rem;
+}
+
+/* Each etiqueta is a compact inline pill */
+.etiquetaCard {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.375rem 0.25rem 0.25rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 999px;
+  background: var(--color-white);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.etiquetaCard:hover {
+  border-color: var(--color-anchor-gray-1);
+  box-shadow: 0 2px 6px rgba(10, 8, 56, 0.05);
+}
+
+.etiquetaBadgeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 999px;
+  transition: opacity 0.15s ease;
+}
+
+.etiquetaBadgeBtn:hover { opacity: 0.82; }
+
+.etiquetaBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.editIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: var(--color-anchor-gray-1);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.etiquetaBadgeBtn:hover .editIcon {
+  opacity: 1;
+}
+
+.etiquetaDesc {
+  display: none; /* description hidden in compact pill view */
+}
+
+.deleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-anchor-gray-1);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.deleteBtn:hover {
+  color: var(--color-mahindra-red);
+}
+
+.deleteBtnIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ── Delete confirmation dialog ──────────────────────────────────── */
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.confirmCancelBtn {
+  padding: 0.6rem 1.4rem;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-clarity-gray-1);
+  color: var(--color-anchor-gray-1);
+  transition: background 0.15s ease;
+}
+
+.confirmCancelBtn:hover {
+  background: var(--color-clarity-gray-2);
+}
+
+.confirmDeleteBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.6rem 1.4rem;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-mahindra-red);
+  color: var(--color-white);
+  transition: opacity 0.15s ease;
+}
+
+.confirmDeleteBtn:hover {
+  opacity: 0.85;
+}

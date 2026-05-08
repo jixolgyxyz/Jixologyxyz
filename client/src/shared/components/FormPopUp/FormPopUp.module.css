@@ -1,0 +1,126 @@
+/* ── Overlay ─────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background-color: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(0.25rem);
+  box-sizing: border-box;
+}
+
+/* ── Modal card ──────────────────────────────────────────────────── */
+.modal::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-mahindra-red), var(--color-impact-red));
+  border-radius: 1.5rem 1.5rem 0 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 34rem;
+  max-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-white);
+  border: 0.0625rem solid var(--color-clarity-gray-2);
+  border-radius: 1.5rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  font-family: inherit;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 2rem 2rem 1.5rem;
+  border-bottom: 0.0625rem solid var(--color-clarity-gray-2);
+  flex-shrink: 0;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--color-anchor-gray-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: inherit;
+}
+
+.title {
+  margin: 0 0 0.75rem;
+  color: var(--color-blueprint-navy);
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.1;
+  font-family: inherit;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-anchor-gray-2);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  font-family: inherit;
+}
+
+/* ── Close button ────────────────────────────────────────────────── */
+.closeBtn {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.0625rem solid var(--color-clarity-gray-2);
+  border-radius: 50%;
+  background-color: var(--color-white);
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.closeBtn:hover {
+  background-color: var(--color-clarity-gray-1);
+  border-color: var(--color-clarity-gray-1);
+}
+
+.closeIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ── Wide variant ────────────────────────────────────────────────── */
+.modalWide {
+  max-width: 56rem;
+}
+
+/* ── Body ────────────────────────────────────────────────────────── */
+.body {
+  padding: 1.5rem 2rem 2rem;
+  overflow-y: auto;
+  flex: 1;
+}

@@ -87,27 +87,69 @@ Supabase configuration, database migrations, and project resources.
 
 ## #######################################################################################################################################
 ## What to run after db reset --local
--- powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-users.ps1
-in a terminal to run the script that creates the first user
 
--- Copy paste this in the supabase local client to add the values for the inventory for the first user
+-- cd supabase
 
-INSERT INTO public.usuario_inventario_avatar (id_usuario, id_elemento, fecha_obtencion)
-SELECT u.id, v.id_elemento, NOW()
-FROM public.usuario u
-JOIN (
-  VALUES
-      (1), (2), (5), (6), (11), (12),
-      (19), (23), (40), (44), (49), (51),
-      (55), (57), (60), (67), (72),
-      (74), (81), (88),
-      (95), (99), (116), (125), (141), (142), (150),
-      (153), (156), (162), (164),
-      (170), (172), (183), (193), (195),
-      (198), (199), (201), (204), (205),
-      (210), (212), (213)
-) AS v(id_elemento)
-ON TRUE
-WHERE u.email = 'juan.guarnizo@gmail.com';
+-- npm run begin-project
+
+(properly stop the DB Supabase before)
 
 
+
+## #######################################################################################################################################
+## Docker — Build & Run
+
+### Prerequisites
+- Docker Desktop installed and running
+- `server/.env` file created with the following variables:
+  ```
+  SUPABASE_URL=your_supabase_url
+  SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+  PORT=3000
+  ```
+  Find these values in the Supabase dashboard under **Project Settings → API**.
+
+### 1. Build the images
+Run both commands from the **repo root**:
+
+```bash
+# Client (Nginx, serves the React app)
+docker build -t jixology-client -f client/Dockerfile client/
+
+# Server (Express + Socket.io)
+docker build -t jixology-server -f server/Dockerfile .
+```
+
+### 2. Run the containers
+
+```bash
+# Client — available at http://localhost
+docker run -d -p 80:80 --name jixology-client jixology-client
+
+# Server — available at http://localhost:3000
+docker run -d -p 3000:3000 --env-file server/.env --name jixology-server jixology-server
+```
+
+### 3. Verify
+
+```bash
+# Check both containers are running
+docker ps
+
+# Check server health
+curl http://localhost:3000/health
+```
+
+Open [http://localhost](http://localhost) in your browser to access the app.
+
+### Useful commands
+
+```bash
+# View logs
+docker logs jixology-client
+docker logs jixology-server
+
+# Stop and remove containers
+docker stop jixology-client jixology-server
+docker rm   jixology-client jixology-server
+```

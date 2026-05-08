@@ -1,0 +1,230 @@
+/* ── Page shell — matches ProjectsPage pattern ────────────────────── */
+.page {
+  background-color: var(--color-clarity-gray-1);
+  width: 100%;
+  min-height: 100vh;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  font-family: 'Poppins', 'Aptos', sans-serif;
+}
+
+/* ── Welcome header ───────────────────────────────────────────────── */
+.header {
+  margin-bottom: 1.25rem;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* ── Project multi-select dropdown ────────────────────────────────── */
+.projectDropdownWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.projectDropdownBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.875rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-clarity-gray-2);
+  background: var(--color-white);
+  color: var(--color-anchor-gray-2);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 4px rgba(10, 8, 56, 0.06);
+}
+
+.projectDropdownBtn:hover {
+  border-color: var(--color-anchor-gray-1);
+}
+
+.projectDropdownBtnActive {
+  border-color: var(--color-blueprint-navy);
+  background: var(--color-blueprint-navy);
+  color: #ffffff;
+}
+
+.projectDropdownLabel {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectDropdownChevron {
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+
+.projectDropdownChevronOpen {
+  transform: rotate(180deg);
+}
+
+.projectDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  min-width: 210px;
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 12px;
+  padding: 0.375rem;
+  box-shadow: 0 8px 24px rgba(10, 8, 56, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.projectDropdownDivider {
+  height: 1px;
+  background: var(--color-clarity-gray-2);
+  margin: 0.25rem 0.375rem;
+}
+
+.projectDropdownOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.625rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-anchor-gray-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.projectDropdownOption:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.projectDropdownOptionActive {
+  color: var(--color-blueprint-navy);
+  font-weight: 600;
+}
+
+.projectDropdownOptionCheck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-clarity-gray-2);
+  border-radius: 4px;
+  flex-shrink: 0;
+  color: var(--color-blueprint-navy);
+  background: var(--color-white);
+}
+
+.projectDropdownOptionActive .projectDropdownOptionCheck {
+  background: var(--color-blueprint-navy);
+  border-color: var(--color-blueprint-navy);
+  color: #ffffff;
+}
+
+.greeting {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 2px;
+}
+
+.subtitle {
+  font-size: 0.82rem;
+  color: var(--color-anchor-gray-1);
+  margin: 0;
+}
+
+/* ── Summary stat row ─────────────────────────────────────────────── */
+.statRow {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.statCard {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  padding: 14px 20px;
+  min-width: 120px;
+  flex: 1;
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-blueprint-navy);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--color-anchor-gray-1);
+}
+
+/* ── Section label (matches ProjectsPage .sectionTitle) ──────────── */
+.sectionLabel {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Chart grid ───────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Loading / error states ───────────────────────────────────────── */
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 240px;
+  color: var(--color-anchor-gray-1);
+  font-size: 0.9rem;
+}
+
+.errorBox {
+  background: #fff1f2;
+  border: 1px solid var(--color-clarity-red);
+  border-radius: 10px;
+  padding: 16px 20px;
+  color: var(--color-mahindra-red);
+  font-size: 0.85rem;
+}

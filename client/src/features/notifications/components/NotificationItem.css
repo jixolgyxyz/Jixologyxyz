@@ -1,0 +1,119 @@
+.notification-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border: 0.0625rem solid var(--color-clarity-gray-2, #e0e0e0);
+  border-radius: 1.35rem;
+  background: var(--color-white, #ffffff);
+  box-shadow:
+    0 6px 18px rgba(10, 8, 56, 0.05),
+    0 2px 6px rgba(10, 8, 56, 0.04);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.notification-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(10, 8, 56, 0.16);
+  box-shadow:
+    0 10px 24px rgba(10, 8, 56, 0.08),
+    0 3px 8px rgba(10, 8, 56, 0.06);
+}
+
+.notification-item--read {
+  opacity: 0.78;
+}
+
+.notification-item--selected {
+  border-color: rgba(211, 47, 47, 0.35);
+  background: rgba(211, 47, 47, 0.035);
+}
+
+.notification-item__select {
+  flex-shrink: 0;
+  width: 2.5rem;
+  padding-left: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-item__select input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--accent, #d32f2f);
+  cursor: pointer;
+}
+
+.notification-item__main {
+  flex: 1;
+  min-width: 0;
+  padding: 1.15rem 1.25rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.notification-item__select + .notification-item__main {
+  padding-left: 0;
+}
+
+.notification-item__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.notification-item__title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.notification-item__title {
+  margin: 0;
+  color: var(--color-blueprint-navy, #0a0838);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.notification-item__unread-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  min-width: 0.6rem;
+  border-radius: 999px;
+  background: var(--accent, #d32f2f);
+  box-shadow: 0 0 0 0.18rem rgba(211, 47, 47, 0.12);
+}
+
+.notification-item__description {
+  margin: 0.55rem 0 0;
+  color: var(--color-anchor-gray-2, #686a76);
+  line-height: 1.55;
+}
+
+.notification-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin-top: 0.85rem;
+  color: var(--color-anchor-gray-2, #686a76);
+  font-size: 0.85rem;
+}
+
+.notification-item__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem 1.25rem;
+}

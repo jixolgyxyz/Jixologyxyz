@@ -3,11 +3,20 @@ import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { RegisterUserFormValues } from '../../types/admin.types';
 import './registerUserForm.css';
 
+type SelectOption = {
+  id: number;
+  label: string;
+};
+
 type Props = {
   values: RegisterUserFormValues;
   loading: boolean;
   error: string;
   success: string;
+  zonaHorariaOptions: SelectOption[];
+  rolOptions: SelectOption[];
+  optionsLoading?: boolean;
+  optionsError?: string;
   onChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => void;
@@ -29,6 +38,10 @@ export function RegisterUserForm({
   loading,
   error,
   success,
+  zonaHorariaOptions = [],
+  rolOptions = [],
+  optionsLoading = false,
+  optionsError = '',
   onChange,
   onSubmit,
 }: Props) {
@@ -48,7 +61,11 @@ export function RegisterUserForm({
     isEmailValid &&
     isPasswordValid &&
     hasZonaHoraria &&
-    hasRol;
+    hasRol &&
+    !loading &&
+    !optionsLoading &&
+    zonaHorariaOptions.length > 0 &&
+    rolOptions.length > 0;
 
   const handleBlur = (field: keyof TouchedFields) => {
     setTouchedFields((current) => ({
@@ -104,6 +121,16 @@ export function RegisterUserForm({
               >
                 <p className="register-user-card__feedback-title">Usuario creado</p>
                 <p className="register-user-card__feedback-description">{success}</p>
+              </div>
+            ) : null}
+
+            {optionsError ? (
+              <div
+                className="register-user-card__feedback register-user-card__feedback--error"
+                role="alert"
+              >
+                <p className="register-user-card__feedback-title">No se pudieron cargar opciones</p>
+                <p className="register-user-card__feedback-description">{optionsError}</p>
               </div>
             ) : null}
 
@@ -173,10 +200,16 @@ export function RegisterUserForm({
                       onChange={onChange}
                       onBlur={() => handleBlur('id_zona_horaria')}
                       aria-invalid={touchedFields.id_zona_horaria && !hasZonaHoraria}
+                      disabled={loading || optionsLoading}
                     >
-                      <option value="">Selecciona zona horaria</option>
-                      <option value="1">Zona horaria 1</option>
-                      <option value="2">Zona horaria 2</option>
+                      <option value="">
+                        {optionsLoading ? 'Cargando zonas horarias...' : 'Selecciona zona horaria'}
+                      </option>
+                      {zonaHorariaOptions.map((zona) => (
+                        <option key={zona.id} value={String(zona.id)}>
+                          {zona.label}
+                        </option>
+                      ))}
                     </select>
                     <ChevronDownIcon className="register-user-card__select-icon" />
                   </div>
@@ -200,10 +233,16 @@ export function RegisterUserForm({
                       onChange={onChange}
                       onBlur={() => handleBlur('id_rol_global')}
                       aria-invalid={touchedFields.id_rol_global && !hasRol}
+                      disabled={loading || optionsLoading}
                     >
-                      <option value="">Selecciona rol</option>
-                      <option value="1">Administrador</option>
-                      <option value="2">Usuario</option>
+                      <option value="">
+                        {optionsLoading ? 'Cargando roles...' : 'Selecciona rol'}
+                      </option>
+                      {rolOptions.map((rol) => (
+                        <option key={rol.id} value={String(rol.id)}>
+                          {rol.label}
+                        </option>
+                      ))}
                     </select>
                     <ChevronDownIcon className="register-user-card__select-icon" />
                   </div>
@@ -321,7 +360,7 @@ export function RegisterUserForm({
               <button
                 type="submit"
                 className="register-user-card__button register-user-card__button--primary"
-                disabled={loading || !canSubmit}
+                disabled={!canSubmit}
               >
                 {loading ? <span className="register-user-card__button-spinner" /> : null}
                 <span className="register-user-card__button-text">

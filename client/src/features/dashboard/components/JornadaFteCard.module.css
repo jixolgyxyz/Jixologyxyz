@@ -1,0 +1,118 @@
+/* ── Card shell ───────────────────────────────────────────────────── */
+.card {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 12px;
+  padding: 20px 20px 16px;
+  font-family: 'Poppins', 'Aptos', sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Header row ───────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-anchor-gray-2);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.jornadaBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  background: var(--color-clarity-gray-3);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+/* ── Table ────────────────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-anchor-gray-1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 8px 8px 0;
+  border-bottom: 1px solid var(--color-clarity-gray-2);
+  text-align: left;
+}
+
+.thRight {
+  text-align: right;
+}
+
+.row:not(:last-child) .td {
+  border-bottom: 1px solid var(--color-clarity-gray-2);
+}
+
+.td {
+  padding: 10px 8px 10px 0;
+  color: var(--color-anchor-gray-2);
+  vertical-align: middle;
+}
+
+.tdRight {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tdBar {
+  width: 40%;
+  padding-right: 0;
+}
+
+/* ── Progress bar ─────────────────────────────────────────────────── */
+.barTrack {
+  position: relative;
+  height: 8px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.barFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--color-blueprint-navy);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.barLabel {
+  position: absolute;
+  right: -30px;
+  font-size: 0.68rem;
+  color: var(--color-anchor-gray-1);
+  white-space: nowrap;
+}
+
+/* ── Empty state ──────────────────────────────────────────────────── */
+.empty {
+  font-size: 0.8rem;
+  color: var(--color-anchor-gray-1);
+  text-align: center;
+  padding: 32px 0;
+  margin: 0;
+}

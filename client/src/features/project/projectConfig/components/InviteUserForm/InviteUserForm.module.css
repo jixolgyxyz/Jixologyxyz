@@ -1,0 +1,183 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Search ──────────────────────────────────────────────────────── */
+.searchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-anchor-gray-1);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.55rem 0.75rem 0.55rem 2.25rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--color-blueprint-navy);
+  background: var(--color-white);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-blueprint-navy);
+}
+
+/* ── User list ───────────────────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.userRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  background: var(--color-white);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.userRow:hover {
+  border-color: var(--color-anchor-gray-1);
+  box-shadow: 0 2px 8px rgba(10, 8, 56, 0.06);
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.avatarWrapper {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-clarity-gray-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-clarity-gray-2);
+}
+
+.avatarSvg {
+  width: 100%;
+  height: 100%;
+}
+
+.avatarSvg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.avatarFallback {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-anchor-gray-1);
+}
+
+.userText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+}
+
+.userName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userEmail {
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Invite button ───────────────────────────────────────────────── */
+.inviteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 6.75rem;
+  padding: 0.4rem 0.875rem;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-mahindra-red);
+  color: var(--color-white);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.inviteBtn:not(:disabled):hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.inviteBtn:disabled {
+  cursor: not-allowed;
+}
+
+.invitedBtn {
+  background: var(--color-clarity-gray-1);
+  color: var(--color-anchor-gray-1);
+}
+
+/* ── Feedback ────────────────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 1.5rem 0;
+  color: var(--color-anchor-gray-1);
+  font-size: 0.875rem;
+}
+
+.error {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  color: var(--color-mahindra-red);
+  background: rgba(221, 0, 49, 0.06);
+  border: 1px solid rgba(221, 0, 49, 0.18);
+}

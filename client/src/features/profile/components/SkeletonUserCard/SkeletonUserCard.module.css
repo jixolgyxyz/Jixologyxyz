@@ -1,0 +1,25 @@
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.avatarShimmer {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+  box-shadow:
+    0 0 0 4px #ffffff,
+    0 0 0 6px #e5e7eb,
+    0 8px 20px rgba(10, 8, 56, 0.12);
+}
+
+.line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
