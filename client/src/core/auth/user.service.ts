@@ -17,7 +17,7 @@ export async function fetchCurrentUser(authId: string): Promise<UserProfile | nu
     .from("usuario")
     .select("id, auth_id, nombre, apellido, email, id_zona_horaria, id_rol_global, activo, rol_global(nombre)")
     .eq("auth_id", authId)
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(`${error.message}, ${error.code}`);
   if (!data) return null;
