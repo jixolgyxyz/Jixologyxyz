@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { PaintBrushIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 
 import AvatarTile from '../AvatarTile';
 import ColorSwatch from '../ColorSwatch';
@@ -99,12 +101,14 @@ const InventoryCard: React.FC<InventoryCardProps> = ({
         ))}
 
         {hasColor && (
-          <button
-            className={`inv-color-toggle ${showingColor ? 'inv-color-toggle--active' : ''}`}
-            onClick={() => setShowingColor((s) => !s)}
-          >
-            🎨 {showingColor ? 'Variants' : 'Colors'}
-          </button>
+          <div style={{ marginLeft: 'auto' }}>
+            <ButtonComponent
+              label={showingColor ? 'Variants' : 'Colors'}
+              icon={showingColor ? <Squares2X2Icon width={15} height={15} /> : <PaintBrushIcon width={15} height={15} />}
+              variant={showingColor ? 'primary' : 'secondary'}
+              onClick={() => setShowingColor((s) => !s)}
+            />
+          </div>
         )}
       </nav>
 

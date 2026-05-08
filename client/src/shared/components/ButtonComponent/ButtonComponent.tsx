@@ -1,11 +1,21 @@
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 import './ButtonComponent.css';
 
-const ButtonComponent: FC = () => {
+interface ButtonComponentProps {
+  label: string;
+  onClick?: () => void;
+  icon?: ReactNode;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary';
+}
+
+const ButtonComponent: FC<ButtonComponentProps> = ({ label, onClick, icon, type = 'button', disabled, variant = 'primary' }) => {
   return (
-    <div className="button-component">
-      button component
-    </div>
+    <button type={type} className={`button-component button-component--${variant}`} onClick={onClick} disabled={disabled}>
+      {icon && <span className="button-component__icon">{icon}</span>}
+      {label}
+    </button>
   );
 };
 

@@ -17,11 +17,14 @@ import { useRecentProjects } from '../../hooks/useRecentProjects';
 // --- Componentes ---
 import ProjectCard from '@/features/project/projectHub/components/ProjectCard';
 import StatusLabel from '@/shared/components/StatusLabel';
-import FilterBar from '@/shared/components/FilterBar';
 import EmptyState from '@/shared/components/EmptyState';
 import SkeletonCard from '@/shared/components/SkeletonCard';
 import CreateProject from '@/features/project/projectHub/components/CreateProject';
 import ProjectCreationToast from '@/features/project/projectHub/components/ProjectCreationToast';
+import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
+import TabNav from '@/shared/components/TabNav/TabNav';
+import SearchBarComponent from '@/shared/components/SearchBarComponent/SearchBarComponent';
+import { PlusIcon } from '@heroicons/react/24/outline';
 
 type FilterKey = 'TodosLosProyectos' | 'Completados' | 'EnProgreso' | 'Retrasado' | 'SinAsignar' | 'Archivados';
 
@@ -184,19 +187,27 @@ const ProjectsPage: React.FC = () => {
   return (
     <>
       <div className={styles.container}>
-        <FilterBar
-          searchPlaceholder="Buscar proyectos"
-          onSearchChange={setSearch}
-          filters={(Object.keys(FILTER_LABELS) as FilterKey[])
-            .filter(k => k !== 'TodosLosProyectos')
-            .map(k => ({ id: k, label: FILTER_LABELS[k] }))}
-          activeFilter={activeFilter === 'TodosLosProyectos' ? null : activeFilter}
-          onFilterChange={v => setActiveFilter(v === null ? 'TodosLosProyectos' : v as FilterKey)}
-        >
-          <button className={`${styles.createProject} ${styles.createProjectWrapper}`} onClick={() => setIsCreateProjectOpen(true)}>
-            Crear proyecto
-          </button>
-        </FilterBar>
+        <section className={styles.header}>
+          <div>
+            <h1 className={styles.title}>Proyectos</h1>
+            <p className={styles.description}>Administra y consulta todos tus proyectos.</p>
+          </div>
+          <TabNav<FilterKey>
+            activeValue={activeFilter}
+            onChange={setActiveFilter}
+            items={(Object.keys(FILTER_LABELS) as FilterKey[]).map(k => ({ value: k, label: FILTER_LABELS[k] }))}
+          />
+        </section>
+
+        <div className={styles.toolbar}>
+          <div className={styles.search}>
+            <SearchBarComponent
+              infoText="Buscar proyectos"
+              onChange={setSearch}
+            />
+          </div>
+          <ButtonComponent label="Crear proyecto" icon={<PlusIcon width={16} height={16} />} onClick={() => setIsCreateProjectOpen(true)} />
+        </div>
 
         {activeFilter === 'Archivados' ? (
           archivedLoading ? (
