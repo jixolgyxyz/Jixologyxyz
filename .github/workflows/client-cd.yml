@@ -60,6 +60,9 @@ jobs:
           context: ./client
           file: ./client/Dockerfile
           push: true
+          build-args: |
+            VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+            VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
           tags: |
             ghcr.io/${{ steps.repo.outputs.owner_lc }}/client:${{ steps.vars.outputs.image_tag }}
             ghcr.io/${{ steps.repo.outputs.owner_lc }}/client:sha-${{ github.sha }}
