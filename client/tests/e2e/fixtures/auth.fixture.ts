@@ -41,7 +41,7 @@ export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ browser }, use) => {
     const context = await browser.newContext({ storageState: AUTH_STATE_PATH });
     const page    = await context.newPage();
-    await use(page);
+    await use(page); // eslint-disable-line react-hooks/rules-of-hooks
     await context.close();
   },
 });
