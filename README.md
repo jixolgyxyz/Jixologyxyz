@@ -97,6 +97,82 @@ Supabase configuration, database migrations, and project resources.
 
 
 ## #######################################################################################################################################
+## Playwright — E2E Testing
+
+### Prerequisites
+- Node dependencies installed (`npm install` inside `client/`)
+- The Vite dev server must be reachable at `http://localhost:5173` (Playwright starts it automatically)
+
+### 1. Install dependencies & browser
+
+```bash
+cd client
+npm install
+npx playwright install chromium
+```
+
+### 2. Create the credentials file
+
+```bash
+# Copy the example and fill in a real test-user email + password
+cp client/.env.e2e.example client/.env.e2e
+```
+
+Edit `client/.env.e2e`:
+```
+E2E_EMAIL=testuser@example.com
+E2E_PASSWORD=your_test_password
+```
+
+> The test user must already exist in Supabase and have an active `usuario` record.
+
+### 3. Run the tests
+
+```bash
+cd client
+npm run test:e2e
+```
+
+Playwright will:
+1. Start the Vite dev server automatically (or reuse one already running).
+2. Log in once and save the session to `e2e/.auth/session.json`.
+3. Execute all specs under `client/e2e/`.
+4. Generate an HTML report at `client/playwright-report/index.html`.
+
+---
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `npm run test:e2e` | Run all tests headlessly and generate the HTML report |
+| `npm run test:e2e:ui` | Open Playwright's interactive UI — pick and watch individual tests |
+| `npm run test:e2e:debug` | Run tests with the browser visible and the Playwright inspector attached |
+| `npx playwright show-report` | Open the last HTML report in the browser |
+| `npx playwright test --grep "login"` | Run only tests whose name matches a keyword |
+
+---
+
+### Folder structure
+
+```
+client/
+  tests/
+    unit/               # Unit tests (Jest / Vitest — future)
+    integration/        # Integration tests (future)
+    e2e/
+      .auth/            # Gitignored — saved session after global setup
+      fixtures/
+        auth.fixture.ts # Shared authenticated-page fixture
+      login/
+        login.spec.ts   # Login flow tests
+      global.setup.ts   # Runs once before all specs to log in and save session
+  playwright.config.ts  # Playwright configuration
+  .env.e2e              # Gitignored — test credentials
+  .env.e2e.example      # Template — copy this and fill in your credentials
+```
+
+## #######################################################################################################################################
 ## Docker — Build & Run
 
 ### Prerequisites

@@ -84,3 +84,9 @@ debug.html
 client/coverage/
 server/coverage/
 supabase/coverage/
+
+# Playwright
+client/tests/e2e/.auth/
+client/playwright-report/
+client/test-results/
+client/.env.e2e
