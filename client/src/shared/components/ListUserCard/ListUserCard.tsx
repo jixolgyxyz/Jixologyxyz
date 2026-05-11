@@ -94,7 +94,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
         aria-label={onAvatarEnter ? `Ver perfil de ${fullName}` : undefined}
       >
         {avatarSvg ? (
-          <divF
+          <div
             className={styles.avatarSvg}
             dangerouslySetInnerHTML={{ __html: avatarSvg }}
           />
