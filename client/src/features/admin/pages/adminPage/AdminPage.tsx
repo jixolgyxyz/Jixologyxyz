@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { XCircleIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import FormPopUp from '@/shared/components/FormPopUp';
 import { RegisterUserForm } from '../../components/registerUserForm';
 import { useRegisterUser } from '../../hooks/useRegisterUser';
 import { useRegisterUserOptions } from '../../hooks/useUserOptions';
@@ -304,6 +305,7 @@ export default function RegisterUserPage() {
         fullName={fullName}
         roles={[...getRoleBadge(user.id_rol_global), ...getStatusBadge(user.activo)]}
         email={user.email}
+        spread
         onEdit={(position) => {
           setOpenUserMenu((prev) =>
             prev?.userId === user.id ? null : { userId: user.id, position }
@@ -433,36 +435,26 @@ export default function RegisterUserPage() {
         />
       )}
 
-      {isCreateModalOpen && (
-        <div
-          className="admin-page__modal-overlay"
-          onClick={() => setIsCreateModalOpen(false)}
-        >
-          <div className="admin-page__modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="admin-page__modal-close"
-              onClick={() => setIsCreateModalOpen(false)}
-              aria-label="Cerrar modal"
-            >
-              <XCircleIcon className="admin-page__modal-close-icon" />
-            </button>
-
-            <RegisterUserForm
-              values={values}
-              loading={loading}
-              error={error}
-              success={success}
-              zonaHorariaOptions={zonasHorarias}
-              rolOptions={roles}
-              optionsLoading={optionsLoading}
-              optionsError={optionsError}
-              onChange={handleChange}
-              onSubmit={handleSubmit}
-            />
-          </div>
-        </div>
-      )}
+      <FormPopUp
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        eyebrow="Usuarios"
+        title="Crear usuario"
+        subtitle="Captura primero los datos obligatorios y completa el resto solo si lo necesitas."
+      >
+        <RegisterUserForm
+          values={values}
+          loading={loading}
+          error={error}
+          success={success}
+          zonaHorariaOptions={zonasHorarias}
+          rolOptions={roles}
+          optionsLoading={optionsLoading}
+          optionsError={optionsError}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+        />
+      </FormPopUp>
     </main>
   );
 }

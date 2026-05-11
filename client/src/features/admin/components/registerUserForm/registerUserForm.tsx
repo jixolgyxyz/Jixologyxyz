@@ -90,20 +90,7 @@ export function RegisterUserForm({
   };
 
   return (
-    <div className="register-user-card">
-      <div className="register-user-card__panel">
-        <div className="register-user-card__header">
-          <div>
-            <p className="register-user-card__eyebrow">Usuarios</p>
-            <h1 className="register-user-card__title">Crear usuario</h1>
-            <p className="register-user-card__description">
-              Captura primero los datos obligatorios y completa el resto solo si lo necesitas.
-            </p>
-          </div>
-        </div>
-
-        <div className="register-user-card__body">
-          <form className="register-user-card__form" onSubmit={handleFormSubmit} noValidate>
+    <form className="register-user-card__form" onSubmit={handleFormSubmit} noValidate>
             {error ? (
               <div
                 className="register-user-card__feedback register-user-card__feedback--error"
@@ -368,9 +355,6 @@ export function RegisterUserForm({
                 </span>
               </button>
             </div>
-          </form>
-        </div>
-      </div>
-    </div>
+    </form>
   );
 }
