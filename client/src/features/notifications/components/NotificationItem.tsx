@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import type { NotificationRecord } from '../types/notification.types';
 import { formatDateTime } from '@/shared/datetime/formatDateTime';
 import NotificationReadButton from './NotificationReadButton';
@@ -15,6 +14,7 @@ type Props = {
   onToggleSelected: () => void;
   onToggleReadStatus: () => void | Promise<void>;
   onDelete: () => void;
+  onOpenDetail: () => void;
 };
 
 export default function NotificationItem({
@@ -27,16 +27,14 @@ export default function NotificationItem({
   onToggleSelected,
   onToggleReadStatus,
   onDelete,
+  onOpenDetail,
 }: Props) {
-  const navigate = useNavigate();
-
   const handleOpenDetail = () => {
     if (isSelectionMode) {
       onToggleSelected();
       return;
     }
-
-    navigate(`/notificaciones/${notification.id}`);
+    onOpenDetail();
   };
 
   return (

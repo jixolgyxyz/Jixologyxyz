@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { PlusIcon, UserPlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
+import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import FormPopUp from '@/shared/components/FormPopUp';
 import ListUserCard from '@/shared/components/ListUserCard';
 import type { Role } from '@/shared/components/ListUserCard';
@@ -149,10 +150,11 @@ const ProjectConfigPage: React.FC = () => {
             </p>
           </div>
           {canInvite && (
-            <button type="button" className={styles.primaryBtn} onClick={() => setShowInviteForm(true)}>
-              <UserPlusIcon width={15} height={15} />
-              Invitar usuario
-            </button>
+            <ButtonComponent
+              label="Invitar usuario"
+              icon={<UserPlusIcon width={16} height={16} />}
+              onClick={() => setShowInviteForm(true)}
+            />
           )}
         </div>
 
@@ -252,10 +254,11 @@ const ProjectConfigPage: React.FC = () => {
             <h2 className={styles.panelTitle}>Etiquetas personalizadas</h2>
             <p className={styles.panelSubtitle}>Haz clic en una etiqueta para editarla</p>
           </div>
-          <button type="button" className={styles.primaryBtn} onClick={() => setShowCreateEtiqueta(true)}>
-            <PlusIcon width={15} height={15} />
-            Nueva etiqueta
-          </button>
+          <ButtonComponent
+            label="Nueva etiqueta"
+            icon={<PlusIcon width={16} height={16} />}
+            onClick={() => setShowCreateEtiqueta(true)}
+          />
         </div>
 
         <div className={styles.panelContent}>

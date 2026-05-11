@@ -5,6 +5,7 @@ import EmptyState from '@/shared/components/EmptyState/EmptyState';
 import ErrorState from '@/shared/components/ErrorState/ErrorState';
 import LoadingState from '@/shared/components/LoadingState/LoadingState';
 import NotificationItem from '../components/NotificationItem';
+import NotificationDetailPanel from '../components/NotificationDetailPanel/NotificationDetailPanel';
 import InvitacionItem from '../components/InvitacionItem/InvitacionItem';
 import NotificationTabs from '../components/NotificationTabs';
 import { useNotifications } from '../hooks/useNotifications';
@@ -43,6 +44,9 @@ export default function NotificationsPage() {
 	const [isSelectionMode, setIsSelectionMode] = useState(false);
 	const [pendingDeleteIds, setPendingDeleteIds] = useState<number[]>([]);
 	const [isDeletingConfirmed, setIsDeletingConfirmed] = useState(false);
+  const [viewingNotification, setViewingNotification] = useState<NotificationRecord | null>(null);
+  const [panelTogglingRead, setPanelTogglingRead] = useState(false);
+  const panelDeleting = isDeletingConfirmed && pendingDeleteIds.includes(viewingNotification?.id ?? -1);
 
   // ── Filtered notifications (unchanged logic) ──────────────────
 	const filteredNotifications = useMemo(() => {
@@ -151,6 +155,9 @@ export default function NotificationsPage() {
 			setSelectedIds([]);
 			setIsSelectionMode(false);
 			setPendingDeleteIds([]);
+      if (viewingNotification && pendingDeleteIds.includes(viewingNotification.id)) {
+        setViewingNotification(null);
+      }
 		} finally {
 			setDeletingIds((current) => current.filter((id) => !pendingDeleteIds.includes(id)));
 			setIsDeletingConfirmed(false);
@@ -206,6 +213,36 @@ export default function NotificationsPage() {
 			setMarkingAsReadIds((current) => current.filter((id) => !readSelectedIds.includes(id)));
 		}
 	};
+
+  const handleOpenDetail = async (notification: NotificationRecord) => {
+    setViewingNotification(notification);
+    // Auto-mark as read when opening the panel
+    if (!notification.leida) {
+      await markAsRead(notification.id);
+    }
+  };
+
+  const handlePanelToggleRead = async () => {
+    if (!viewingNotification) return;
+    setPanelTogglingRead(true);
+    try {
+      if (viewingNotification.leida) {
+        await markAsUnread(viewingNotification.id);
+      } else {
+        await markAsRead(viewingNotification.id);
+      }
+      // Sync the viewed notification with updated state
+      const updated = notifications.find(n => n.id === viewingNotification.id);
+      if (updated) setViewingNotification(updated);
+    } finally {
+      setPanelTogglingRead(false);
+    }
+  };
+
+  const handlePanelDelete = () => {
+    if (!viewingNotification) return;
+    setPendingDeleteIds([viewingNotification.id]);
+  };
 
 	const emptySubtitle = search.trim()
 		? 'No se encontraron notificaciones que coincidan con tu búsqueda.'
@@ -327,6 +364,7 @@ export default function NotificationsPage() {
                   onToggleSelected={() => handleToggleSelected(item.data.id)}
                   onToggleReadStatus={() => handleToggleReadStatus(item.data.id)}
                   onDelete={() => handleRequestDeleteOne(item.data.id)}
+                  onOpenDetail={() => handleOpenDetail(item.data)}
                 />
               )
             )}
@@ -349,6 +387,21 @@ export default function NotificationsPage() {
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
       />
+
+      {viewingNotification && (
+        <NotificationDetailPanel
+          notification={
+            // Always show the latest read state from the notifications list
+            notifications.find(n => n.id === viewingNotification.id) ?? viewingNotification
+          }
+          userTimeZone={userContext?.timeZone ?? 'UTC'}
+          isTogglingRead={panelTogglingRead}
+          isDeleting={panelDeleting}
+          onClose={() => setViewingNotification(null)}
+          onToggleReadStatus={handlePanelToggleRead}
+          onDelete={handlePanelDelete}
+        />
+      )}
     </main>
   );
 }

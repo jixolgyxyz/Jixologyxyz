@@ -12,6 +12,7 @@ type Props = {
   onToggleSelected: (notificationId: number) => void;
   onToggleReadStatus: (notificationId: number) => void | Promise<void>;
   onDelete: (notificationId: number) => void;
+  onOpenDetail: (notification: NotificationRecord) => void;
 };
 
 export default function NotificationList({
@@ -24,6 +25,7 @@ export default function NotificationList({
   onToggleSelected,
   onToggleReadStatus,
   onDelete,
+  onOpenDetail,
 }: Props) {
   return (
     <div className="notification-list">
@@ -39,6 +41,7 @@ export default function NotificationList({
           onToggleSelected={() => onToggleSelected(notification.id)}
           onToggleReadStatus={() => onToggleReadStatus(notification.id)}
           onDelete={() => onDelete(notification.id)}
+          onOpenDetail={() => onOpenDetail(notification)}
         />
       ))}
     </div>
