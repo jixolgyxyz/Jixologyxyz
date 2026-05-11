@@ -17,6 +17,10 @@
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+.rowSpread {
+  grid-template-columns: 2.25rem minmax(8rem, 1.5fr) minmax(6rem, 1fr) minmax(8rem, 1.2fr) 2.5rem;
+}
+
 .row:hover {
   box-shadow: 0 4px 16px rgba(10, 8, 56, 0.08);
   border-color: var(--color-anchor-gray-1);

@@ -15,6 +15,7 @@ interface ListUserCardProps {
   roles: Role[];
   email: string;
   avatarSvg?: string;
+  spread?: boolean;
   onEdit?: (position: { x: number; y: number }) => void;
   onAvatarEnter?: (rect: DOMRect) => void;
   onAvatarLeave?: () => void;
@@ -28,6 +29,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
   roles,
   email,
   avatarSvg: avatarSvgProp,
+  spread = false,
   onEdit,
   onAvatarEnter,
   onAvatarLeave,
@@ -80,7 +82,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
 
   return (
     <div className={styles.rowContainer}>
-    <div className={styles.row}>
+    <div className={`${styles.row}${spread ? ` ${styles.rowSpread}` : ''}`}>
       <div
         className={`${styles.avatar}${onAvatarEnter ? ` ${styles.avatarClickable}` : ''}`}
         onMouseEnter={
@@ -92,7 +94,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
         aria-label={onAvatarEnter ? `Ver perfil de ${fullName}` : undefined}
       >
         {avatarSvg ? (
-          <div
+          <divF
             className={styles.avatarSvg}
             dangerouslySetInnerHTML={{ __html: avatarSvg }}
           />
@@ -102,7 +104,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
       </div>
 
       <span className={styles.name}>
-        <span className={styles.nameLabel}>nombre completo: </span>
+        <span className={styles.nameLabel}></span>
         {fullName}
       </span>
 
@@ -142,7 +144,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
       </div>
 
       <span className={styles.email}>
-        <span className={styles.emailLabel}>Correo: </span>
+        <span className={styles.emailLabel}></span>
         <span className={styles.emailValue}>{email}</span>
       </span>
 
