@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef  } from 'react';
 import type { ReactNode } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import styles from './FormPopUp.module.css';
@@ -38,13 +38,20 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
     return () => { document.body.style.overflow = prev; };
   }, [isOpen]);
 
+  const startedOutside = useRef(false);
   if (!isOpen) return null;
 
   return (
-    <div
-      className={styles.overlay}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
+      <div className={styles.overlay}
+        onMouseDown={(e) => {
+          startedOutside.current = e.target === e.currentTarget;
+        }}
+        onMouseUp={(e) => {
+          if (startedOutside.current && e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
       <div className={`${styles.modal}${wide ? ` ${styles.modalWide}` : ''}`} role="dialog" aria-modal="true">
 
         {/* Header */}
