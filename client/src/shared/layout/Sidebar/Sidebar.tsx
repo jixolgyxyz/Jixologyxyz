@@ -11,6 +11,7 @@ import {
   BookOpenIcon,
   UserPlusIcon,
   MinusCircleIcon,
+  PresentationChartBarIcon,
 } from '@heroicons/react/24/solid';
 import { signOutService } from '@/features/auth/services/auth.service';
 
@@ -64,6 +65,15 @@ const Sidebar: React.FC<ISidebarProps> = () => {
             <li className={styles.menuItem}>
               <NotificationBell variant="sidebar" />
             </li>
+
+            {(user.idRolGlobal === 1 || user.idRolGlobal === 2) && (
+              <li className={styles.menuItem}>
+                <NavLink to="/dashboard-admin">
+                  <PresentationChartBarIcon className={styles.icon} />
+                  <span><b>Dashboard Admin</b></span>
+                </NavLink>
+              </li>
+            )}
 
             {user.idRolGlobal === 1 && (
               <li className={styles.menuItem}>
