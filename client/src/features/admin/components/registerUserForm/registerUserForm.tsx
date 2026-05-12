@@ -91,36 +91,6 @@ export function RegisterUserForm({
 
   return (
     <form className="register-user-card__form" onSubmit={handleFormSubmit} noValidate>
-            {error ? (
-              <div
-                className="register-user-card__feedback register-user-card__feedback--error"
-                role="alert"
-              >
-                <p className="register-user-card__feedback-title">No se pudo crear el usuario</p>
-                <p className="register-user-card__feedback-description">{error}</p>
-              </div>
-            ) : null}
-
-            {success ? (
-              <div
-                className="register-user-card__feedback register-user-card__feedback--success"
-                role="status"
-              >
-                <p className="register-user-card__feedback-title">Usuario creado</p>
-                <p className="register-user-card__feedback-description">{success}</p>
-              </div>
-            ) : null}
-
-            {optionsError ? (
-              <div
-                className="register-user-card__feedback register-user-card__feedback--error"
-                role="alert"
-              >
-                <p className="register-user-card__feedback-title">No se pudieron cargar opciones</p>
-                <p className="register-user-card__feedback-description">{optionsError}</p>
-              </div>
-            ) : null}
-
             <fieldset className="register-user-card__section">
               <div className="register-user-card__section-header">
                 <h2 className="register-user-card__section-title">Datos obligatorios <span style={{ color: 'red' }}>*</span></h2>
