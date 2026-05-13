@@ -1,41 +1,98 @@
 import { supabase } from '@/core/supabase/supabase.client';
-import { env } from '@/core/config/env';
+import { callGemini } from '@/shared/services/gemini.service';
 import type { BitacoraSprintRecord, BitacoraSprintSummary } from '../types/bitacora.types';
 
-// Set VITE_BUSINESS_API_URL in your .env to point to the Express server
-const SERVER_URL = env.businessApiUrl ?? 'http://localhost:3000';
+const PROMPT = `Eres un Scrum Master experimentado y analista de proyectos ágiles. Tu tarea es generar un reporte retrospectivo estructurado y profesional en español a partir de datos de un sprint.
 
-async function getAuthHeader(): Promise<HeadersInit> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('No autenticado');
-  return {
-    Authorization: `Bearer ${session.access_token}`,
-    'Content-Type': 'application/json',
-  };
-}
+Reglas:
+- Sé específico: usa los números exactos y porcentajes del JSON provisto.
+- Sé constructivo: identifica problemas pero propón soluciones concretas.
+- Si un campo es null o ausente, indícalo brevemente y trabaja con los datos disponibles.
+- No inventes datos que no estén en el JSON.
+- Escribe en tercera persona para el análisis de colaboradores.
+- Devuelve únicamente el reporte en Markdown, sin texto introductorio ni explicaciones adicionales.
 
-/**
- * Calls the Express server to generate an AI sprint report and save it.
- * The server fetches sprint data, calls Gemini, and writes to bitacora_sprint.
- */
-export async function generateSprintReport(sprintId: number): Promise<BitacoraSprintRecord> {
-  const headers = await getAuthHeader();
-  const res = await fetch(`${SERVER_URL}/api/bitacora/sprint/${sprintId}/generate`, {
-    method: 'POST',
-    headers,
-  });
+Estructura del reporte:
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string };
-    throw new Error(body.error ?? `Error ${res.status}`);
+## Resumen Ejecutivo
+- Nombre del sprint, proyecto, metodología y objetivo declarado
+- Período de fechas
+- Tasa global de completitud con cifra absoluta (X de Y items = Z%)
+- Veredicto: Exitoso / Con dificultades / Crítico, con justificación en 1-2 frases
+
+## Desempeño por Colaborador
+Para cada colaborador, ordenados de mayor a menor tasa de completitud:
+### [Nombre]
+- Items: [completados]/[asignados] ([tasa]%)
+- Complejidad promedio asignada: [valor] | completada: [valor]
+- Tiempo estimado: [horas]h
+- Tipos: [lista de tipos]
+- Evaluación: 2-3 frases sobre su contribución considerando complejidad y volumen
+
+## Balance de Carga
+- ¿La distribución fue equitativa? Compara volumen y complejidad entre colaboradores
+- Identifica si alguien cargó desproporcionadamente más trabajo
+- Menciona items sin asignar si los hay
+
+## Métricas del Sprint
+- Velocidad: N items completados
+- Por tipo: total vs completados para cada tipo
+- Por prioridad: total vs completados para cada nivel
+- Items de prioridad Crítica o Alta no completados (si aplica)
+
+## Hallazgos Clave
+
+**Lo que funcionó bien:**
+- Máximo 3 puntos con evidencia numérica de los datos
+
+**Áreas de atención:**
+- Máximo 3 puntos con evidencia numérica de los datos
+
+## Recomendaciones para el Próximo Sprint
+1. Recomendación sobre distribución de trabajo
+2. Recomendación sobre proceso o calidad
+3. Recomendación basada en el patrón de items incompletos
+4. Recomendación adicional si los datos lo justifican`;
+
+export async function generateSprintReport(
+  sprintId: number,
+  usuarioId: number,
+): Promise<BitacoraSprintRecord> {
+  // 1. Fetch structured sprint data via the RPC (enforces project membership)
+  const { data: sprintData, error: rpcError } = await supabase
+    .rpc('get_sprint_report_data', {
+      p_sprint_id: sprintId,
+      p_usuario_id: usuarioId,
+    });
+
+  if (rpcError) throw new Error(`Error al obtener datos del sprint: ${rpcError.message}`);
+  if (!sprintData?.sprint) throw new Error('Sprint no encontrado o sin acceso');
+  if ((sprintData.resumen?.total_items ?? 0) === 0) {
+    throw new Error('Este sprint no tiene backlog items para analizar');
   }
 
-  return res.json() as Promise<BitacoraSprintRecord>;
+  // 2. Call Gemini with the prompt + sprint data
+  const fullPrompt = `${PROMPT}\n\nDatos del sprint:\n\`\`\`json\n${JSON.stringify(sprintData, null, 2)}\n\`\`\``;
+  const reportContent = await callGemini(fullPrompt);
+
+  // 3. Save to bitacora_sprint
+  const { data: bitacora, error: insertError } = await supabase
+    .from('bitacora_sprint')
+    .insert({
+      nombre: `Reporte IA – ${sprintData.sprint.nombre}`,
+      descripcion: `Análisis automatizado del sprint "${sprintData.sprint.nombre}" generado por IA`,
+      reporte_ia: reportContent,
+      fecha_creacion: new Date().toISOString(),
+      id_usuario_creador: usuarioId,
+      id_sprint: sprintId,
+    })
+    .select('id, nombre, descripcion, reporte_ia, fecha_creacion, id_sprint, id_usuario_creador')
+    .single();
+
+  if (insertError) throw new Error(`Error al guardar la bitácora: ${insertError.message}`);
+  return bitacora as BitacoraSprintRecord;
 }
 
-/**
- * Fetches all bitacora entries for a sprint directly from Supabase (RLS enforced).
- */
 export async function fetchSprintBitacoras(sprintId: number): Promise<BitacoraSprintSummary[]> {
   const { data, error } = await supabase
     .from('bitacora_sprint')
@@ -47,9 +104,6 @@ export async function fetchSprintBitacoras(sprintId: number): Promise<BitacoraSp
   return (data ?? []) as BitacoraSprintSummary[];
 }
 
-/**
- * Fetches a single bitacora entry including the full AI report (Markdown).
- */
 export async function fetchBitacoraById(id: number): Promise<BitacoraSprintRecord> {
   const { data, error } = await supabase
     .from('bitacora_sprint')

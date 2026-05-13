@@ -16,17 +16,35 @@ USING (
     )
 );
 
--- Server inserts via service role (bypasses RLS), but keep a policy for direct client inserts
-CREATE POLICY "members_can_insert_bitacora_sprint"
+-- Only PMs of the project or global admins (SAdmin=1, Admin=2) can create bitácora reports.
+-- The insert also verifies the id_usuario_creador matches the authenticated user.
+CREATE POLICY "pm_or_admin_can_insert_bitacora_sprint"
 ON bitacora_sprint FOR INSERT
 WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM sprint s
-        JOIN usuario_proyecto up ON up.id_proyecto = s.id_proyecto
-        JOIN usuario u ON u.id = up.id_usuario
-        WHERE s.id = bitacora_sprint.id_sprint
-          AND u.auth_id = auth.uid()
-          AND u.id = bitacora_sprint.id_usuario_creador
+    -- Must claim yourself as creator
+    bitacora_sprint.id_usuario_creador = (
+        SELECT id FROM usuario WHERE auth_id = auth.uid()
+    )
+    AND (
+        -- Global SAdmin or Admin
+        EXISTS (
+            SELECT 1 FROM usuario u
+            WHERE u.auth_id = auth.uid()
+              AND u.id_rol_global IN (1, 2)
+        )
+        OR
+        -- PM label on this specific project
+        EXISTS (
+            SELECT 1
+            FROM etiqueta_proyecto_predeterminada epp
+            JOIN catalogo_etiqueta_proyecto_predeterminada cepp
+              ON cepp.id = epp.id_etiqueta_proyecto_predeterminada
+            JOIN sprint s ON s.id = bitacora_sprint.id_sprint
+            JOIN usuario u ON u.id = epp.id_usuario
+            WHERE epp.id_proyecto = s.id_proyecto
+              AND cepp.nombre = 'PM'
+              AND u.auth_id = auth.uid()
+        )
     )
 );
 
