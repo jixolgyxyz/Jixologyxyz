@@ -1,0 +1,395 @@
+.page {
+  background-color: var(--color-clarity-gray-1);
+  width: 100%;
+  min-height: 100vh;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  font-family: 'Poppins', 'Aptos', sans-serif;
+}
+
+.header {
+  margin-bottom: 1.25rem;
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 2px;
+}
+
+.subtitle {
+  font-size: 0.82rem;
+  color: var(--color-anchor-gray-1);
+  margin: 0;
+}
+
+/* ── Weekly report button ────────────────────────────────────────────── */
+.reportActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.reportBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-blueprint-navy);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.reportBtn:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.reportBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.reportSpinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+.reportErrorMsg {
+  font-size: 0.75rem;
+  color: #E31837;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Summary stat row ────────────────────────────────────────────────── */
+.statRow {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.statsGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  flex: 0 0 auto;
+}
+
+.statCard {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  padding: 14px 20px;
+  min-width: 130px;
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-blueprint-navy);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statValueGreen {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #10b981;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statValueRed {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #E31837;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--color-anchor-gray-1);
+}
+
+/* ── Chart grid ──────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Loading / error states ──────────────────────────────────────────── */
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 240px;
+  color: var(--color-anchor-gray-1);
+  font-size: 0.9rem;
+}
+
+.errorBox {
+  background: #fff1f2;
+  border: 1px solid var(--color-clarity-red);
+  border-radius: 10px;
+  padding: 16px 20px;
+  color: var(--color-mahindra-red);
+  font-size: 0.85rem;
+}
+
+/* ── Completion bar ──────────────────────────────────────────────────── */
+.completionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-2);
+  padding: 4px 0;
+}
+
+.completionLabel {
+  width: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.completionBarTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.completionBarFill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--color-blueprint-navy);
+  transition: width 0.3s ease;
+}
+
+.completionPct {
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+}
+
+/* ── Overdue list ────────────────────────────────────────────────────── */
+.overdueList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.overdueRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #fff7f7;
+  border: 1px solid #fde8e8;
+}
+
+.overdueRank {
+  width: 18px;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: var(--color-anchor-gray-1);
+  text-align: center;
+}
+
+.overdueName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+}
+
+.overdueBadge {
+  flex-shrink: 0;
+  background: #E31837;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 9px;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* ── Weekly progress card ────────────────────────────────────────────── */
+.weeklyCard {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  padding: 14px 20px;
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.weeklyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weeklyTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.weeklyPct {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #10b981;
+  line-height: 1;
+}
+
+.weeklyBarTrack {
+  height: 10px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.weeklyBarFill {
+  height: 100%;
+  border-radius: 5px;
+  background: #10b981;
+  transition: width 0.4s ease;
+}
+
+.weeklySubLabel {
+  font-size: 0.72rem;
+  color: var(--color-anchor-gray-1);
+}
+
+.weeklyProjectList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-clarity-gray-2);
+}
+
+.weeklyProjectRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+
+.weeklyProjectName {
+  width: 130px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+}
+
+.weeklyProjectBarTrack {
+  flex: 1;
+  height: 7px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.weeklyProjectBarFill {
+  height: 100%;
+  border-radius: 4px;
+  background: #10b981;
+  transition: width 0.4s ease;
+}
+
+.weeklyProjectMeta {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--color-anchor-gray-1);
+  min-width: 32px;
+  text-align: right;
+}
+
+.weeklyProjectPct {
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #10b981;
+}
+
+.completionList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-top: 4px;
+}
