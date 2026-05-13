@@ -10,6 +10,7 @@ import AdminPage from '@/features/admin/pages/adminPage';
 import ProjectPage from '@/features/project/projectHub/pages/ProjectsPage';
 import ProjectTask from '@/features/project/ProjectTasks/pages';
 import ProjectBacklog from '@/features/project/Backlog/pages/ProjectBacklog';
+import ProjectBitacora from '@/features/project/Bitacora/pages/ProjectBitacora';
 import ProjectConfigPage from '@/features/project/projectConfig/pages/ProjectConfigPage';
 import AdminUserProfilePage from '@/features/admin/pages/adminUserProfilePage/AdminUserProfilePage';
 import NotificationsPage from '@/features/notifications/pages/NotificationsPage';
@@ -58,6 +59,7 @@ export function AppRouter() {
           <Route path="/proyectos/:id" element={<Navigate to="/proyectos/:id/backlog" replace />} />
           <Route path="/proyectos/:id/tasks"          element={<ProjectTask />} />
           <Route path="/proyectos/:id/backlog"        element={<ProjectBacklog />} />
+          <Route path="/proyectos/:id/bitacora"       element={<ProjectBitacora />} />
           <Route path="/proyectos/:id/configuracion"  element={<ProjectConfigPage />} />
         </Route>
       </Route>
