@@ -2,33 +2,47 @@ import { jsPDF } from 'jspdf';
 import { callGemini } from '@/shared/services/gemini.service';
 import { saveReport, linkCheckIns } from './reporte.service';
 import type { AdminDashboardData } from '../hooks/useAdminDashboardData';
+import type { ReportConfig } from '../hooks/useWeeklyReport';
+
+// ── Filter data by project names (for custom reports) ─────────────────────
+
+function filterData(data: AdminDashboardData, names: string[]): AdminDashboardData {
+  const set = new Set(names);
+  const keep = <T extends { name: string }>(arr: T[]) => arr.filter(r => set.has(r.name));
+  return {
+    ...data,
+    activeProjects:      data.projectStatus.filter(p => set.has(p.name) && true).length,
+    completionByProject: keep(data.completionByProject),
+    volumeByProject:     keep(data.volumeByProject),
+    sprintHealth:        keep(data.sprintHealth),
+    fteByProject:        keep(data.fteByProject),
+    overdueByProject:    keep(data.overdueByProject),
+    weeklyProgress: {
+      ...data.weeklyProgress,
+      byProject: keep(data.weeklyProgress.byProject),
+    },
+  };
+}
 
 // ── Build the prompt ───────────────────────────────────────────────────────
 
-function buildPrompt(data: AdminDashboardData, weekLabel: string): string {
-  const totalOverdue = data.overdueByProject.reduce((s, r) => s + r.overdue, 0);
+function buildPrompt(data: AdminDashboardData, dateLabel: string): string {
+  const totalOverdue     = data.overdueByProject.reduce((s, r) => s + r.overdue, 0);
   const activeSprintCount = data.sprintHealth.reduce((s, r) => s + r.active, 0);
-
-  // Keep per-project rows compact: top 10 only to save tokens
   const top = <T,>(arr: T[], n = 10) => arr.slice(0, n);
 
   const completionLines = top(data.completionByProject)
-    .map(r => `${r.name}: ${r.rate}% (${r.done}/${r.total})`)
-    .join(', ');
-
+    .map(r => `${r.name}: ${r.rate}% (${r.done}/${r.total})`).join(', ');
   const overdueLines = data.overdueByProject.length === 0
     ? 'none'
     : top(data.overdueByProject).map(r => `${r.name}: ${r.overdue}`).join(', ');
-
   const sprintLines = top(data.sprintHealth)
-    .map(r => `${r.name}: ${r.active} active/${r.terminal} done`)
-    .join(', ');
-
+    .map(r => `${r.name}: ${r.active} active/${r.terminal} done`).join(', ');
   const weeklyByProject = data.weeklyProgress.byProject.length === 0
     ? 'no items due'
     : top(data.weeklyProgress.byProject).map(r => `${r.name}: ${r.rate}%`).join(', ');
 
-  return `Weekly project health report for ${weekLabel}. Write it as a professional report for leadership with these sections (plain text, no markdown #):
+  return `Project health report for ${dateLabel}. Write as a professional report for leadership (plain text, no markdown #):
 1. Executive Summary
 2. Key KPIs
 3. Project Health (one line per project)
@@ -37,17 +51,17 @@ function buildPrompt(data: AdminDashboardData, weekLabel: string): string {
 
 DATA:
 - Active projects: ${data.activeProjects}, Total items: ${data.totalItems}, Active sprints: ${activeSprintCount}, Overdue: ${totalOverdue}
-- Weekly completion: ${data.weeklyProgress.rate}% (${data.weeklyProgress.completed}/${data.weeklyProgress.total}) | By project: ${weeklyByProject}
 - Completion rates: ${completionLines}
 - Overdue by project: ${overdueLines}
 - Sprint health: ${sprintLines}
+- Weekly progress by project: ${weeklyByProject}
 
 Be concise. Each section max 4 sentences or bullet points.`;
 }
 
 // ── Build PDF ──────────────────────────────────────────────────────────────
 
-function buildPdf(reportText: string, weekLabel: string): jsPDF {
+export function buildPdf(reportText: string, weekLabel: string): jsPDF {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -154,27 +168,41 @@ function buildPdf(reportText: string, weekLabel: string): jsPDF {
 // ── Public entry point ─────────────────────────────────────────────────────
 
 export async function generateAndDownloadWeeklyReport(
-  data: AdminDashboardData,
+  rawData: AdminDashboardData,
   userId: number,
+  config: ReportConfig,
 ): Promise<void> {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  const friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4);
-
   const fmt = (d: Date) =>
     d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const weekLabel = `${fmt(monday)} – ${fmt(friday)}`;
 
-  const reportText = await callGemini(buildPrompt(data, weekLabel));
+  let monday: Date;
+  let dateLabel: string;
+  let filteredData: AdminDashboardData;
+
+  if (config.type === 'custom' && config.startDate && config.endDate) {
+    monday    = config.startDate;
+    dateLabel = `${fmt(config.startDate)} – ${fmt(config.endDate)}`;
+    filteredData = config.projectNames?.length
+      ? filterData(rawData, config.projectNames)
+      : rawData;
+  } else {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+    dateLabel    = `${fmt(monday)} – ${fmt(friday)}`;
+    filteredData = rawData;
+  }
+
+  const reportText = await callGemini(buildPrompt(filteredData, dateLabel));
 
   const reportId = await saveReport(reportText, monday, userId);
   await linkCheckIns(reportId, monday);
 
-  const pdf = buildPdf(reportText, weekLabel);
-  const filename = `weekly-report-${monday.toISOString().slice(0, 10)}.pdf`;
+  const pdf = buildPdf(reportText, dateLabel);
+  const filename = `reporte-${monday.toISOString().slice(0, 10)}.pdf`;
   pdf.save(filename);
 }

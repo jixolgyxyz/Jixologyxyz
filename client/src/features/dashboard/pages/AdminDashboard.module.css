@@ -308,6 +308,10 @@
   line-height: 1;
 }
 
+.weeklyBarWrapper {
+  position: relative;
+}
+
 .weeklyBarTrack {
   height: 10px;
   background: var(--color-clarity-gray-2);
@@ -320,6 +324,27 @@
   border-radius: 5px;
   background: #10b981;
   transition: width 0.4s ease;
+}
+
+.weeklyDayTick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.weeklyTodayTick {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 16px;
+  background: var(--color-blueprint-navy);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .weeklySubLabel {
@@ -353,8 +378,12 @@
   font-weight: 500;
 }
 
-.weeklyProjectBarTrack {
+.weeklyProjectBarWrapper {
+  position: relative;
   flex: 1;
+}
+
+.weeklyProjectBarTrack {
   height: 7px;
   background: var(--color-clarity-gray-2);
   border-radius: 4px;
@@ -366,6 +395,27 @@
   border-radius: 4px;
   background: #10b981;
   transition: width 0.4s ease;
+}
+
+.weeklyProjectDayTick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.weeklyProjectTodayTick {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 11px;
+  background: var(--color-blueprint-navy);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .weeklyProjectMeta {
@@ -392,4 +442,271 @@
   max-height: 220px;
   overflow-y: auto;
   padding-top: 4px;
+}
+
+/* ── Backlog pressure card ────────────────────────────────────────────── */
+.pressureLegend {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+  justify-content: flex-end;
+}
+
+.pressureLegendDays {
+  font-size: 0.65rem;
+  color: var(--color-anchor-gray-1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pressureLegendDays::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #f59e0b;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.pressureLegendComplexity {
+  font-size: 0.65rem;
+  color: var(--color-anchor-gray-1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pressureLegendComplexity::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #E31837;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.pressureList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-top: 2px;
+}
+
+.pressureRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-2);
+}
+
+.pressureName {
+  width: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+}
+
+.pressureBarTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pressureBarFill {
+  height: 100%;
+  border-radius: 4px;
+  background: #f59e0b;
+  transition: width 0.3s ease;
+}
+
+.pressureDaysBadge {
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: right;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b45309;
+}
+
+.pressureComplexityBadge {
+  flex-shrink: 0;
+  background: #E31837;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+  min-width: 26px;
+  text-align: center;
+}
+
+.pressureSubtitle {
+  font-size: 0.68rem;
+  color: var(--color-anchor-gray-1);
+  margin: -4px 0 6px;
+}
+
+/* ── A: Weighted risk bar ─────────────────────────────────────────────── */
+.weightedBarFill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #fb923c, #dc2626);
+  transition: width 0.3s ease;
+}
+
+.weightedScoreLabel {
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: right;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+/* ── B: Segmented composition bar ────────────────────────────────────── */
+.segmentedTrack {
+  flex: 1;
+  height: 10px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+  gap: 1px;
+}
+
+.segmentedSegment {
+  height: 100%;
+  flex-shrink: 0;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.complexityLegend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-clarity-gray-2);
+  justify-content: flex-end;
+}
+
+.complexityLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: var(--color-anchor-gray-1);
+}
+
+.complexityLegendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* ── Bubble chart dropdown filter ────────────────────────────────────── */
+.bubbleCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.bubbleDropdownWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bubbleDropdownBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-blueprint-navy);
+  background: transparent;
+  border: 1.5px solid var(--color-blueprint-navy);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.bubbleDropdownBtn:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.bubbleDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  padding: 6px 0;
+  z-index: 50;
+}
+
+.bubbleDropdownItemAll {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  user-select: none;
+}
+
+.bubbleDropdownDivider {
+  height: 1px;
+  background: var(--color-clarity-gray-2);
+  margin: 4px 0;
+}
+
+.bubbleDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.bubbleDropdownItem:hover,
+.bubbleDropdownItemAll:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.bubbleDropdownCheckbox {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-blueprint-navy);
 }

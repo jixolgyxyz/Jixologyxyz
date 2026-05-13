@@ -1,8 +1,9 @@
-import type { FC } from 'react';
+import { useState, useRef, useEffect, type FC } from 'react';
 import {
   BarChart, Bar,
   PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid,
+  ScatterChart, Scatter,
+  XAxis, YAxis, CartesianGrid, ReferenceLine,
   Tooltip, Legend, ResponsiveContainer, Label,
 } from 'recharts';
 import { useAdminDashboardData } from '../hooks/useAdminDashboardData';
@@ -15,8 +16,11 @@ import type {
   FteProjectRow,
   WeeklyProgressData,
   OverdueProjectRow,
+  BacklogPressureRow,
+  BacklogItemDetail,
 } from '../hooks/useAdminDashboardData';
 import { useWeeklyReport } from '../hooks/useWeeklyReport';
+import GenerateReportModal from '../components/GenerateReportModal/GenerateReportModal';
 import chartStyles from '../components/ChartCard.module.css';
 import styles from './AdminDashboard.module.css';
 
@@ -27,37 +31,64 @@ const LEGEND_STYLE  = { fontSize: '0.72rem', fontFamily: 'Poppins, sans-serif' }
 const AXIS_LABEL    = { style: { fontSize: '0.7rem', fontFamily: 'Poppins, sans-serif', fill: 'var(--color-anchor-gray-1)' } };
 
 // ── Weekly progress card ───────────────────────────────────────────────
-const WeeklyProgressCard: FC<{ data: WeeklyProgressData }> = ({ data }) => (
-  <div className={styles.weeklyCard}>
-    <div className={styles.weeklyHeader}>
-      <span className={styles.weeklyTitle}>Progresión Semanal</span>
-      <span className={styles.weeklyPct}>{data.rate}%</span>
-    </div>
-    <div className={styles.weeklyBarTrack}>
-      <div className={styles.weeklyBarFill} style={{ width: `${data.rate}%` }} />
-    </div>
-    <span className={styles.weeklySubLabel}>
-      {data.total === 0
-        ? 'Sin ítems con vencimiento esta semana'
-        : `${data.completed} / ${data.total} ítems completados esta semana`}
-    </span>
+function getTodayIndex(): number {
+  const d = new Date().getDay(); // 0=Sun,1=Mon…6=Sat
+  return d >= 1 && d <= 5 ? d : 0; // 1=Mon…5=Fri, 0=weekend
+}
 
-    {data.byProject.length > 0 && (
-      <div className={styles.weeklyProjectList}>
-        {data.byProject.map(row => (
-          <div key={row.name} className={styles.weeklyProjectRow}>
-            <span className={styles.weeklyProjectName} title={row.name}>{row.name}</span>
-            <div className={styles.weeklyProjectBarTrack}>
-              <div className={styles.weeklyProjectBarFill} style={{ width: `${row.rate}%` }} />
-            </div>
-            <span className={styles.weeklyProjectMeta}>{row.completed}/{row.total}</span>
-            <span className={styles.weeklyProjectPct}>{row.rate}%</span>
-          </div>
-        ))}
+const WeeklyProgressCard: FC<{ data: WeeklyProgressData }> = ({ data }) => {
+  const todayIndex = getTodayIndex();
+
+  return (
+    <div className={styles.weeklyCard}>
+      <div className={styles.weeklyHeader}>
+        <span className={styles.weeklyTitle}>Progresión Semanal</span>
+        <span className={styles.weeklyPct}>{data.rate}%</span>
       </div>
-    )}
-  </div>
-);
+
+      <div className={styles.weeklyBarWrapper}>
+        <div className={styles.weeklyBarTrack}>
+          <div className={styles.weeklyBarFill} style={{ width: `${data.rate}%` }} />
+        </div>
+        {[20, 40, 60, 80].map(pct => (
+          <div key={pct} className={styles.weeklyDayTick} style={{ left: `${pct}%` }} />
+        ))}
+        {todayIndex > 0 && (
+          <div className={styles.weeklyTodayTick} style={{ left: `${todayIndex * 20 - 10}%` }} />
+        )}
+      </div>
+
+      <span className={styles.weeklySubLabel}>
+        {data.total === 0
+          ? 'Sin ítems con vencimiento esta semana'
+          : `${data.completed} / ${data.total} ítems completados esta semana`}
+      </span>
+
+      {data.byProject.length > 0 && (
+        <div className={styles.weeklyProjectList}>
+          {data.byProject.map(row => (
+            <div key={row.name} className={styles.weeklyProjectRow}>
+              <span className={styles.weeklyProjectName} title={row.name}>{row.name}</span>
+              <div className={styles.weeklyProjectBarWrapper}>
+                <div className={styles.weeklyProjectBarTrack}>
+                  <div className={styles.weeklyProjectBarFill} style={{ width: `${row.rate}%` }} />
+                </div>
+                {[20, 40, 60, 80].map(pct => (
+                  <div key={pct} className={styles.weeklyProjectDayTick} style={{ left: `${pct}%` }} />
+                ))}
+                {todayIndex > 0 && (
+                  <div className={styles.weeklyProjectTodayTick} style={{ left: `${todayIndex * 20 - 10}%` }} />
+                )}
+              </div>
+              <span className={styles.weeklyProjectMeta}>{row.completed}/{row.total}</span>
+              <span className={styles.weeklyProjectPct}>{row.rate}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── Project status donut ───────────────────────────────────────────────
 const ProjectStatusDonut: FC<{ data: ProjectStatusSlice[] }> = ({ data }) => (
@@ -222,6 +253,363 @@ const OverdueByProjectCard: FC<{ data: OverdueProjectRow[] }> = ({ data }) => (
   </div>
 );
 
+// ── Shared complexity colour scale ────────────────────────────────────
+const COMPLEXITY_COLORS = ['', '#fef08a', '#fde047', '#fb923c', '#f87171', '#dc2626'];
+function complexityColor(c: number) {
+  return COMPLEXITY_COLORS[Math.max(1, Math.min(5, Math.round(c)))];
+}
+
+// ── A: Weighted risk score ─────────────────────────────────────────────
+const WeightedRiskCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
+  const max = Math.max(...data.map(r => r.weightedScore), 1);
+  return (
+    <div className={chartStyles.card}>
+      <h3 className={chartStyles.title}>Riesgo ponderado</h3>
+      <p className={styles.pressureSubtitle}>Σ (días vencido × complejidad) por proyecto</p>
+      {data.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+        <div className={styles.pressureList}>
+          {data.map(row => (
+            <div key={row.name} className={styles.pressureRow}>
+              <span className={styles.pressureName} title={row.name}>{row.name}</span>
+              <div className={styles.pressureBarTrack}>
+                <div className={styles.weightedBarFill} style={{ width: `${(row.weightedScore / max) * 100}%` }} />
+              </div>
+              <span className={styles.weightedScoreLabel}>{row.weightedScore}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── B: Segmented composition bar ──────────────────────────────────────
+const SegmentedBacklogCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
+  const maxDebt = Math.max(...data.map(r => r.debtDays), 1);
+  return (
+    <div className={chartStyles.card}>
+      <h3 className={chartStyles.title}>Composición de deuda</h3>
+      <p className={styles.pressureSubtitle}>Cada segmento = 1 ítem · ancho = días · color = complejidad</p>
+      {data.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+        <div className={styles.pressureList}>
+          {data.map(row => (
+            <div key={row.name} className={styles.pressureRow}>
+              <span className={styles.pressureName} title={row.name}>{row.name}</span>
+              <div className={styles.segmentedTrack}>
+                {row.items.map((item: BacklogItemDetail, i: number) => (
+                  <div
+                    key={i}
+                    className={styles.segmentedSegment}
+                    style={{ width: `${(item.days / maxDebt) * 100}%`, background: complexityColor(item.complejidad) }}
+                    title={`${item.days}d · complejidad ${item.complejidad}`}
+                  />
+                ))}
+              </div>
+              <span className={styles.pressureDaysBadge}>{row.count}i</span>
+            </div>
+          ))}
+          <div className={styles.complexityLegend}>
+            {[1, 2, 3, 4, 5].map(c => (
+              <span key={c} className={styles.complexityLegendItem}>
+                <span className={styles.complexityLegendSwatch} style={{ background: COMPLEXITY_COLORS[c] }} />
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── C: Bubble chart (avg days vs avg complexity, size = count) ─────────
+const BubbleTooltip = ({ active, payload }: { active?: boolean; payload?: { payload: BacklogPressureRow }[] }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}>
+      <p style={{ fontWeight: 600, margin: '0 0 4px', color: '#0A0838' }}>{d.name}</p>
+      <p style={{ margin: '2px 0' }}>Días promedio: <b>{d.avgDays}</b></p>
+      <p style={{ margin: '2px 0' }}>Complejidad promedio: <b>{d.avgComplexity}</b></p>
+      <p style={{ margin: '2px 0' }}>Ítems vencidos: <b>{d.count}</b></p>
+    </div>
+  );
+};
+
+// Label offsets so dots at similar coords don't print their names on top of each other
+const BUBBLE_LABEL_OFFSETS = [
+  { dx: 0,   dy: -1 },  // above
+  { dx: 0,   dy:  1 },  // below
+  { dx: -1,  dy: -1 },  // above-left
+  { dx:  1,  dy:  1 },  // below-right
+];
+
+const BubbleDot = (props: { cx?: number; cy?: number; index?: number; payload?: BacklogPressureRow }) => {
+  const { cx = 0, cy = 0, index = 0, payload } = props;
+  if (!payload) return null;
+  const r   = Math.max(8, Math.min(22, payload.count * 5));
+  const off = BUBBLE_LABEL_OFFSETS[index % BUBBLE_LABEL_OFFSETS.length];
+  const lx  = cx + off.dx * (r + 14);
+  const ly  = cy + off.dy * (r + 12);
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={r} fill="#f59e0b" opacity={0.75} />
+      <text x={lx} y={ly} textAnchor="middle" fontSize={10} fontFamily="Poppins, sans-serif" fill="#0A0838" fontWeight={500}>
+        {payload.name.replace('Proyecto ', '')}
+      </text>
+    </g>
+  );
+};
+
+const BubblePressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
+  const allNames = data.map(r => r.name);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(allNames));
+  const [open, setOpen]         = useState(false);
+  const wrapperRef              = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const allSelected = selected.size === allNames.length;
+
+  const toggle = (name: string) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(allNames));
+
+  const btnLabel = allSelected
+    ? 'Todos los proyectos'
+    : selected.size === 0 ? 'Ningún proyecto'
+    : selected.size === 1 ? [...selected][0]
+    : `${selected.size} proyectos`;
+
+  const filtered = data.filter(r => selected.has(r.name));
+
+  return (
+    <div className={chartStyles.card}>
+      <div className={styles.bubbleCardHeader}>
+        <div>
+          <h3 className={chartStyles.title}>Tipo de problema (burbuja)</h3>
+          <p className={styles.pressureSubtitle}>X = días promedio · Y = complejidad promedio · tamaño = nº ítems</p>
+        </div>
+        <div className={styles.bubbleDropdownWrapper} ref={wrapperRef}>
+          <button className={styles.bubbleDropdownBtn} onClick={() => setOpen(o => !o)}>
+            {btnLabel}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }}>
+              <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          {open && (
+            <div className={styles.bubbleDropdownMenu}>
+              <label className={styles.bubbleDropdownItemAll}>
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className={styles.bubbleDropdownCheckbox} />
+                Todos los proyectos
+              </label>
+              <div className={styles.bubbleDropdownDivider} />
+              {data.map(row => (
+                <label key={row.name} className={styles.bubbleDropdownItem}>
+                  <input type="checkbox" checked={selected.has(row.name)} onChange={() => toggle(row.name)} className={styles.bubbleDropdownCheckbox} />
+                  {row.name}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {data.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+        <>
+          <ResponsiveContainer width="100%" height={240}>
+            <ScatterChart margin={{ top: 28, right: 28, bottom: 28, left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
+              <XAxis
+                dataKey="avgDays"
+                type="number"
+                name="Días promedio"
+                tick={TICK_PROPS}
+                domain={[(min: number) => Math.max(0, min - 2), (max: number) => max + 2]}
+              >
+                <Label value="Días promedio vencido" position="insideBottom" offset={-14} {...AXIS_LABEL} />
+              </XAxis>
+              <YAxis
+                dataKey="avgComplexity"
+                type="number"
+                name="Complejidad"
+                tick={TICK_PROPS}
+                domain={[(min: number) => Math.max(0, Math.floor(min) - 1), (max: number) => Math.ceil(max) + 1]}
+              >
+                <Label value="Complejidad prom." angle={-90} position="insideLeft" offset={-4} {...AXIS_LABEL} />
+              </YAxis>
+              <Tooltip content={<BubbleTooltip />} />
+              <Scatter
+                data={filtered}
+                shape={(p: { cx?: number; cy?: number; index?: number; payload?: BacklogPressureRow }) => <BubbleDot {...p} />}
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </>
+      )}
+    </div>
+  );
+};
+
+// ── D: Risk matrix quadrant ────────────────────────────────────────────
+const MatrixTooltip = ({ active, payload }: { active?: boolean; payload?: { payload: BacklogPressureRow }[] }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}>
+      <p style={{ fontWeight: 600, margin: '0 0 4px', color: '#0A0838' }}>{d.name}</p>
+      <p style={{ margin: '2px 0' }}>Días de deuda: <b>{d.debtDays}</b></p>
+      <p style={{ margin: '2px 0' }}>Complejidad total: <b>{d.complexitySum}</b></p>
+      <p style={{ margin: '2px 0' }}>Riesgo ponderado: <b>{d.weightedScore}</b></p>
+    </div>
+  );
+};
+
+const MatrixDot = (props: { cx?: number; cy?: number; payload?: BacklogPressureRow }) => {
+  const { cx = 0, cy = 0, payload } = props;
+  if (!payload) return null;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={7} fill="#E31837" opacity={0.85} />
+      <text x={cx} y={cy - 11} textAnchor="middle" fontSize={10} fontFamily="Poppins, sans-serif" fill="#0A0838" fontWeight={500}>
+        {payload.name.replace('Proyecto ', '')}
+      </text>
+    </g>
+  );
+};
+
+const RiskMatrixCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
+  const allNames  = data.map(r => r.name);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(allNames));
+  const [open, setOpen]         = useState(false);
+  const wrapperRef              = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const allSelected = selected.size === allNames.length;
+
+  const toggle = (name: string) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(allNames));
+
+  const btnLabel = allSelected
+    ? 'Todos los proyectos'
+    : selected.size === 0 ? 'Ningún proyecto'
+    : selected.size === 1 ? [...selected][0]
+    : `${selected.size} proyectos`;
+
+  const filtered = data.filter(r => selected.has(r.name));
+  const midX = filtered.length ? Math.round(filtered.reduce((s, r) => s + r.debtDays, 0) / filtered.length) : 0;
+  const midY = filtered.length ? Math.round(filtered.reduce((s, r) => s + r.complexitySum, 0) / filtered.length) : 0;
+
+  return (
+    <div className={chartStyles.card}>
+      <div className={styles.bubbleCardHeader}>
+        <div>
+          <h3 className={chartStyles.title}>Matriz de riesgo</h3>
+          <p className={styles.pressureSubtitle}>X = días de deuda total · Y = complejidad total · líneas = promedio</p>
+        </div>
+        <div className={styles.bubbleDropdownWrapper} ref={wrapperRef}>
+          <button className={styles.bubbleDropdownBtn} onClick={() => setOpen(o => !o)}>
+            {btnLabel}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }}>
+              <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          {open && (
+            <div className={styles.bubbleDropdownMenu}>
+              <label className={styles.bubbleDropdownItemAll}>
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className={styles.bubbleDropdownCheckbox} />
+                Todos los proyectos
+              </label>
+              <div className={styles.bubbleDropdownDivider} />
+              {data.map(row => (
+                <label key={row.name} className={styles.bubbleDropdownItem}>
+                  <input type="checkbox" checked={selected.has(row.name)} onChange={() => toggle(row.name)} className={styles.bubbleDropdownCheckbox} />
+                  {row.name}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {data.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+        <ResponsiveContainer width="100%" height={240}>
+          <ScatterChart margin={{ top: 24, right: 24, bottom: 28, left: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
+            <XAxis dataKey="debtDays" type="number" name="Días de deuda" tick={TICK_PROPS}>
+              <Label value="Días de deuda total" position="insideBottom" offset={-14} {...AXIS_LABEL} />
+            </XAxis>
+            <YAxis dataKey="complexitySum" type="number" name="Complejidad total" tick={TICK_PROPS}>
+              <Label value="Complejidad total" angle={-90} position="insideLeft" offset={-4} {...AXIS_LABEL} />
+            </YAxis>
+            <ReferenceLine x={midX} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: 'media X', position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }} />
+            <ReferenceLine y={midY} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: 'media Y', position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }} />
+            <Tooltip content={<MatrixTooltip />} />
+            <Scatter data={filtered} shape={(p: { cx?: number; cy?: number; payload?: BacklogPressureRow }) => <MatrixDot {...p} />} />
+          </ScatterChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+};
+
+// ── Backlog pressure card ──────────────────────────────────────────────
+const BacklogPressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
+  const maxDebt = Math.max(...data.map(r => r.debtDays), 1);
+  return (
+    <div className={chartStyles.card}>
+      <h3 className={chartStyles.title}>Presión de backlog</h3>
+      <div className={styles.pressureLegend}>
+        <span className={styles.pressureLegendDays}>días de deuda</span>
+        <span className={styles.pressureLegendComplexity}>complejidad</span>
+      </div>
+      {data.length === 0 ? (
+        <p className={chartStyles.empty}>Sin ítems vencidos</p>
+      ) : (
+        <div className={styles.pressureList}>
+          {data.map(row => (
+            <div key={row.name} className={styles.pressureRow}>
+              <span className={styles.pressureName} title={row.name}>{row.name}</span>
+              <div className={styles.pressureBarTrack}>
+                <div
+                  className={styles.pressureBarFill}
+                  style={{ width: `${(row.debtDays / maxDebt) * 100}%` }}
+                />
+              </div>
+              <span className={styles.pressureDaysBadge}>{row.debtDays}d</span>
+              <span className={styles.pressureComplexityBadge}>{row.complexitySum}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── FTE by project ─────────────────────────────────────────────────────
 const FteByProjectBar: FC<{ data: FteProjectRow[] }> = ({ data }) => (
   <div className={chartStyles.card}>
@@ -254,6 +642,7 @@ const FteByProjectBar: FC<{ data: FteProjectRow[] }> = ({ data }) => (
 const AdminDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
   const { state: reportState, errorMsg: reportError, generate } = useWeeklyReport(data);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   if (loading) {
     return (
@@ -284,28 +673,13 @@ const AdminDashboard: FC = () => {
           <div className={styles.reportActions}>
             <button
               className={styles.reportBtn}
-              onClick={generate}
-              disabled={reportState === 'loading'}
+              onClick={() => setShowReportModal(true)}
             >
-              {reportState === 'loading' ? (
-                <>
-                  <span className={styles.reportSpinner} />
-                  Generando…
-                </>
-              ) : (
-                <>
-                  <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <path d="M10 2v10m0 0l-3-3m3 3l3-3M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Reporte semanal
-                </>
-              )}
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 2v10m0 0l-3-3m3 3l3-3M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Generar reporte
             </button>
-            {reportState === 'error' && reportError && (
-              <span className={styles.reportErrorMsg} title={reportError}>
-                Error al generar reporte
-              </span>
-            )}
           </div>
         </div>
       </header>
@@ -339,12 +713,27 @@ const AdminDashboard: FC = () => {
       <div className={styles.grid}>
         <CompletionRateCard    data={data.completionByProject} />
         <OverdueByProjectCard  data={data.overdueByProject} />
+        <BacklogPressureCard   data={data.backlogPressure} />
+        <WeightedRiskCard      data={data.backlogPressure} />
+        <SegmentedBacklogCard  data={data.backlogPressure} />
+        <BubblePressureCard    data={data.backlogPressure} />
+        <RiskMatrixCard        data={data.backlogPressure} />
         <ProjectStatusDonut    data={data.projectStatus} />
         <GlobalItemStatusDonut data={data.globalItemStatus} />
         <VolumeByProjectBar    data={data.volumeByProject} />
         <FteByProjectBar       data={data.fteByProject} />
         <SprintHealthBar       data={data.sprintHealth} />
       </div>
+
+      {showReportModal && (
+        <GenerateReportModal
+          data={data}
+          state={reportState}
+          errorMsg={reportError}
+          onGenerate={config => { generate(config); }}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </div>
   );
 };

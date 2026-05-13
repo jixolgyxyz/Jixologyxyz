@@ -18,6 +18,7 @@ export interface AdminItemRow {
   statusOrden:       number;
   isTerminal:        boolean;
   fecha_vencimiento: string | null;
+  complejidad:       number | null;
 }
 
 export interface AdminSprintRow {
@@ -66,7 +67,7 @@ export async function fetchAdminProjects(): Promise<AdminProjectRow[]> {
 export async function fetchAdminItems(): Promise<AdminItemRow[]> {
   const { data, error } = await supabase
     .from('backlog_item')
-    .select('id, id_proyecto, id_estatus, fecha_vencimiento, estatus_backlog_item(nombre, es_terminal, orden)');
+    .select('id, id_proyecto, id_estatus, fecha_vencimiento, complejidad, estatus_backlog_item(nombre, es_terminal, orden)');
 
   if (error) throw new Error(error.message);
 
@@ -81,6 +82,7 @@ export async function fetchAdminItems(): Promise<AdminItemRow[]> {
       statusOrden:       s?.orden       ?? 99,
       isTerminal:        s?.es_terminal ?? false,
       fecha_vencimiento: r.fecha_vencimiento ?? null,
+      complejidad:       r.complejidad ?? null,
     };
   });
 }
