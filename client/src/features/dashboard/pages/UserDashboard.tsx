@@ -1,10 +1,7 @@
-import { type FC, useEffect, useRef, useState } from 'react';
-import { ChevronDownIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { type FC, useState } from 'react';
 import { useUser } from '@/core/auth/userContext';
 import { useUserDashboardData } from '../hooks/useUserDashboardData';
-import { useAdminDashboardData } from '../hooks/useAdminDashboardData';
 import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
-import type { ProjectRecord } from '../services/dashboard.service';
 import type { GraphDescriptor } from '../config/graphCatalog';
 import StatusDonut from '../components/StatusDonut';
 import HoursBySprintBar from '../components/HoursBySprintBar';
@@ -15,103 +12,7 @@ import OverdueCard from '../components/OverdueCard';
 import UpcomingCard from '../components/UpcomingCard';
 import JornadaFteCard from '../components/JornadaFteCard';
 import CustomizePanel from '../components/CustomizePanel/CustomizePanel';
-import { renderAdminGraph } from './AdminDashboard';
 import styles from './UserDashboard.module.css';
-
-// ── Multi-select project dropdown ──────────────────────────────────────
-interface ProjectDropdownProps {
-  projects:          ProjectRecord[];
-  selectedIds:       number[] | null;   // null = all
-  onChange:          (ids: number[] | null) => void;
-}
-
-const ProjectDropdown: FC<ProjectDropdownProps> = ({ projects, selectedIds, onChange }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const isAll = selectedIds === null || selectedIds.length === 0;
-
-  const label = isAll
-    ? 'Todos los proyectos'
-    : selectedIds!.length === 1
-      ? projects.find(p => p.id === selectedIds![0])?.nombre ?? 'Proyecto'
-      : `${selectedIds!.length} proyectos`;
-
-  const toggleProject = (id: number) => {
-    if (selectedIds === null) {
-      // was "all" → select only this one
-      onChange([id]);
-    } else if (selectedIds.includes(id)) {
-      const next = selectedIds.filter(x => x !== id);
-      onChange(next.length === 0 ? null : next);
-    } else {
-      onChange([...selectedIds, id]);
-    }
-  };
-
-  const selectAll = () => { onChange(null); setOpen(false); };
-
-  return (
-    <div ref={ref} className={styles.projectDropdownWrap}>
-      <button
-        type="button"
-        className={`${styles.projectDropdownBtn} ${!isAll ? styles.projectDropdownBtnActive : ''}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span className={styles.projectDropdownLabel}>{label}</span>
-        <ChevronDownIcon
-          width={14}
-          height={14}
-          className={`${styles.projectDropdownChevron} ${open ? styles.projectDropdownChevronOpen : ''}`}
-        />
-      </button>
-
-      {open && (
-        <div className={styles.projectDropdownMenu}>
-          {/* "Todos los proyectos" option */}
-          <button
-            type="button"
-            className={`${styles.projectDropdownOption} ${isAll ? styles.projectDropdownOptionActive : ''}`}
-            onClick={selectAll}
-          >
-            <span className={styles.projectDropdownOptionCheck}>
-              {isAll && <CheckIcon width={12} height={12} />}
-            </span>
-            <span>Todos los proyectos</span>
-          </button>
-
-          <div className={styles.projectDropdownDivider} />
-
-          {projects.map(p => {
-            const selected = selectedIds?.includes(p.id) ?? false;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className={`${styles.projectDropdownOption} ${selected ? styles.projectDropdownOptionActive : ''}`}
-                onClick={() => toggleProject(p.id)}
-              >
-                <span className={styles.projectDropdownOptionCheck}>
-                  {selected && <CheckIcon width={12} height={12} />}
-                </span>
-                <span>{p.nombre}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ── User-graph renderer (personal/user-only graphs) ───────────────────
 type UserDashData = NonNullable<ReturnType<typeof useUserDashboardData>['data']>;
@@ -134,13 +35,12 @@ const UserDashboard: FC = () => {
   const { user } = useUser();
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
   const { data, projects, loading, error } = useUserDashboardData(selectedProjectIds);
-  const { data: adminData, loading: adminLoading } = useAdminDashboardData();
-  const { visible, available, pmProjectIds, toggle, isVisible } = useVisibleGraphs('user');
+  const { visible, available, toggle, isVisible } = useVisibleGraphs('user');
   const [showCustomizePanel, setShowCustomizePanel] = useState(false);
 
   const firstName = user?.nombre ?? 'Usuario';
 
-  if (loading || adminLoading) {
+  if (loading) {
     return (
       <div className={styles.page}>
         <div className={styles.center}>Cargando dashboard…</div>
@@ -177,13 +77,6 @@ const UserDashboard: FC = () => {
               </svg>
               Personalizar
             </button>
-            {projects.length > 0 && (
-              <ProjectDropdown
-                projects={projects}
-                selectedIds={selectedProjectIds}
-                onChange={setSelectedProjectIds}
-              />
-            )}
           </div>
         </div>
       </header>
@@ -210,14 +103,9 @@ const UserDashboard: FC = () => {
       </div>
 
       <div className={styles.grid}>
-        {visible.map(g => {
-          // PM-extended graphs read from adminData (RLS-scoped) and are
-          // filtered to projects the user is PM on.
-          if (g.visibility === 'pm-extended' && adminData) {
-            return <div key={g.id}>{renderAdminGraph(g, adminData, pmProjectIds)}</div>;
-          }
-          return <div key={g.id}>{renderUserGraph(g, data)}</div>;
-        })}
+        {visible.map(g => (
+          <div key={g.id}>{renderUserGraph(g, data)}</div>
+        ))}
       </div>
 
       <CustomizePanel
@@ -226,6 +114,9 @@ const UserDashboard: FC = () => {
         available={available}
         isVisible={isVisible}
         toggle={toggle}
+        projects={projects.length > 0 ? projects : undefined}
+        selectedProjectIds={selectedProjectIds}
+        onProjectChange={setSelectedProjectIds}
       />
     </div>
   );

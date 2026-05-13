@@ -29,15 +29,7 @@ export function useVisibleGraphs(dashboard: DashboardKind): VisibleGraphsResult 
 
   const available = useMemo<GraphDescriptor[]>(() => {
     return GRAPH_CATALOG.filter(g => {
-      if (!g.dashboards.includes(dashboard)) {
-        // On the user dashboard we also surface pm-extended graphs even if
-        // they're catalogued as admin-only graphs.
-        if (dashboard === 'user' && g.visibility === 'pm-extended' && isPm) {
-          // fall through
-        } else {
-          return false;
-        }
-      }
+      if (!g.dashboards.includes(dashboard)) return false;
 
       switch (g.visibility) {
         case 'admin-only':
@@ -47,10 +39,9 @@ export function useVisibleGraphs(dashboard: DashboardKind): VisibleGraphsResult 
         case 'shared':
           return true;
         case 'pm-extended':
-          // On the admin dashboard: global admins see these.
-          // On the user dashboard: PMs see these scoped to their projects.
-          if (dashboard === 'admin') return isGlobalAdmin;
-          return isPm;
+          if (dashboard === 'admin')   return isGlobalAdmin;
+          if (dashboard === 'project') return isPm;
+          return false; // pm-extended graphs no longer appear on the user dashboard
       }
     });
   }, [dashboard, isGlobalAdmin, isPm]);
