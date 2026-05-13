@@ -15,14 +15,15 @@ import {
 } from '../services/admin.dashboard.service';
 
 export interface ProjectStatusSlice    { name: string; value: number; color: string }
-export interface ProjectCompletionRow  { name: string; done: number; total: number; rate: number }
-export interface ProjectVolumeRow      { name: string; count: number }
+export interface ProjectCompletionRow  { id: number; name: string; done: number; total: number; rate: number }
+export interface ProjectVolumeRow      { id: number; name: string; count: number }
 export interface GlobalItemStatusSlice { name: string; value: number; color: string }
-export interface SprintHealthRow       { name: string; active: number; terminal: number }
-export interface FteProjectRow         { name: string; fte: number }
-export interface OverdueProjectRow     { name: string; overdue: number }
+export interface SprintHealthRow       { id: number; name: string; active: number; terminal: number }
+export interface FteProjectRow         { id: number; name: string; fte: number }
+export interface OverdueProjectRow     { id: number; name: string; overdue: number }
 export interface BacklogItemDetail  { days: number; complejidad: number }
 export interface BacklogPressureRow {
+  id:            number;
   name:          string;
   debtDays:      number;
   complexitySum: number;
@@ -142,6 +143,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
     // ── Completion per project — from project_card_view ──────────────────
     const completionByProject: ProjectCompletionRow[] = completion
       .map(r => ({
+        id:    r.id,
         name:  r.nombre,
         done:  r.completed_backlog_items,
         total: r.total_backlog_items,
@@ -157,7 +159,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
     }
 
     const volumeByProject: ProjectVolumeRow[] = Array.from(itemsByProject.entries())
-      .map(([id, pItems]) => ({ name: projectMap.get(id) ?? `Proyecto ${id}`, count: pItems.length }))
+      .map(([id, pItems]) => ({ id, name: projectMap.get(id) ?? `Proyecto ${id}`, count: pItems.length }))
       .sort((a, b) => b.count - a.count);
 
     // ── Global item status distribution ─────────────────────────────────
@@ -178,7 +180,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
       else bucket.active++;
     }
     const sprintHealth: SprintHealthRow[] = Array.from(sprintBuckets.entries())
-      .map(([id, counts]) => ({ name: projectMap.get(id) ?? `Proyecto ${id}`, ...counts }))
+      .map(([id, counts]) => ({ id, name: projectMap.get(id) ?? `Proyecto ${id}`, ...counts }))
       .sort((a, b) => (b.active + b.terminal) - (a.active + a.terminal));
 
     // ── FTE by project — seed every project at 0 so all appear ──────────
@@ -195,7 +197,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
       fteAccum.set(row.id_proyecto, (fteAccum.get(row.id_proyecto) ?? 0) + effectiveFte);
     }
     const fteByProject: FteProjectRow[] = Array.from(fteAccum.entries())
-      .map(([id, fteVal]) => ({ name: projectMap.get(id) ?? `Proyecto ${id}`, fte: Math.round(fteVal * 100) / 100 }))
+      .map(([id, fteVal]) => ({ id, name: projectMap.get(id) ?? `Proyecto ${id}`, fte: Math.round(fteVal * 100) / 100 }))
       .sort((a, b) => b.fte - a.fte);
 
     // ── Overdue items per project ────────────────────────────────────────
@@ -209,7 +211,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
     }
     const overdueByProject: OverdueProjectRow[] = Array.from(overdueAccum.entries())
       .filter(([, count]) => count > 0)
-      .map(([id, overdue]) => ({ name: projectMap.get(id) ?? `Proyecto ${id}`, overdue }))
+      .map(([id, overdue]) => ({ id, name: projectMap.get(id) ?? `Proyecto ${id}`, overdue }))
       .sort((a, b) => b.overdue - a.overdue);
 
     // ── Backlog pressure per project ─────────────────────────────────────
@@ -238,6 +240,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
     const backlogPressure: BacklogPressureRow[] = Array.from(pressureAccum.entries())
       .filter(([, v]) => v.debtDays > 0)
       .map(([id, v]) => ({
+        id,
         name:          projectMap.get(id) ?? `Proyecto ${id}`,
         debtDays:      v.debtDays,
         complexitySum: v.complexitySum,

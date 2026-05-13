@@ -64,6 +64,28 @@
   transform: translateY(-1px);
 }
 
+.customizeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  background: transparent;
+  border: 1.5px solid var(--color-blueprint-navy);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.customizeBtn:hover {
+  background: var(--color-clarity-gray-1);
+  transform: translateY(-1px);
+}
+
 .reportBtn:disabled {
   opacity: 0.6;
   cursor: not-allowed;

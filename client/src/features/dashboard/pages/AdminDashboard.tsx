@@ -20,7 +20,10 @@ import type {
   BacklogItemDetail,
 } from '../hooks/useAdminDashboardData';
 import { useWeeklyReport } from '../hooks/useWeeklyReport';
+import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
+import type { GraphDescriptor } from '../config/graphCatalog';
 import GenerateReportModal from '../components/GenerateReportModal/GenerateReportModal';
+import CustomizePanel from '../components/CustomizePanel/CustomizePanel';
 import chartStyles from '../components/ChartCard.module.css';
 import styles from './AdminDashboard.module.css';
 
@@ -29,6 +32,13 @@ const TOOLTIP_STYLE = { fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }
 const TICK_PROPS    = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
 const LEGEND_STYLE  = { fontSize: '0.72rem', fontFamily: 'Poppins, sans-serif' };
 const AXIS_LABEL    = { style: { fontSize: '0.7rem', fontFamily: 'Poppins, sans-serif', fill: 'var(--color-anchor-gray-1)' } };
+
+// Drops project rows not in `filter`. If `filter` is undefined, returns the
+// data unchanged — admin dashboards pass undefined and see everything.
+function applyProjectFilter<T extends { id: number }>(data: T[], filter?: Set<number>): T[] {
+  if (!filter) return data;
+  return data.filter(r => filter.has(r.id));
+}
 
 // ── Weekly progress card ───────────────────────────────────────────────
 function getTodayIndex(): number {
@@ -151,39 +161,44 @@ const GlobalItemStatusDonut: FC<{ data: GlobalItemStatusSlice[] }> = ({ data }) 
 );
 
 // ── Completion rate per project (custom bar) ───────────────────────────
-const CompletionRateCard: FC<{ data: ProjectCompletionRow[] }> = ({ data }) => (
-  <div className={chartStyles.card}>
-    <h3 className={chartStyles.title}>Tasa de completación por proyecto</h3>
-    {data.length === 0 ? (
-      <p className={chartStyles.empty}>Sin datos</p>
-    ) : (
-      <div className={styles.completionList}>
-        {data.map(row => (
-          <div key={row.name} className={styles.completionRow}>
-            <span className={styles.completionLabel} title={row.name}>{row.name}</span>
-            <div className={styles.completionBarTrack}>
-              <div
-                className={styles.completionBarFill}
-                style={{ width: `${row.rate}%` }}
-              />
+export const CompletionRateCard: FC<{ data: ProjectCompletionRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  return (
+    <div className={chartStyles.card}>
+      <h3 className={chartStyles.title}>Tasa de completación por proyecto</h3>
+      {rows.length === 0 ? (
+        <p className={chartStyles.empty}>Sin datos</p>
+      ) : (
+        <div className={styles.completionList}>
+          {rows.map(row => (
+            <div key={row.name} className={styles.completionRow}>
+              <span className={styles.completionLabel} title={row.name}>{row.name}</span>
+              <div className={styles.completionBarTrack}>
+                <div
+                  className={styles.completionBarFill}
+                  style={{ width: `${row.rate}%` }}
+                />
+              </div>
+              <span className={styles.completionPct}>{row.rate}%</span>
             </div>
-            <span className={styles.completionPct}>{row.rate}%</span>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── Backlog volume per project ─────────────────────────────────────────
-const VolumeByProjectBar: FC<{ data: ProjectVolumeRow[] }> = ({ data }) => (
+export const VolumeByProjectBar: FC<{ data: ProjectVolumeRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  return (
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Volumen de backlog por proyecto</h3>
-    {data.length === 0 ? (
+    {rows.length === 0 ? (
       <p className={chartStyles.empty}>Sin datos</p>
     ) : (
       <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
+        <BarChart data={rows} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="name"
@@ -201,17 +216,20 @@ const VolumeByProjectBar: FC<{ data: ProjectVolumeRow[] }> = ({ data }) => (
       </ResponsiveContainer>
     )}
   </div>
-);
+  );
+};
 
 // ── Sprint health per project ──────────────────────────────────────────
-const SprintHealthBar: FC<{ data: SprintHealthRow[] }> = ({ data }) => (
+export const SprintHealthBar: FC<{ data: SprintHealthRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  return (
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Salud de sprints por proyecto</h3>
-    {data.length === 0 ? (
+    {rows.length === 0 ? (
       <p className={chartStyles.empty}>Sin datos</p>
     ) : (
       <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data} margin={{ top: 24, right: 16, left: 20, bottom: 55 }} barCategoryGap="25%" barGap={2}>
+        <BarChart data={rows} margin={{ top: 24, right: 16, left: 20, bottom: 55 }} barCategoryGap="25%" barGap={2}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="name"
@@ -231,17 +249,20 @@ const SprintHealthBar: FC<{ data: SprintHealthRow[] }> = ({ data }) => (
       </ResponsiveContainer>
     )}
   </div>
-);
+  );
+};
 
 // ── Overdue items by project ───────────────────────────────────────────
-const OverdueByProjectCard: FC<{ data: OverdueProjectRow[] }> = ({ data }) => (
+export const OverdueByProjectCard: FC<{ data: OverdueProjectRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  return (
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Ítems vencidos por proyecto</h3>
-    {data.length === 0 ? (
+    {rows.length === 0 ? (
       <p className={chartStyles.empty}>Sin ítems vencidos</p>
     ) : (
       <div className={styles.overdueList}>
-        {data.map((row, i) => (
+        {rows.map((row, i) => (
           <div key={row.name} className={styles.overdueRow}>
             <span className={styles.overdueRank}>{i + 1}</span>
             <span className={styles.overdueName} title={row.name}>{row.name}</span>
@@ -251,7 +272,8 @@ const OverdueByProjectCard: FC<{ data: OverdueProjectRow[] }> = ({ data }) => (
       </div>
     )}
   </div>
-);
+  );
+};
 
 // ── Shared complexity colour scale ────────────────────────────────────
 const COMPLEXITY_COLORS = ['', '#fef08a', '#fde047', '#fb923c', '#f87171', '#dc2626'];
@@ -260,15 +282,16 @@ function complexityColor(c: number) {
 }
 
 // ── A: Weighted risk score ─────────────────────────────────────────────
-const WeightedRiskCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
-  const max = Math.max(...data.map(r => r.weightedScore), 1);
+export const WeightedRiskCard: FC<{ data: BacklogPressureRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  const max = Math.max(...rows.map(r => r.weightedScore), 1);
   return (
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Riesgo ponderado</h3>
       <p className={styles.pressureSubtitle}>Σ (días vencido × complejidad) por proyecto</p>
-      {data.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+      {rows.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
         <div className={styles.pressureList}>
-          {data.map(row => (
+          {rows.map(row => (
             <div key={row.name} className={styles.pressureRow}>
               <span className={styles.pressureName} title={row.name}>{row.name}</span>
               <div className={styles.pressureBarTrack}>
@@ -284,15 +307,16 @@ const WeightedRiskCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
 };
 
 // ── B: Segmented composition bar ──────────────────────────────────────
-const SegmentedBacklogCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
-  const maxDebt = Math.max(...data.map(r => r.debtDays), 1);
+export const SegmentedBacklogCard: FC<{ data: BacklogPressureRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  const maxDebt = Math.max(...rows.map(r => r.debtDays), 1);
   return (
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Composición de deuda</h3>
       <p className={styles.pressureSubtitle}>Cada segmento = 1 ítem · ancho = días · color = complejidad</p>
-      {data.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+      {rows.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
         <div className={styles.pressureList}>
-          {data.map(row => (
+          {rows.map(row => (
             <div key={row.name} className={styles.pressureRow}>
               <span className={styles.pressureName} title={row.name}>{row.name}</span>
               <div className={styles.segmentedTrack}>
@@ -361,8 +385,9 @@ const BubbleDot = (props: { cx?: number; cy?: number; index?: number; payload?: 
   );
 };
 
-const BubblePressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
-  const allNames = data.map(r => r.name);
+export const BubblePressureCard: FC<{ data: BacklogPressureRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const available = applyProjectFilter(data, projectFilter);
+  const allNames = available.map(r => r.name);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(allNames));
   const [open, setOpen]         = useState(false);
   const wrapperRef              = useRef<HTMLDivElement>(null);
@@ -376,12 +401,18 @@ const BubblePressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
     return () => document.removeEventListener('mousedown', close);
   }, []);
 
+  // Reset internal selection when the external filter changes the available set
+  useEffect(() => {
+    setSelected(new Set(available.map(r => r.name)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectFilter]);
+
   const allSelected = selected.size === allNames.length;
 
   const toggle = (name: string) =>
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      if (next.has(name)) next.delete(name); else next.add(name);
       return next;
     });
 
@@ -393,7 +424,7 @@ const BubblePressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
     : selected.size === 1 ? [...selected][0]
     : `${selected.size} proyectos`;
 
-  const filtered = data.filter(r => selected.has(r.name));
+  const filtered = available.filter(r => selected.has(r.name));
 
   return (
     <div className={chartStyles.card}>
@@ -416,7 +447,7 @@ const BubblePressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
                 Todos los proyectos
               </label>
               <div className={styles.bubbleDropdownDivider} />
-              {data.map(row => (
+              {available.map(row => (
                 <label key={row.name} className={styles.bubbleDropdownItem}>
                   <input type="checkbox" checked={selected.has(row.name)} onChange={() => toggle(row.name)} className={styles.bubbleDropdownCheckbox} />
                   {row.name}
@@ -426,7 +457,7 @@ const BubblePressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
           )}
         </div>
       </div>
-      {data.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+      {available.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
         <>
           <ResponsiveContainer width="100%" height={240}>
             <ScatterChart margin={{ top: 28, right: 28, bottom: 28, left: 20 }}>
@@ -489,8 +520,9 @@ const MatrixDot = (props: { cx?: number; cy?: number; payload?: BacklogPressureR
   );
 };
 
-const RiskMatrixCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
-  const allNames  = data.map(r => r.name);
+export const RiskMatrixCard: FC<{ data: BacklogPressureRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const available = applyProjectFilter(data, projectFilter);
+  const allNames  = available.map(r => r.name);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(allNames));
   const [open, setOpen]         = useState(false);
   const wrapperRef              = useRef<HTMLDivElement>(null);
@@ -504,12 +536,17 @@ const RiskMatrixCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
     return () => document.removeEventListener('mousedown', close);
   }, []);
 
+  useEffect(() => {
+    setSelected(new Set(available.map(r => r.name)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectFilter]);
+
   const allSelected = selected.size === allNames.length;
 
   const toggle = (name: string) =>
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      if (next.has(name)) next.delete(name); else next.add(name);
       return next;
     });
 
@@ -521,7 +558,7 @@ const RiskMatrixCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
     : selected.size === 1 ? [...selected][0]
     : `${selected.size} proyectos`;
 
-  const filtered = data.filter(r => selected.has(r.name));
+  const filtered = available.filter(r => selected.has(r.name));
   const midX = filtered.length ? Math.round(filtered.reduce((s, r) => s + r.debtDays, 0) / filtered.length) : 0;
   const midY = filtered.length ? Math.round(filtered.reduce((s, r) => s + r.complexitySum, 0) / filtered.length) : 0;
 
@@ -546,7 +583,7 @@ const RiskMatrixCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
                 Todos los proyectos
               </label>
               <div className={styles.bubbleDropdownDivider} />
-              {data.map(row => (
+              {available.map(row => (
                 <label key={row.name} className={styles.bubbleDropdownItem}>
                   <input type="checkbox" checked={selected.has(row.name)} onChange={() => toggle(row.name)} className={styles.bubbleDropdownCheckbox} />
                   {row.name}
@@ -556,7 +593,7 @@ const RiskMatrixCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
           )}
         </div>
       </div>
-      {data.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+      {available.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
         <ResponsiveContainer width="100%" height={240}>
           <ScatterChart margin={{ top: 24, right: 24, bottom: 28, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
@@ -578,8 +615,9 @@ const RiskMatrixCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
 };
 
 // ── Backlog pressure card ──────────────────────────────────────────────
-const BacklogPressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
-  const maxDebt = Math.max(...data.map(r => r.debtDays), 1);
+export const BacklogPressureCard: FC<{ data: BacklogPressureRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  const maxDebt = Math.max(...rows.map(r => r.debtDays), 1);
   return (
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Presión de backlog</h3>
@@ -587,11 +625,11 @@ const BacklogPressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
         <span className={styles.pressureLegendDays}>días de deuda</span>
         <span className={styles.pressureLegendComplexity}>complejidad</span>
       </div>
-      {data.length === 0 ? (
+      {rows.length === 0 ? (
         <p className={chartStyles.empty}>Sin ítems vencidos</p>
       ) : (
         <div className={styles.pressureList}>
-          {data.map(row => (
+          {rows.map(row => (
             <div key={row.name} className={styles.pressureRow}>
               <span className={styles.pressureName} title={row.name}>{row.name}</span>
               <div className={styles.pressureBarTrack}>
@@ -611,14 +649,16 @@ const BacklogPressureCard: FC<{ data: BacklogPressureRow[] }> = ({ data }) => {
 };
 
 // ── FTE by project ─────────────────────────────────────────────────────
-const FteByProjectBar: FC<{ data: FteProjectRow[] }> = ({ data }) => (
+export const FteByProjectBar: FC<{ data: FteProjectRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  return (
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>FTE asignado por proyecto</h3>
-    {data.length === 0 ? (
+    {rows.length === 0 ? (
       <p className={chartStyles.empty}>Sin datos</p>
     ) : (
       <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
+        <BarChart data={rows} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="name"
@@ -636,13 +676,45 @@ const FteByProjectBar: FC<{ data: FteProjectRow[] }> = ({ data }) => (
       </ResponsiveContainer>
     )}
   </div>
-);
+  );
+};
+
+// ── Catalog-driven graph renderer ──────────────────────────────────────
+// Each catalog `id` maps to its component + data slice. Returns null for
+// unknown IDs (would indicate a stale or mistyped catalog entry).
+function renderGraph(
+  g:  GraphDescriptor,
+  d:  ReturnType<typeof useAdminDashboardData>['data'] extends infer T ? T extends null ? never : T : never,
+  pf: Set<number> | undefined,
+) {
+  switch (g.id) {
+    case 'completion_rate':      return <CompletionRateCard    data={d.completionByProject} projectFilter={pf} />;
+    case 'overdue_by_project':   return <OverdueByProjectCard  data={d.overdueByProject}    projectFilter={pf} />;
+    case 'backlog_pressure':     return <BacklogPressureCard   data={d.backlogPressure}     projectFilter={pf} />;
+    case 'weighted_risk':        return <WeightedRiskCard      data={d.backlogPressure}     projectFilter={pf} />;
+    case 'segmented_backlog':    return <SegmentedBacklogCard  data={d.backlogPressure}     projectFilter={pf} />;
+    case 'bubble_pressure':      return <BubblePressureCard    data={d.backlogPressure}     projectFilter={pf} />;
+    case 'risk_matrix':          return <RiskMatrixCard        data={d.backlogPressure}     projectFilter={pf} />;
+    case 'project_status_donut': return <ProjectStatusDonut    data={d.projectStatus}        />;
+    case 'item_status_donut':    return <GlobalItemStatusDonut data={d.globalItemStatus}     />;
+    case 'volume_by_project':    return <VolumeByProjectBar    data={d.volumeByProject}     projectFilter={pf} />;
+    case 'fte_by_project':       return <FteByProjectBar       data={d.fteByProject}        projectFilter={pf} />;
+    case 'sprint_health':        return <SprintHealthBar       data={d.sprintHealth}        projectFilter={pf} />;
+    default:                     return null;
+  }
+}
+
+// Export so UserDashboard can reuse the same render logic for PM-extended graphs
+// eslint-disable-next-line react-refresh/only-export-components
+export { renderGraph as renderAdminGraph };
 
 // ── Page ───────────────────────────────────────────────────────────────
 const AdminDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
   const { state: reportState, errorMsg: reportError, generate } = useWeeklyReport(data);
-  const [showReportModal, setShowReportModal] = useState(false);
+  const [showReportModal, setShowReportModal]    = useState(false);
+  const [showCustomizePanel, setShowCustomizePanel] = useState(false);
+  const { visible, available, toggle, isVisible } = useVisibleGraphs('admin');
 
   if (loading) {
     return (
@@ -671,6 +743,16 @@ const AdminDashboard: FC = () => {
             <p className={styles.subtitle}>Salud global de todos los proyectos</p>
           </div>
           <div className={styles.reportActions}>
+            <button
+              className={styles.customizeBtn}
+              onClick={() => setShowCustomizePanel(true)}
+              aria-label="Personalizar dashboard"
+            >
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4 7h12M4 13h12M8 4v6M12 10v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Personalizar
+            </button>
             <button
               className={styles.reportBtn}
               onClick={() => setShowReportModal(true)}
@@ -711,18 +793,9 @@ const AdminDashboard: FC = () => {
       </div>
 
       <div className={styles.grid}>
-        <CompletionRateCard    data={data.completionByProject} />
-        <OverdueByProjectCard  data={data.overdueByProject} />
-        <BacklogPressureCard   data={data.backlogPressure} />
-        <WeightedRiskCard      data={data.backlogPressure} />
-        <SegmentedBacklogCard  data={data.backlogPressure} />
-        <BubblePressureCard    data={data.backlogPressure} />
-        <RiskMatrixCard        data={data.backlogPressure} />
-        <ProjectStatusDonut    data={data.projectStatus} />
-        <GlobalItemStatusDonut data={data.globalItemStatus} />
-        <VolumeByProjectBar    data={data.volumeByProject} />
-        <FteByProjectBar       data={data.fteByProject} />
-        <SprintHealthBar       data={data.sprintHealth} />
+        {visible.map(g => (
+          <div key={g.id}>{renderGraph(g, data, undefined)}</div>
+        ))}
       </div>
 
       {showReportModal && (
@@ -734,6 +807,15 @@ const AdminDashboard: FC = () => {
           onClose={() => setShowReportModal(false)}
         />
       )}
+
+      <CustomizePanel
+        open={showCustomizePanel}
+        onClose={() => setShowCustomizePanel(false)}
+        available={available}
+        isVisible={isVisible}
+        toggle={toggle}
+        showBadge={false}
+      />
     </div>
   );
 };
