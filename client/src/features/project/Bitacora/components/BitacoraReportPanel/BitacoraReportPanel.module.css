@@ -44,18 +44,11 @@
   color: var(--color-anchor-gray-1);
 }
 
-.panelActions {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  flex-shrink: 0;
-}
-
-.actionBtn,
 .closeBtn {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -67,7 +60,6 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.actionBtn:hover,
 .closeBtn:hover {
   background: var(--color-clarity-gray-1);
   color: var(--color-blueprint-navy);
