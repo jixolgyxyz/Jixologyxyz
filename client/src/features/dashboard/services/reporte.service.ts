@@ -1,4 +1,5 @@
 import { supabase } from '@/core/supabase/supabase.client';
+import { buildPdf } from './weeklyReport.service';
 
 export interface ReporteRow {
   id:                  number;
@@ -53,6 +54,14 @@ export async function linkCheckIns(
     .insert(rows);
 
   if (insertError) throw new Error(`Error al vincular check-ins: ${insertError.message}`);
+}
+
+export function downloadReport(r: ReporteRow): void {
+  const label = new Date(r.semana_inicio + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+  const pdf = buildPdf(r.contenido, label);
+  pdf.save(`reporte-${r.semana_inicio}.pdf`);
 }
 
 export async function fetchReports(): Promise<ReporteRow[]> {

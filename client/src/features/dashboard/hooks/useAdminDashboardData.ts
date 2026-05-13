@@ -15,12 +15,24 @@ import {
 } from '../services/admin.dashboard.service';
 
 export interface ProjectStatusSlice    { name: string; value: number; color: string }
-export interface ProjectCompletionRow  { name: string; done: number; total: number; rate: number }
-export interface ProjectVolumeRow      { name: string; count: number }
+export interface ProjectCompletionRow  { id: number; name: string; done: number; total: number; rate: number }
+export interface ProjectVolumeRow      { id: number; name: string; count: number }
 export interface GlobalItemStatusSlice { name: string; value: number; color: string }
-export interface SprintHealthRow       { name: string; active: number; terminal: number }
-export interface FteProjectRow         { name: string; fte: number }
-export interface OverdueProjectRow     { name: string; overdue: number }
+export interface SprintHealthRow       { id: number; name: string; active: number; terminal: number }
+export interface FteProjectRow         { id: number; name: string; fte: number }
+export interface OverdueProjectRow     { id: number; name: string; overdue: number }
+export interface BacklogItemDetail  { days: number; complejidad: number }
+export interface BacklogPressureRow {
+  id:            number;
+  name:          string;
+  debtDays:      number;
+  complexitySum: number;
+  weightedScore: number;   // Σ(days × complejidad)
+  count:         number;
+  avgDays:       number;
+  avgComplexity: number;
+  items:         BacklogItemDetail[];
+}
 
 export interface WeeklyProjectRow   { name: string; completed: number; total: number; rate: number }
 export interface WeeklyProgressData { completed: number; total: number; rate: number; byProject: WeeklyProjectRow[] }
@@ -36,6 +48,7 @@ export interface AdminDashboardData {
   sprintHealth:        SprintHealthRow[];
   fteByProject:        FteProjectRow[];
   overdueByProject:    OverdueProjectRow[];
+  backlogPressure:     BacklogPressureRow[];
 }
 
 export interface AdminDashboardResult {
@@ -130,6 +143,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
     // ── Completion per project — from project_card_view ──────────────────
     const completionByProject: ProjectCompletionRow[] = completion
       .map(r => ({
+        id:    r.id,
         name:  r.nombre,
         done:  r.completed_backlog_items,
         total: r.total_backlog_items,
@@ -145,7 +159,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
     }
 
     const volumeByProject: ProjectVolumeRow[] = Array.from(itemsByProject.entries())
-      .map(([id, pItems]) => ({ name: projectMap.get(id) ?? `Proyecto ${id}`, count: pItems.length }))
+      .map(([id, pItems]) => ({ id, name: projectMap.get(id) ?? `Proyecto ${id}`, count: pItems.length }))
       .sort((a, b) => b.count - a.count);
 
     // ── Global item status distribution ─────────────────────────────────
@@ -166,7 +180,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
       else bucket.active++;
     }
     const sprintHealth: SprintHealthRow[] = Array.from(sprintBuckets.entries())
-      .map(([id, counts]) => ({ name: projectMap.get(id) ?? `Proyecto ${id}`, ...counts }))
+      .map(([id, counts]) => ({ id, name: projectMap.get(id) ?? `Proyecto ${id}`, ...counts }))
       .sort((a, b) => (b.active + b.terminal) - (a.active + a.terminal));
 
     // ── FTE by project — seed every project at 0 so all appear ──────────
@@ -183,26 +197,66 @@ export function useAdminDashboardData(): AdminDashboardResult {
       fteAccum.set(row.id_proyecto, (fteAccum.get(row.id_proyecto) ?? 0) + effectiveFte);
     }
     const fteByProject: FteProjectRow[] = Array.from(fteAccum.entries())
-      .map(([id, fteVal]) => ({ name: projectMap.get(id) ?? `Proyecto ${id}`, fte: Math.round(fteVal * 100) / 100 }))
+      .map(([id, fteVal]) => ({ id, name: projectMap.get(id) ?? `Proyecto ${id}`, fte: Math.round(fteVal * 100) / 100 }))
       .sort((a, b) => b.fte - a.fte);
 
     // ── Overdue items per project ────────────────────────────────────────
-    const now = new Date().toISOString();
+    const now     = new Date();
+    const nowIso  = now.toISOString();
     const overdueAccum = new Map<number, number>(projects.map(p => [p.id, 0]));
     for (const item of items) {
-      if (!item.isTerminal && item.fecha_vencimiento && item.fecha_vencimiento < now) {
+      if (!item.isTerminal && item.fecha_vencimiento && item.fecha_vencimiento < nowIso) {
         overdueAccum.set(item.id_proyecto, (overdueAccum.get(item.id_proyecto) ?? 0) + 1);
       }
     }
     const overdueByProject: OverdueProjectRow[] = Array.from(overdueAccum.entries())
       .filter(([, count]) => count > 0)
-      .map(([id, overdue]) => ({ name: projectMap.get(id) ?? `Proyecto ${id}`, overdue }))
+      .map(([id, overdue]) => ({ id, name: projectMap.get(id) ?? `Proyecto ${id}`, overdue }))
       .sort((a, b) => b.overdue - a.overdue);
+
+    // ── Backlog pressure per project ─────────────────────────────────────
+    // debtDays = Σ(days overdue), complexitySum = Σ(complejidad),
+    // weightedScore = Σ(days × complejidad) — captures both dimensions
+    const pressureAccum = new Map<number, {
+      debtDays: number; complexitySum: number; weightedScore: number; items: BacklogItemDetail[];
+    }>();
+    for (const item of items) {
+      if (!item.isTerminal && item.fecha_vencimiento) {
+        const due = new Date(item.fecha_vencimiento);
+        if (due < now) {
+          const days  = Math.floor((now.getTime() - due.getTime()) / 86_400_000);
+          const compl = item.complejidad ?? 0;
+          if (!pressureAccum.has(item.id_proyecto)) {
+            pressureAccum.set(item.id_proyecto, { debtDays: 0, complexitySum: 0, weightedScore: 0, items: [] });
+          }
+          const b = pressureAccum.get(item.id_proyecto)!;
+          b.debtDays      += days;
+          b.complexitySum += compl;
+          b.weightedScore += days * compl;
+          b.items.push({ days, complejidad: compl });
+        }
+      }
+    }
+    const backlogPressure: BacklogPressureRow[] = Array.from(pressureAccum.entries())
+      .filter(([, v]) => v.debtDays > 0)
+      .map(([id, v]) => ({
+        id,
+        name:          projectMap.get(id) ?? `Proyecto ${id}`,
+        debtDays:      v.debtDays,
+        complexitySum: v.complexitySum,
+        weightedScore: v.weightedScore,
+        count:         v.items.length,
+        avgDays:       Math.round(v.debtDays / v.items.length),
+        avgComplexity: Math.round((v.complexitySum / v.items.length) * 10) / 10,
+        items:         v.items,
+      }))
+      .sort((a, b) => b.weightedScore - a.weightedScore);
 
     return {
       activeProjects, totalItems, weeklyProgress,
       projectStatus, completionByProject, volumeByProject,
       globalItemStatus, sprintHealth, fteByProject, overdueByProject,
+      backlogPressure,
     };
   }, [raw]);
 

@@ -1,8 +1,8 @@
-import { type FC, useEffect, useRef, useState } from 'react';
-import { ChevronDownIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { type FC, useState } from 'react';
 import { useUser } from '@/core/auth/userContext';
 import { useUserDashboardData } from '../hooks/useUserDashboardData';
-import type { ProjectRecord } from '../services/dashboard.service';
+import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
+import type { GraphDescriptor } from '../config/graphCatalog';
 import StatusDonut from '../components/StatusDonut';
 import HoursBySprintBar from '../components/HoursBySprintBar';
 import ItemsByTypeBar from '../components/ItemsByTypeBar';
@@ -11,108 +11,32 @@ import ComplexityScatter from '../components/ComplexityScatter';
 import OverdueCard from '../components/OverdueCard';
 import UpcomingCard from '../components/UpcomingCard';
 import JornadaFteCard from '../components/JornadaFteCard';
+import CustomizePanel from '../components/CustomizePanel/CustomizePanel';
 import styles from './UserDashboard.module.css';
 
-// ── Multi-select project dropdown ──────────────────────────────────────
-interface ProjectDropdownProps {
-  projects:          ProjectRecord[];
-  selectedIds:       number[] | null;   // null = all
-  onChange:          (ids: number[] | null) => void;
+// ── User-graph renderer (personal/user-only graphs) ───────────────────
+type UserDashData = NonNullable<ReturnType<typeof useUserDashboardData>['data']>;
+function renderUserGraph(g: GraphDescriptor, d: UserDashData) {
+  switch (g.id) {
+    case 'personal_overdue':       return <OverdueCard       items={d.overdueItems} />;
+    case 'personal_upcoming':      return <UpcomingCard      items={d.upcomingItems} />;
+    case 'jornada_fte':            return <JornadaFteCard    data={d.jornadaFte} />;
+    case 'personal_status':        return <StatusDonut       data={d.statusData} />;
+    case 'hours_by_sprint':        return <HoursBySprintBar  data={d.sprintHours} />;
+    case 'items_by_type':          return <ItemsByTypeBar    data={d.typeData} />;
+    case 'priority_distribution':  return <PriorityBar       data={d.priorityData} />;
+    case 'complexity_hours':       return <ComplexityScatter data={d.complexityData} />;
+    default: return null;
+  }
 }
-
-const ProjectDropdown: FC<ProjectDropdownProps> = ({ projects, selectedIds, onChange }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const isAll = selectedIds === null || selectedIds.length === 0;
-
-  const label = isAll
-    ? 'Todos los proyectos'
-    : selectedIds!.length === 1
-      ? projects.find(p => p.id === selectedIds![0])?.nombre ?? 'Proyecto'
-      : `${selectedIds!.length} proyectos`;
-
-  const toggleProject = (id: number) => {
-    if (selectedIds === null) {
-      // was "all" → select only this one
-      onChange([id]);
-    } else if (selectedIds.includes(id)) {
-      const next = selectedIds.filter(x => x !== id);
-      onChange(next.length === 0 ? null : next);
-    } else {
-      onChange([...selectedIds, id]);
-    }
-  };
-
-  const selectAll = () => { onChange(null); setOpen(false); };
-
-  return (
-    <div ref={ref} className={styles.projectDropdownWrap}>
-      <button
-        type="button"
-        className={`${styles.projectDropdownBtn} ${!isAll ? styles.projectDropdownBtnActive : ''}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span className={styles.projectDropdownLabel}>{label}</span>
-        <ChevronDownIcon
-          width={14}
-          height={14}
-          className={`${styles.projectDropdownChevron} ${open ? styles.projectDropdownChevronOpen : ''}`}
-        />
-      </button>
-
-      {open && (
-        <div className={styles.projectDropdownMenu}>
-          {/* "Todos los proyectos" option */}
-          <button
-            type="button"
-            className={`${styles.projectDropdownOption} ${isAll ? styles.projectDropdownOptionActive : ''}`}
-            onClick={selectAll}
-          >
-            <span className={styles.projectDropdownOptionCheck}>
-              {isAll && <CheckIcon width={12} height={12} />}
-            </span>
-            <span>Todos los proyectos</span>
-          </button>
-
-          <div className={styles.projectDropdownDivider} />
-
-          {projects.map(p => {
-            const selected = selectedIds?.includes(p.id) ?? false;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className={`${styles.projectDropdownOption} ${selected ? styles.projectDropdownOptionActive : ''}`}
-                onClick={() => toggleProject(p.id)}
-              >
-                <span className={styles.projectDropdownOptionCheck}>
-                  {selected && <CheckIcon width={12} height={12} />}
-                </span>
-                <span>{p.nombre}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ── Page ───────────────────────────────────────────────────────────────
 const UserDashboard: FC = () => {
   const { user } = useUser();
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
   const { data, projects, loading, error } = useUserDashboardData(selectedProjectIds);
+  const { visible, available, toggle, isVisible } = useVisibleGraphs('user');
+  const [showCustomizePanel, setShowCustomizePanel] = useState(false);
 
   const firstName = user?.nombre ?? 'Usuario';
 
@@ -142,13 +66,18 @@ const UserDashboard: FC = () => {
             <p className={styles.greeting}>Hola, {firstName}</p>
             <p className={styles.subtitle}>Resumen de tus ítems asignados</p>
           </div>
-          {projects.length > 0 && (
-            <ProjectDropdown
-              projects={projects}
-              selectedIds={selectedProjectIds}
-              onChange={setSelectedProjectIds}
-            />
-          )}
+          <div className={styles.headerActions}>
+            <button
+              className={styles.customizeBtn}
+              onClick={() => setShowCustomizePanel(true)}
+              aria-label="Personalizar dashboard"
+            >
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4 7h12M4 13h12M8 4v6M12 10v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Personalizar
+            </button>
+          </div>
         </div>
       </header>
 
@@ -174,15 +103,21 @@ const UserDashboard: FC = () => {
       </div>
 
       <div className={styles.grid}>
-        <OverdueCard       items={data.overdueItems}  />
-        <UpcomingCard      items={data.upcomingItems} />
-        <JornadaFteCard data={data.jornadaFte} />
-        <StatusDonut       data={data.statusData}    />
-        <HoursBySprintBar  data={data.sprintHours}   />
-        <ItemsByTypeBar    data={data.typeData}       />
-        <PriorityBar       data={data.priorityData}  />
-        <ComplexityScatter data={data.complexityData} />
+        {visible.map(g => (
+          <div key={g.id}>{renderUserGraph(g, data)}</div>
+        ))}
       </div>
+
+      <CustomizePanel
+        open={showCustomizePanel}
+        onClose={() => setShowCustomizePanel(false)}
+        available={available}
+        isVisible={isVisible}
+        toggle={toggle}
+        projects={projects.length > 0 ? projects : undefined}
+        selectedProjectIds={selectedProjectIds}
+        onProjectChange={setSelectedProjectIds}
+      />
     </div>
   );
 };
