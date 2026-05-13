@@ -50,7 +50,7 @@
 
 .register-user-card__feedback {
   width: 100%;
-  margin: 0 0 1.5rem;
+  margin: 1.5rem 0rem 0rem;
   padding: 1rem 1.25rem;
   border-radius: 1rem;
   box-sizing: border-box;
@@ -163,7 +163,7 @@
 }
 
 .register-user-card__control::placeholder {
-  color: var(--color-anchor-gray-2);
+  color: grey;
 }
 
 .register-user-card__control:focus {

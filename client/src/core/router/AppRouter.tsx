@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '@/features/auth/pages/LogInPage';
 import ProfilePage from '@/features/profile/pages';
 import UserDashboardPage from '@/features/dashboard/pages/UserDashboard';
+import AdminDashboardPage from '@/features/dashboard/pages/AdminDashboard';
 import EmailVerificationPage from '@/features/verification/pages/EmailVerification';
 import AdminPage from '@/features/admin/pages/adminPage';
 import ProjectPage from '@/features/project/projectHub/pages/ProjectsPage';
@@ -43,6 +44,9 @@ export function AppRouter() {
           <Route path="/notificaciones/:id" element={<NotificationDetailPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={ADMIN_VIEWS} />}>
+          <Route element={<AppLayoutHs title="Dashboard Admin"/>}>
+            <Route path="/dashboard-admin" element={<AdminDashboardPage />} />
+          </Route>
           <Route element={<AppLayoutHs title="Usuarios"/>}>
             <Route path="/usuarios" element={<AdminPage />} />
             <Route path="/usuarios/:id" element={<AdminUserProfilePage />} />

@@ -128,7 +128,7 @@ function notificationsReducer(
 export function NotificationsProvider({ children }: Props) {
   const { user, loading: userLoading } = useUser();
   const loadedUserIdRef = useRef<number | null>(null);
-  const silentRetryTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const silentRetryTimeoutRef = useRef<number | null>(null);
   const userId = user?.id ?? null;
   const [state, dispatch] = useReducer(notificationsReducer, initialState);
   
