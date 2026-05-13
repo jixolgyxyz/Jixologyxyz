@@ -4,6 +4,7 @@ import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
 import BacklogListItem from '@/features/project/Backlog/components/BacklogListItem';
 import type { BacklogStatus, Priority, BacklogItemType } from '@/features/project/Backlog/components/BacklogListItem';
 import CreateBacklogItemForm from '@/features/project/Backlog/components/CreateBacklogItemForm';
+import CreateSprintForm from '@/features/project/Backlog/components/CreateSprintForm';
 import ViewItemDetail from '@/shared/components/ViewItemDetail/ViewItemDetail';
 import SkeletonBacklogItem from '@/features/project/Backlog/components/SkeletonBacklogItem/SkeletonBacklogItem';
 import FilterBar from '@/shared/components/FilterBar';
@@ -103,6 +104,7 @@ const ProjectBacklog: React.FC = () => {
   );
   const refreshAll = () => { refresh(); refreshMeta(); };
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateSprintForm, setShowCreateSprintForm] = useState(false);
   const [expandedItems, setExpandedItems]   = useState<Set<number>>(new Set());
   const [openInEditMode, setOpenInEditMode] = useState(false);
 
@@ -309,6 +311,14 @@ const ProjectBacklog: React.FC = () => {
             <PlusIcon width={16} height={16} />
             Nuevo ítem
           </button>
+          <button
+            type="button"
+            className={styles.newItemBtn}
+            onClick={() => setShowCreateSprintForm(true)}
+          >
+            <PlusIcon width={16} height={16} />
+            Nuevo Sprint
+          </button>
         </FilterBar>
       </div>
 
@@ -350,8 +360,15 @@ const ProjectBacklog: React.FC = () => {
         projectId={PROJECT_ID}
         userId={USER_ID}
         isOpen={showCreateForm}
-        onClose={() => setShowCreateForm(false)}
-        onCreated={() => { refreshAll(); setShowCreateForm(false); }}
+        onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
+        onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
+      />
+      <CreateSprintForm
+        projectId={PROJECT_ID}
+        userId={USER_ID}
+        isOpen={showCreateSprintForm}
+        onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
+        onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
       />
 
       {viewingItem && (() => {

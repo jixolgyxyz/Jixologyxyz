@@ -9,6 +9,7 @@ import type {
   SugerenciaRecord,
   ProjectEtiquetaRecord,
   CreateBacklogItemPayload,
+  CreateSprintPayload,
   UpdateBacklogItemPayload,
 } from '../types/backlog.types';
 
@@ -94,6 +95,25 @@ export async function createBacklogItem(payload: CreateBacklogItemPayload): Prom
       id_proyecto:           payload.id_proyecto,
       id_usuario_creador:    payload.id_usuario_creador,
       es_terminal:           false,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function createSprint(payload: SprintRecord): Promise<BacklogItemRecord> {
+  const { data, error } = await supabase
+    .from('sprint')
+    .insert({
+      nombre:                payload.nombre,
+      objetivo:              payload.objetivo,
+      fecha_inicio:          payload.fecha_inicio,
+      fecha_final:           payload.fecha_final,
+      id_proyecto:           payload.id_proyecto,
+      id_usuario_creador:    payload.id_usuario_creador,
+      id_estatus:            payload.id_estatus,
     })
     .select()
     .single();
