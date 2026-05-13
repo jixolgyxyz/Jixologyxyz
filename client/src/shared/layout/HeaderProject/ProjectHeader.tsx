@@ -9,8 +9,9 @@ const Header: React.FC = () => {
   const { isProjectAdmin } = useIsProjectAdmin(projectId);
 
   const NAV_ITEMS = [
-    { label: 'Tareas',  to: `/proyectos/${id}/tasks` },
-    { label: 'Backlog', to: `/proyectos/${id}/backlog` },
+    { label: 'Tareas',    to: `/proyectos/${id}/tasks` },
+    { label: 'Backlog',   to: `/proyectos/${id}/backlog` },
+    { label: 'Bitácora',  to: `/proyectos/${id}/bitacora` },
     ...(isProjectAdmin ? [{ label: 'Configuracion', to: `/proyectos/${id}/configuracion` }] : []),
   ];
 

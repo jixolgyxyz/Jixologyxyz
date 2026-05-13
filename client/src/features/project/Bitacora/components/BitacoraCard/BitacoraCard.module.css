@@ -1,0 +1,62 @@
+.card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(10, 8, 56, 0.08);
+  border-color: var(--color-anchor-gray-1);
+}
+
+.cardSelected {
+  border-color: var(--color-blueprint-navy);
+  box-shadow: 0 4px 16px rgba(10, 8, 56, 0.1);
+  background: #f5f6ff;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  color: var(--color-blueprint-navy);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.nombre {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fecha {
+  font-size: 0.73rem;
+  font-weight: 500;
+  color: var(--color-anchor-gray-1);
+}
+
+.descripcion {
+  font-size: 0.75rem;
+  color: var(--color-anchor-gray-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.125rem;
+}

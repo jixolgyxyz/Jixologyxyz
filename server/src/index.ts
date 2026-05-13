@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import bitacoraRoutes from './routes/bitacora.routes.js';
 
 dotenv.config();
 
@@ -19,6 +20,8 @@ const io = new Server(httpServer, {
 });
 
 const PORT = process.env.PORT || 3000;
+
+app.use('/api/bitacora', bitacoraRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ 
