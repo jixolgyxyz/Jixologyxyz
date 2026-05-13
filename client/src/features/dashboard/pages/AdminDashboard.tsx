@@ -16,6 +16,7 @@ import type {
   WeeklyProgressData,
   OverdueProjectRow,
 } from '../hooks/useAdminDashboardData';
+import { useWeeklyReport } from '../hooks/useWeeklyReport';
 import chartStyles from '../components/ChartCard.module.css';
 import styles from './AdminDashboard.module.css';
 
@@ -252,6 +253,7 @@ const FteByProjectBar: FC<{ data: FteProjectRow[] }> = ({ data }) => (
 // ── Page ───────────────────────────────────────────────────────────────
 const AdminDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
+  const { state: reportState, errorMsg: reportError, generate } = useWeeklyReport(data);
 
   if (loading) {
     return (
@@ -274,8 +276,38 @@ const AdminDashboard: FC = () => {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <p className={styles.title}>Dashboard administrativo</p>
-        <p className={styles.subtitle}>Salud global de todos los proyectos</p>
+        <div className={styles.headerRow}>
+          <div>
+            <p className={styles.title}>Dashboard administrativo</p>
+            <p className={styles.subtitle}>Salud global de todos los proyectos</p>
+          </div>
+          <div className={styles.reportActions}>
+            <button
+              className={styles.reportBtn}
+              onClick={generate}
+              disabled={reportState === 'loading'}
+            >
+              {reportState === 'loading' ? (
+                <>
+                  <span className={styles.reportSpinner} />
+                  Generando…
+                </>
+              ) : (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M10 2v10m0 0l-3-3m3 3l3-3M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Reporte semanal
+                </>
+              )}
+            </button>
+            {reportState === 'error' && reportError && (
+              <span className={styles.reportErrorMsg} title={reportError}>
+                Error al generar reporte
+              </span>
+            )}
+          </div>
+        </div>
       </header>
 
       <div className={styles.statRow}>
