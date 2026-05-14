@@ -190,12 +190,13 @@ function minutesToInput(min: number | null): string {
 
 // ── Time tracking popup ───────────────────────────────────────────────
 interface TimeTrackingPopupProps {
+  title: string;
   currentMinutes: number | null;
   onSave: (minutes: number | null, onError: (msg: string) => void) => void;
   onClose: () => void;
 }
 
-function TimeTrackingPopup({ currentMinutes, onSave, onClose }: TimeTrackingPopupProps) {
+function TimeTrackingPopup({ title, currentMinutes, onSave, onClose }: TimeTrackingPopupProps) {
   const [value, setValue]     = useState(minutesToInput(currentMinutes));
   const [error, setError]     = useState('');
   const [saving, setSaving]   = useState(false);
@@ -217,14 +218,14 @@ function TimeTrackingPopup({ currentMinutes, onSave, onClose }: TimeTrackingPopu
     <div className={styles.timePopupOverlay} onClick={onClose}>
       <div className={styles.timePopup} onClick={e => e.stopPropagation()}>
         <div className={styles.timePopupHeader}>
-          <span className={styles.timePopupTitle}>Editar tiempo estimado</span>
+          <span className={styles.timePopupTitle}>{title}</span>
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Cerrar">
             <XMarkIcon width={16} height={16} />
           </button>
         </div>
 
         <div className={styles.timePopupBody}>
-          <label className={styles.timePopupLabel}>Tiempo estimado</label>
+          <label className={styles.timePopupLabel}>{title}</label>
           <input
             ref={inputRef}
             type="text"
@@ -377,12 +378,13 @@ interface ViewItemDetailProps {
 
 // ── Component ─────────────────────────────────────────────────────────
 const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestion = false, onClose, onUpdated, onNavigate, onAcceptSuggestion, initialEditing = false }) => {
-  const [isEditing, setIsEditing]         = useState(initialEditing);
-  const [form, setForm]                   = useState<FormState>(() => itemToForm(item));
-  const [submitting, setSubmitting]       = useState(false);
-  const [accepting, setAccepting]         = useState(false);
-  const [error, setError]                 = useState<string | null>(null);
-  const [showTimePopup, setShowTimePopup] = useState(false);
+  const [isEditing, setIsEditing]                 = useState(initialEditing);
+  const [form, setForm]                           = useState<FormState>(() => itemToForm(item));
+  const [submitting, setSubmitting]               = useState(false);
+  const [accepting, setAccepting]                 = useState(false);
+  const [error, setError]                         = useState<string | null>(null);
+  const [showTimePopup, setShowTimePopup]         = useState(false);
+  const [showEstimatedPopup, setShowEstimatedPopup] = useState(false);
 
   useEffect(() => { setForm(itemToForm(item)); setIsEditing(initialEditing); }, [item, initialEditing]);
 
@@ -409,6 +411,29 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
       });
       onUpdated?.();
       setShowTimePopup(false);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Error al guardar');
+    }
+  };
+
+  const handleEstimatedTimeSave = async (minutes: number | null, onError: (msg: string) => void) => {
+    try {
+      await updateBacklogItem(item.id, {
+        nombre:                 item.nombre,
+        descripcion:            item.descripcion,
+        id_tipo:                item.id_tipo,
+        id_estatus:             item.id_estatus,
+        id_prioridad:           item.id_prioridad,
+        id_sprint:              item.id_sprint,
+        fecha_inicio:           item.fecha_inicio,
+        fecha_vencimiento:      item.fecha_vencimiento,
+        id_backlog_item_padre:  item.id_backlog_item_padre,
+        id_usuario_responsable: item.id_usuario_responsable,
+        complejidad:            item.complejidad,
+        tiempo_estimado:        minutes,
+      });
+      onUpdated?.();
+      setShowEstimatedPopup(false);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Error al guardar');
     }
@@ -466,6 +491,9 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
 
   const formatDate = (iso: string | null) =>
     iso ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
+
+  const formatDateTime = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
 
   const formatTiempo = (min: number | null) => {
     if (!min) return null;
@@ -626,8 +654,21 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
 
             <div className={styles.detailRow}>
               <div className={styles.detailLabelRow}>
-                <span className={styles.detailLabel}>Manejo de tiempo</span>
-                <button type="button" className={styles.timEditBtn} onClick={() => setShowTimePopup(true)} aria-label="Editar tiempo">
+                <span className={styles.detailLabel}>Tiempo estimado</span>
+                <button type="button" className={styles.timEditBtn} onClick={() => setShowEstimatedPopup(true)} aria-label="Editar tiempo estimado">
+                  <PencilIcon width={11} height={11} />
+                </button>
+              </div>
+              {item.tiempo_estimado != null
+                ? <span className={styles.detailValue}>{formatTiempo(item.tiempo_estimado)}</span>
+                : <span className={styles.detailEmpty}>Sin estimación</span>
+              }
+            </div>
+
+            <div className={styles.detailRow}>
+              <div className={styles.detailLabelRow}>
+                <span className={styles.detailLabel}>Tiempo real</span>
+                <button type="button" className={styles.timEditBtn} onClick={() => setShowTimePopup(true)} aria-label="Editar tiempo real">
                   <PencilIcon width={11} height={11} />
                 </button>
               </div>
@@ -636,7 +677,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
                 const descendantSum  = descendants.reduce((acc, d) => acc + (d.item.tiempo ?? 0), 0);
                 const total          = (item.tiempo ?? 0) + descendantSum || null;
                 if (total == null) {
-                  return <span className={styles.detailEmpty}>Sin estimación</span>;
+                  return <span className={styles.detailEmpty}>Sin registro</span>;
                 }
                 return (
                   <div className={styles.timeBreakdown}>
@@ -644,14 +685,12 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
                       <span>Tiempo total</span>
                       <span>{formatTiempo(total)}</span>
                     </div>
-                    {/* Current item's own time */}
                     {item.tiempo != null && (
                       <div className={styles.timeRow}>
                         <span className={styles.timeRowLabel}>{code}</span>
                         <span>{formatTiempo(item.tiempo)}</span>
                       </div>
                     )}
-                    {/* All descendants */}
                     {descendants.map(({ item: d, depth }) => {
                       if (d.tiempo == null) return null;
                       const dType   = meta.types.find(t => t.id === d.id_tipo);
@@ -765,15 +804,32 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
               </div>
             )}
 
+            {!isEditing && item.fecha_completado && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Fecha completado</span>
+                <span className={styles.detailValue}><CalendarDaysIcon width={13} height={13} />{formatDateTime(item.fecha_completado)}</span>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
 
       {showTimePopup && (
         <TimeTrackingPopup
+          title="Editar tiempo real"
           currentMinutes={item.tiempo ?? null}
           onSave={handleTimeSave}
           onClose={() => setShowTimePopup(false)}
+        />
+      )}
+
+      {showEstimatedPopup && (
+        <TimeTrackingPopup
+          title="Editar tiempo estimado"
+          currentMinutes={item.tiempo_estimado ?? null}
+          onSave={handleEstimatedTimeSave}
+          onClose={() => setShowEstimatedPopup(false)}
         />
       )}
     </div>

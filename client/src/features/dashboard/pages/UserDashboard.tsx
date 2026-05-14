@@ -8,6 +8,8 @@ import HoursBySprintBar from '../components/HoursBySprintBar';
 import ItemsByTypeBar from '../components/ItemsByTypeBar';
 import PriorityBar from '../components/PriorityBar';
 import ComplexityScatter from '../components/ComplexityScatter';
+import ComplexityTimeScatter from '../components/ComplexityTimeScatter';
+import TimeAccuracyChart from '../components/TimeAccuracyChart';
 import OverdueCard from '../components/OverdueCard';
 import UpcomingCard from '../components/UpcomingCard';
 import JornadaFteCard from '../components/JornadaFteCard';
@@ -25,7 +27,9 @@ function renderUserGraph(g: GraphDescriptor, d: UserDashData) {
     case 'hours_by_sprint':        return <HoursBySprintBar  data={d.sprintHours} />;
     case 'items_by_type':          return <ItemsByTypeBar    data={d.typeData} />;
     case 'priority_distribution':  return <PriorityBar       data={d.priorityData} />;
-    case 'complexity_hours':       return <ComplexityScatter data={d.complexityData} />;
+    case 'complexity_hours':        return <ComplexityScatter     data={d.complexityData} />;
+    case 'complexity_time_scatter':      return <ComplexityTimeScatter data={d.complexityTimeData} />;
+    case 'time_accuracy_by_complexity':  return <TimeAccuracyChart    data={d.timeAccuracyData} />;
     default: return null;
   }
 }

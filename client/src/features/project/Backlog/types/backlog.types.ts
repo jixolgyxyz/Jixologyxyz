@@ -14,8 +14,10 @@ export interface BacklogItemRecord {
   id_estatus: number;
   id_proyecto: number;
   id_sprint: number | null;
-  complejidad: number | null;
-  tiempo: number | null;
+  complejidad:      number | null;
+  tiempo:           number | null;
+  tiempo_estimado:  number | null;
+  fecha_completado: string | null;
 }
 
 export interface BacklogStatusRecord {
@@ -59,6 +61,7 @@ export interface UpdateBacklogItemPayload {
   id_usuario_responsable?: number | null;
   complejidad?: number | null;
   tiempo?: number | null;
+  tiempo_estimado?: number | null;
 }
 
 export interface CreateBacklogItemPayload {

@@ -1,111 +1,16 @@
-import { type FC, useEffect, useRef, useState } from 'react';
-import { ChevronDownIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { type FC, useState } from 'react';
 import { useAdminDashboardData } from '../hooks/useAdminDashboardData';
 import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
 import CustomizePanel from '../components/CustomizePanel/CustomizePanel';
 import { renderAdminGraph } from './AdminDashboard';
 import styles from './UserDashboard.module.css';
 
-// ── Project filter dropdown (shows only PM projects) ──────────────────
-interface ProjectOption { id: number; nombre: string; }
-
-interface ProjectDropdownProps {
-  projects:    ProjectOption[];
-  selectedIds: Set<number> | null;   // null = all PM projects
-  onChange:    (ids: Set<number> | null) => void;
-}
-
-const ProjectDropdown: FC<ProjectDropdownProps> = ({ projects, selectedIds, onChange }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const isAll = selectedIds === null || selectedIds.size === 0;
-
-  const label = isAll
-    ? 'Todos mis proyectos'
-    : selectedIds!.size === 1
-      ? projects.find(p => selectedIds!.has(p.id))?.nombre ?? 'Proyecto'
-      : `${selectedIds!.size} proyectos`;
-
-  const toggle = (id: number) => {
-    if (selectedIds === null) {
-      onChange(new Set([id]));
-    } else {
-      const next = new Set(selectedIds);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      onChange(next.size === 0 ? null : next);
-    }
-  };
-
-  return (
-    <div ref={ref} className={styles.projectDropdownWrap}>
-      <button
-        type="button"
-        className={`${styles.projectDropdownBtn} ${!isAll ? styles.projectDropdownBtnActive : ''}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span className={styles.projectDropdownLabel}>{label}</span>
-        <ChevronDownIcon
-          width={14}
-          height={14}
-          className={`${styles.projectDropdownChevron} ${open ? styles.projectDropdownChevronOpen : ''}`}
-        />
-      </button>
-
-      {open && (
-        <div className={styles.projectDropdownMenu}>
-          <button
-            type="button"
-            className={`${styles.projectDropdownOption} ${isAll ? styles.projectDropdownOptionActive : ''}`}
-            onClick={() => { onChange(null); setOpen(false); }}
-          >
-            <span className={styles.projectDropdownOptionCheck}>
-              {isAll && <CheckIcon width={12} height={12} />}
-            </span>
-            <span>Todos mis proyectos</span>
-          </button>
-
-          <div className={styles.projectDropdownDivider} />
-
-          {projects.map(p => {
-            const selected = selectedIds?.has(p.id) ?? false;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className={`${styles.projectDropdownOption} ${selected ? styles.projectDropdownOptionActive : ''}`}
-                onClick={() => toggle(p.id)}
-              >
-                <span className={styles.projectDropdownOptionCheck}>
-                  {selected && <CheckIcon width={12} height={12} />}
-                </span>
-                <span>{p.nombre}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ── Page ───────────────────────────────────────────────────────────────
 const ProjectDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
   const { visible, available, pmProjectIds, toggle, isVisible, loading: graphsLoading } =
     useVisibleGraphs('project');
-  const [showCustomizePanel, setShowCustomizePanel] = useState(false);
-  // null = show all PM projects; non-null = filter to this subset
-  const [selectedFilter, setSelectedFilter] = useState<Set<number> | null>(null);
+  const [showCustomizePanel, setShowCustomizePanel]   = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds]   = useState<number[] | null>(null);
 
   if (loading || graphsLoading) {
     return (
@@ -126,20 +31,19 @@ const ProjectDashboard: FC = () => {
   if (pmProjectIds.size === 0) {
     return (
       <div className={styles.page}>
-        <div className={styles.center}>
-          No tienes rol de PM en ningún proyecto.
-        </div>
+        <div className={styles.center}>No tienes rol de PM en ningún proyecto.</div>
       </div>
     );
   }
 
   if (!data) return null;
 
-  // The active filter: if user has picked specific projects use those,
-  // otherwise default to all PM projects.
-  const activeFilter = selectedFilter ?? pmProjectIds;
+  // Convert number[] | null → Set<number>, always scoped to PM projects
+  const activeFilter: Set<number> =
+    selectedProjectIds && selectedProjectIds.length > 0
+      ? new Set(selectedProjectIds.filter(id => pmProjectIds.has(id)))
+      : pmProjectIds;
 
-  // Build the list of PM projects for the dropdown
   const pmProjects = data.completionByProject
     .filter(r => pmProjectIds.has(r.id))
     .map(r => ({ id: r.id, nombre: r.name }));
@@ -163,13 +67,6 @@ const ProjectDashboard: FC = () => {
               </svg>
               Personalizar
             </button>
-            {pmProjects.length > 1 && (
-              <ProjectDropdown
-                projects={pmProjects}
-                selectedIds={selectedFilter}
-                onChange={setSelectedFilter}
-              />
-            )}
           </div>
         </div>
       </header>
@@ -187,6 +84,9 @@ const ProjectDashboard: FC = () => {
         isVisible={isVisible}
         toggle={toggle}
         showBadge={false}
+        projects={pmProjects.length > 1 ? pmProjects : undefined}
+        selectedProjectIds={selectedProjectIds}
+        onProjectChange={setSelectedProjectIds}
       />
     </div>
   );
