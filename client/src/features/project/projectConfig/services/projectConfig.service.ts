@@ -377,6 +377,32 @@ export async function fetchCommittedHoursExcludingProject(
   return totals;
 }
 
+// ── GitHub integration ────────────────────────────────────────────
+
+export interface GithubConfigRecord {
+  id_proyecto: number;
+  github_org: string;
+  github_repo: string;
+  installation_id: number;
+}
+
+export async function fetchGithubConfig(projectId: number): Promise<GithubConfigRecord | null> {
+  const { data, error } = await supabase
+    .from('proyecto_github_config')
+    .select('id_proyecto, github_org, github_repo, installation_id')
+    .eq('id_proyecto', projectId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export function buildGithubInstallUrl(projectId: number, org: string, repo: string): string {
+  const state = btoa(JSON.stringify({ projectId, org, repo }));
+  const appSlug = import.meta.env.VITE_GITHUB_APP_SLUG as string;
+  return `https://github.com/apps/${appSlug}/installations/new?state=${state}`;
+}
+
 export function buildFteData(
   members: Array<{ id: number; nombre: string | null; apellido: string | null; email: string; jornada: number | null }>,
   fteEntries: ProyectoFteRecord[],
