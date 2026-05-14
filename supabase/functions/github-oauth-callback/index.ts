@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
 
   const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:5173';
   return Response.redirect(
-    `${appUrl}/projects/${state.projectId}/config?github=connected`,
+    `${appUrl}/proyectos/${state.projectId}/configuracion?github=connected`,
     302,
   );
 });
