@@ -24,19 +24,23 @@ export interface SprintHoursData {
 }
 export interface TypeCount     { tipo: string; count: number }
 export interface PriorityCount { prioridad: string; count: number; color: string }
-export interface ComplexityBar  { complejidad: number; horas: number; count: number }
+export interface ComplexityBar        { complejidad: number; horas: number; count: number }
+export interface ComplexityTimePoint  { complejidad: number; horas: number; nombre: string }
+export interface TimeAccuracyBar      { complejidad: number; avgEstimated: number; avgActual: number; count: number }
 
 export interface DashboardData {
-  totalItems:         number;
-  itemsWithEstimate:  number;
-  statusData:         StatusSlice[];
-  sprintHours:        SprintHoursData;
-  typeData:           TypeCount[];
-  priorityData:       PriorityCount[];
-  complexityData:     ComplexityBar[];
-  overdueItems:       BacklogItemRecord[];
-  upcomingItems:      BacklogItemRecord[];
-  jornadaFte:         UserJornadaFte;
+  totalItems:            number;
+  itemsWithEstimate:     number;
+  statusData:            StatusSlice[];
+  sprintHours:           SprintHoursData;
+  typeData:              TypeCount[];
+  priorityData:          PriorityCount[];
+  complexityData:        ComplexityBar[];
+  complexityTimeData:    ComplexityTimePoint[];
+  timeAccuracyData:      TimeAccuracyBar[];
+  overdueItems:          BacklogItemRecord[];
+  upcomingItems:         BacklogItemRecord[];
+  jornadaFte:            UserJornadaFte;
 }
 
 const STATUS_PALETTE = [
@@ -159,6 +163,37 @@ function buildPriorityData(
   return Array.from(counts.entries()).map(([id, count]) => {
     const nombre = priorityMap.get(id) ?? `Prioridad ${id}`;
     return { prioridad: nombre, count, color: PRIORITY_COLORS[nombre] ?? '#6b7280' };
+  });
+}
+
+function buildComplexityTimeData(items: BacklogItemRecord[]): ComplexityTimePoint[] {
+  return items
+    .filter(item => item.complejidad != null && item.tiempo != null && item.tiempo > 0)
+    .map(item => ({
+      complejidad: item.complejidad!,
+      horas:       Math.round((item.tiempo! / 60) * 10) / 10,
+      nombre:      item.nombre,
+    }));
+}
+
+function buildTimeAccuracyData(items: BacklogItemRecord[]): TimeAccuracyBar[] {
+  const map = new Map<number, { totalEst: number; totalAct: number; count: number }>();
+  for (const item of items) {
+    if (item.complejidad == null || item.tiempo_estimado == null || item.tiempo == null || !item.es_terminal) continue;
+    if (!map.has(item.complejidad)) map.set(item.complejidad, { totalEst: 0, totalAct: 0, count: 0 });
+    const b = map.get(item.complejidad)!;
+    b.totalEst += item.tiempo_estimado / 60;
+    b.totalAct += item.tiempo / 60;
+    b.count++;
+  }
+  return [1, 2, 3, 4, 5].map(c => {
+    const b = map.get(c);
+    return {
+      complejidad:   c,
+      avgEstimated:  b ? Math.round((b.totalEst / b.count) * 10) / 10 : 0,
+      avgActual:     b ? Math.round((b.totalAct / b.count) * 10) / 10 : 0,
+      count:         b?.count ?? 0,
+    };
   });
 }
 
@@ -286,16 +321,18 @@ export function useUserDashboardData(selectedProjectIds: number[] | null): UserD
       : projects;
 
     return {
-      totalItems:        items.length,
-      itemsWithEstimate: items.filter(i => i.complejidad != null && i.tiempo != null).length,
-      statusData:        buildStatusData(items, statuses),
-      sprintHours:       buildSprintHours(items, sprints, visibleProjects),
-      typeData:          buildTypeData(items, types),
-      priorityData:      buildPriorityData(items, priorities),
-      complexityData:    buildComplexityData(items),
-      overdueItems:      buildOverdueItems(items, statuses),
-      upcomingItems:     buildUpcomingItems(items, statuses),
-      jornadaFte:        filteredJornadaFte,
+      totalItems:         items.length,
+      itemsWithEstimate:  items.filter(i => i.complejidad != null && i.tiempo != null).length,
+      statusData:         buildStatusData(items, statuses),
+      sprintHours:        buildSprintHours(items, sprints, visibleProjects),
+      typeData:           buildTypeData(items, types),
+      priorityData:       buildPriorityData(items, priorities),
+      complexityData:     buildComplexityData(items),
+      complexityTimeData: buildComplexityTimeData(items),
+      timeAccuracyData:   buildTimeAccuracyData(items),
+      overdueItems:       buildOverdueItems(items, statuses),
+      upcomingItems:      buildUpcomingItems(items, statuses),
+      jornadaFte:         filteredJornadaFte,
     };
   }, [raw, selectedProjectIds]);
 

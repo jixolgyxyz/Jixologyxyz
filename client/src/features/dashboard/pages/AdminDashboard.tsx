@@ -18,6 +18,12 @@ import type {
   OverdueProjectRow,
   BacklogPressureRow,
   BacklogItemDetail,
+  EstimatedHoursProjectRow,
+  HoursDonePendingRow,
+  OverdueHoursProjectRow,
+  HoursByPriorityRow,
+  HoursByTypeRow,
+  AvgHoursComplexityRow,
 } from '../hooks/useAdminDashboardData';
 import { useWeeklyReport } from '../hooks/useWeeklyReport';
 import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
@@ -679,6 +685,184 @@ export const FteByProjectBar: FC<{ data: FteProjectRow[]; projectFilter?: Set<nu
   );
 };
 
+// ── Estimated hours per project ───────────────────────────────────────
+export const EstimatedHoursByProjectBar: FC<{ data: EstimatedHoursProjectRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  return (
+    <div className={chartStyles.card}>
+      <h3 className={chartStyles.title}>Horas estimadas por proyecto</h3>
+      {rows.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 48, left: 4, bottom: 4 }} barCategoryGap="30%">
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" horizontal={false} />
+            <XAxis type="number" tick={TICK_PROPS} unit="h" />
+            <YAxis type="category" dataKey="name" tick={{ ...TICK_PROPS, width: 90 }} width={90} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`, 'Horas estimadas']} />
+            <Bar dataKey="hours" name="Horas estimadas" fill="#3b82f6" radius={[0, 3, 3, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+};
+
+// ── Hours done vs. pending per project ────────────────────────────────
+export const HoursDonePendingBar: FC<{ data: HoursDonePendingRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  return (
+    <div className={chartStyles.card}>
+      <h3 className={chartStyles.title}>Horas completadas vs. pendientes</h3>
+      {rows.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={rows} margin={{ top: 24, right: 16, left: 20, bottom: 55 }} barCategoryGap="25%" barGap={2}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
+            <XAxis dataKey="name" tick={{ ...TICK_PROPS, width: 80 }} angle={-35} textAnchor="end" interval={0} />
+            <YAxis tick={TICK_PROPS} unit="h">
+              <Label value="Horas" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
+            </YAxis>
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`]} />
+            <Legend iconType="circle" iconSize={8} verticalAlign="top" wrapperStyle={{ ...LEGEND_STYLE, paddingBottom: 4 }} />
+            <Bar dataKey="done"    name="Completadas" fill="#10b981" radius={[3, 3, 0, 0]} stackId="a" />
+            <Bar dataKey="pending" name="Pendientes"  fill="#0A0838" radius={[3, 3, 0, 0]} stackId="a" />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+};
+
+// ── Overdue hours per project ──────────────────────────────────────────
+export const OverdueHoursByProjectBar: FC<{ data: OverdueHoursProjectRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  return (
+    <div className={chartStyles.card}>
+      <h3 className={chartStyles.title}>Horas en deuda por proyecto</h3>
+      {rows.length === 0 ? <p className={chartStyles.empty}>Sin horas en deuda</p> : (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={rows} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
+            <XAxis dataKey="name" tick={{ ...TICK_PROPS, width: 80 }} angle={-35} textAnchor="end" interval={0} />
+            <YAxis tick={TICK_PROPS} unit="h">
+              <Label value="Horas" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
+            </YAxis>
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`, 'Horas en deuda']} />
+            <Bar dataKey="hours" name="Horas en deuda" fill="#E31837" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+};
+
+// ── Hours by priority ──────────────────────────────────────────────────
+export const HoursByPriorityBar: FC<{ data: HoursByPriorityRow[]; projectFilter?: Set<number> }> = ({ data }) => (
+  <div className={chartStyles.card}>
+    <h3 className={chartStyles.title}>Horas estimadas por prioridad</h3>
+    {data.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={data} margin={{ top: 4, right: 16, left: 20, bottom: 16 }} barCategoryGap="30%">
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
+          <XAxis dataKey="prioridad" tick={TICK_PROPS} />
+          <YAxis tick={TICK_PROPS} unit="h">
+            <Label value="Horas" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
+          </YAxis>
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`, 'Horas estimadas']} />
+          <Bar dataKey="hours" name="Horas" radius={[3, 3, 0, 0]}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    )}
+  </div>
+);
+
+// ── Hours by item type donut ───────────────────────────────────────────
+export const HoursByTypeDonut: FC<{ data: HoursByTypeRow[]; projectFilter?: Set<number> }> = ({ data }) => (
+  <div className={chartStyles.card}>
+    <h3 className={chartStyles.title}>Horas estimadas por tipo de ítem</h3>
+    {data.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+      <ResponsiveContainer width="100%" height={240}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="hours"
+            nameKey="tipo"
+            cx="50%"
+            cy="50%"
+            innerRadius={55}
+            outerRadius={90}
+            paddingAngle={3}
+          >
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, n) => [`${v}h`, n]} />
+          <Legend iconType="circle" iconSize={8} wrapperStyle={LEGEND_STYLE} />
+        </PieChart>
+      </ResponsiveContainer>
+    )}
+  </div>
+);
+
+// ── Avg hours vs. avg complexity scatter (admin-only) ─────────────────
+const AvgHoursComplexityTooltip = ({ active, payload }: { active?: boolean; payload?: { payload: AvgHoursComplexityRow }[] }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}>
+      <p style={{ fontWeight: 600, margin: '0 0 4px', color: '#0A0838' }}>{d.name}</p>
+      <p style={{ margin: '2px 0' }}>Horas promedio: <b>{d.avgHours}h</b></p>
+      <p style={{ margin: '2px 0' }}>Complejidad promedio: <b>{d.avgComplexity}</b></p>
+      <p style={{ margin: '2px 0' }}>Ítems: <b>{d.count}</b></p>
+    </div>
+  );
+};
+
+const AvgHoursComplexityDot = (props: { cx?: number; cy?: number; payload?: AvgHoursComplexityRow }) => {
+  const { cx = 0, cy = 0, payload } = props;
+  if (!payload) return null;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={7} fill="#8b5cf6" opacity={0.85} />
+      <text x={cx} y={cy - 11} textAnchor="middle" fontSize={10} fontFamily="Poppins, sans-serif" fill="#0A0838" fontWeight={500}>
+        {payload.name.replace('Proyecto ', '')}
+      </text>
+    </g>
+  );
+};
+
+export const AvgHoursVsComplexityScatter: FC<{ data: AvgHoursComplexityRow[]; projectFilter?: Set<number> }> = ({ data, projectFilter }) => {
+  const rows = applyProjectFilter(data, projectFilter);
+  const midX = rows.length ? Math.round(rows.reduce((s, r) => s + r.avgComplexity, 0) / rows.length * 10) / 10 : 0;
+  const midY = rows.length ? Math.round(rows.reduce((s, r) => s + r.avgHours, 0) / rows.length * 10) / 10 : 0;
+  return (
+    <div className={chartStyles.card}>
+      <h3 className={chartStyles.title}>Horas promedio vs. complejidad</h3>
+      <p className={styles.pressureSubtitle}>X = complejidad promedio · Y = horas promedio estimadas por proyecto</p>
+      {rows.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+        <ResponsiveContainer width="100%" height={240}>
+          <ScatterChart margin={{ top: 24, right: 24, bottom: 28, left: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
+            <XAxis dataKey="avgComplexity" type="number" name="Complejidad" tick={TICK_PROPS} domain={[0.5, 5.5]} ticks={[1,2,3,4,5]}>
+              <Label value="Complejidad promedio" position="insideBottom" offset={-14} {...AXIS_LABEL} />
+            </XAxis>
+            <YAxis dataKey="avgHours" type="number" name="Horas" tick={TICK_PROPS} unit="h">
+              <Label value="Horas promedio" angle={-90} position="insideLeft" offset={-4} {...AXIS_LABEL} />
+            </YAxis>
+            <ReferenceLine x={midX} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: `x̄ comp ${midX}`, position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }} />
+            <ReferenceLine y={midY} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: `x̄ ${midY}h`, position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }} />
+            <Tooltip content={<AvgHoursComplexityTooltip />} />
+            <Scatter data={rows} shape={(p: { cx?: number; cy?: number; payload?: AvgHoursComplexityRow }) => <AvgHoursComplexityDot {...p} />} />
+          </ScatterChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+};
+
 // ── Catalog-driven graph renderer ──────────────────────────────────────
 // Each catalog `id` maps to its component + data slice. Returns null for
 // unknown IDs (would indicate a stale or mistyped catalog entry).
@@ -699,8 +883,14 @@ function renderGraph(
     case 'item_status_donut':    return <GlobalItemStatusDonut data={d.globalItemStatus}     />;
     case 'volume_by_project':    return <VolumeByProjectBar    data={d.volumeByProject}     projectFilter={pf} />;
     case 'fte_by_project':       return <FteByProjectBar       data={d.fteByProject}        projectFilter={pf} />;
-    case 'sprint_health':        return <SprintHealthBar       data={d.sprintHealth}        projectFilter={pf} />;
-    default:                     return null;
+    case 'sprint_health':               return <SprintHealthBar            data={d.sprintHealth}            projectFilter={pf} />;
+    case 'estimated_hours_by_project':  return <EstimatedHoursByProjectBar data={d.estimatedHoursByProject} projectFilter={pf} />;
+    case 'hours_done_vs_pending':       return <HoursDonePendingBar        data={d.hoursDonePending}        projectFilter={pf} />;
+    case 'overdue_hours_by_project':    return <OverdueHoursByProjectBar   data={d.overdueHoursByProject}   projectFilter={pf} />;
+    case 'hours_by_priority':           return <HoursByPriorityBar         data={d.hoursByPriority}         projectFilter={pf} />;
+    case 'hours_by_item_type':          return <HoursByTypeDonut           data={d.hoursByType}             projectFilter={pf} />;
+    case 'avg_hours_vs_complexity':     return <AvgHoursVsComplexityScatter data={d.avgHoursVsComplexity}  projectFilter={pf} />;
+    default:                            return null;
   }
 }
 
@@ -712,8 +902,9 @@ export { renderGraph as renderAdminGraph };
 const AdminDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
   const { state: reportState, errorMsg: reportError, generate } = useWeeklyReport(data);
-  const [showReportModal, setShowReportModal]    = useState(false);
+  const [showReportModal, setShowReportModal]       = useState(false);
   const [showCustomizePanel, setShowCustomizePanel] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
   const { visible, available, toggle, isVisible } = useVisibleGraphs('admin');
 
   if (loading) {
@@ -733,6 +924,12 @@ const AdminDashboard: FC = () => {
   }
 
   if (!data) return null;
+
+  const allProjects = data.completionByProject.map(r => ({ id: r.id, nombre: r.name }));
+  const projectFilter: Set<number> | undefined =
+    selectedProjectIds && selectedProjectIds.length > 0
+      ? new Set(selectedProjectIds)
+      : undefined;
 
   return (
     <div className={styles.page}>
@@ -794,7 +991,7 @@ const AdminDashboard: FC = () => {
 
       <div className={styles.grid}>
         {visible.map(g => (
-          <div key={g.id}>{renderGraph(g, data, undefined)}</div>
+          <div key={g.id}>{renderGraph(g, data, projectFilter)}</div>
         ))}
       </div>
 
@@ -815,6 +1012,9 @@ const AdminDashboard: FC = () => {
         isVisible={isVisible}
         toggle={toggle}
         showBadge={false}
+        projects={allProjects.length > 1 ? allProjects : undefined}
+        selectedProjectIds={selectedProjectIds}
+        onProjectChange={setSelectedProjectIds}
       />
     </div>
   );
