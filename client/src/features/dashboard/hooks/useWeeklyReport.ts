@@ -10,6 +10,9 @@ export interface ReportConfig {
   projectNames?: string[];
   startDate?: Date;
   endDate?: Date;
+  metrics?: string[]; // undefined = all metrics included
+  nombre?: string;    // PDF filename and history label
+  visibilidad?: 'publico' | 'privado';
 }
 
 export function useWeeklyReport(data: AdminDashboardData | null) {

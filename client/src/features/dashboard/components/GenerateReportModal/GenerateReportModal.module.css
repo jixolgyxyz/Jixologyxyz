@@ -129,6 +129,119 @@
   font-family: 'Poppins', sans-serif;
 }
 
+.bubbleRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.bubble {
+  position: relative;
+}
+
+.bubbleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-anchor-gray-1);
+  background: transparent;
+  color: var(--color-anchor-gray-1);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.bubbleBtn:hover { border-color: var(--color-mahindra-red); }
+
+.bubbleBtnActive {
+  background: var(--color-blueprint-navy);
+  border-color: var(--color-blueprint-navy);
+  color: #fff;
+}
+
+.bubbleMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 300;
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(10, 8, 56, 0.12);
+  min-width: 140px;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.bubbleMenuItem {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.bubbleMenuItem:hover { background: var(--color-clarity-gray-1); }
+
+.bubbleMenuItemActive {
+  font-weight: 700;
+  color: var(--color-blueprint-navy);
+}
+
+.bubbleDateLabel {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-anchor-gray-1);
+  font-family: 'Poppins', sans-serif;
+  margin-bottom: 0.25rem;
+}
+
+.bubbleDateInput {
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 6px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.75rem;
+  color: var(--color-blueprint-navy);
+  background: var(--color-white);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.bubbleDateInput:focus { border-color: var(--color-blueprint-navy); }
+
+.bubbleClearBtn {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.3rem;
+  border: none;
+  background: none;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.73rem;
+  color: var(--color-anchor-gray-1);
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: center;
+}
+
+.bubbleClearBtn:hover { color: var(--color-blueprint-navy); }
+
 .reportList {
   display: flex;
   flex-direction: column;
@@ -175,7 +288,7 @@
   font-family: 'Poppins', sans-serif;
 }
 
-.reportDate {
+.reportCreator {
   font-size: 0.72rem;
   color: var(--color-anchor-gray-1);
   font-family: 'Poppins', sans-serif;
@@ -276,10 +389,51 @@
   color: var(--color-anchor-gray-1);
   text-decoration: underline;
   padding: 0;
+  flex-shrink: 0;
 }
 
 .selectAllBtn:hover { color: var(--color-blueprint-navy); }
 
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 0.25rem;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.checkRow:hover {
+  background: var(--color-clarity-gray-2);
+}
+
+.checkbox {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-blueprint-navy);
+  margin: 0;
+}
+
+.checkName {
+  font-size: 0.78rem;
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* kept for metric chips (still used by METRIC_GROUPS) */
 .projectList {
   display: flex;
   flex-wrap: wrap;

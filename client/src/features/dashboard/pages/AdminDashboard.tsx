@@ -902,8 +902,12 @@ export { renderGraph as renderAdminGraph };
 const AdminDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
   const { state: reportState, errorMsg: reportError, generate } = useWeeklyReport(data);
-  const [showReportModal, setShowReportModal]       = useState(false);
-  const [showCustomizePanel, setShowCustomizePanel] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(
+    () => sessionStorage.getItem('reportModalOpen') === 'true',
+  );
+  const [showCustomizePanel, setShowCustomizePanel] = useState(
+    () => sessionStorage.getItem('customizePanelOpen_admin') === 'true',
+  );
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
   const { visible, available, toggle, isVisible } = useVisibleGraphs('admin');
 
@@ -942,7 +946,7 @@ const AdminDashboard: FC = () => {
           <div className={styles.reportActions}>
             <button
               className={styles.customizeBtn}
-              onClick={() => setShowCustomizePanel(true)}
+              onClick={() => { setShowCustomizePanel(true); sessionStorage.setItem('customizePanelOpen_admin', 'true'); }}
               aria-label="Personalizar dashboard"
             >
               <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -952,7 +956,7 @@ const AdminDashboard: FC = () => {
             </button>
             <button
               className={styles.reportBtn}
-              onClick={() => setShowReportModal(true)}
+              onClick={() => { setShowReportModal(true); sessionStorage.setItem('reportModalOpen', 'true'); }}
             >
               <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M10 2v10m0 0l-3-3m3 3l3-3M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1001,13 +1005,13 @@ const AdminDashboard: FC = () => {
           state={reportState}
           errorMsg={reportError}
           onGenerate={config => { generate(config); }}
-          onClose={() => setShowReportModal(false)}
+          onClose={() => { setShowReportModal(false); sessionStorage.removeItem('reportModalOpen'); }}
         />
       )}
 
       <CustomizePanel
         open={showCustomizePanel}
-        onClose={() => setShowCustomizePanel(false)}
+        onClose={() => { setShowCustomizePanel(false); sessionStorage.removeItem('customizePanelOpen_admin'); }}
         available={available}
         isVisible={isVisible}
         toggle={toggle}
