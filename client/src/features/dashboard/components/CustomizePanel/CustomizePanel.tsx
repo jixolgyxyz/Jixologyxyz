@@ -1,7 +1,76 @@
-import { type FC, type ReactElement, useEffect, useState } from 'react';
+import { type FC, type ReactElement, useEffect, useRef, useState } from 'react';
+import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { ChartType, GraphDescriptor } from '../../config/graphCatalog';
 import { VISIBILITY_BADGE } from '../../config/graphCatalog';
+import SearchBarComponent from '@/shared/components/SearchBarComponent/SearchBarComponent';
 import styles from './CustomizePanel.module.css';
+
+const CHART_TYPE_LABEL: Record<ChartType, string> = {
+  'bar':      'Barras V.',
+  'bar-h':    'Barras H.',
+  'donut':    'Dona',
+  'scatter':  'Dispersión',
+  'bubble':   'Burbujas',
+  'stacked':  'Apilado',
+  'list':     'Lista',
+  'progress': 'Progreso',
+};
+
+function ChartTypeFilterBubble({ value, types, onChange }: {
+  value: ChartType | null;
+  types: ChartType[];
+  onChange: (v: ChartType | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const iconClass = (t: ChartType) => `${styles.menuIcon} ${styles[`chartIcon_${t.replace('-', '_')}`]}`;
+
+  return (
+    <div ref={ref} className={styles.bubble}>
+      <button
+        type="button"
+        className={`${styles.bubbleBtn} ${value !== null ? styles.bubbleBtnActive : ''}`}
+        onClick={() => setOpen(o => !o)}
+      >
+        {value !== null ? (
+          <span className={iconClass(value)} style={{ width: 18, height: 18, borderRadius: 4 }}>
+            {CHART_ICON[value]}
+          </span>
+        ) : (
+          <span>Tipo</span>
+        )}
+        <ChevronDownIcon width={11} height={11} />
+      </button>
+      {open && (
+        <div className={styles.bubbleMenu} onClick={() => setOpen(false)}>
+          {types.map(t => (
+            <button
+              key={t}
+              type="button"
+              className={`${styles.bubbleMenuItem} ${value === t ? styles.bubbleMenuItemActive : ''}`}
+              onClick={() => onChange(value === t ? null : t)}
+            >
+              <span className={iconClass(t)} style={{ width: 22, height: 22, borderRadius: 5, flexShrink: 0 }}>
+                {CHART_ICON[t]}
+              </span>
+              {CHART_TYPE_LABEL[t]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Mini chart-type icons ─────────────────────────────────────────────
 const CHART_ICON: Record<ChartType, ReactElement> = {
@@ -106,6 +175,8 @@ const CustomizePanel: FC<Props> = ({
   );
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo,   setDateTo]   = useState('');
+  const [graphSearch,     setGraphSearch]     = useState('');
+  const [graphTypeFilter, setGraphTypeFilter] = useState<ChartType | null>(null);
 
   const validSelectedId =
     selectedId && available.find(g => g.id === selectedId)
@@ -120,6 +191,14 @@ const CustomizePanel: FC<Props> = ({
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const uniqueTypes = Array.from(new Set(available.map(g => g.chartType)));
+
+  const visibleList = available.filter(g => {
+    if (graphSearch && !g.label.toLowerCase().includes(graphSearch.toLowerCase())) return false;
+    if (graphTypeFilter && g.chartType !== graphTypeFilter) return false;
+    return true;
+  });
 
   const selectedGraph = available.find(g => g.id === validSelectedId) ?? null;
   const checked = selectedGraph ? isVisible(selectedGraph.id) : false;
@@ -148,11 +227,11 @@ const CustomizePanel: FC<Props> = ({
 
         {/* ── Shared header ──────────────────────────────────────────── */}
         <header className={styles.header}>
-          <h2 className={styles.title}>Personalizar Dashboard</h2>
+          <div className={styles.headerLeft}>
+            <span className={styles.codeBadge}>Personalizar</span>
+          </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Cerrar">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
+            <XMarkIcon style={{ width: '1.25rem', height: '1.25rem', display: 'block', flexShrink: 0 }} />
           </button>
         </header>
 
@@ -161,13 +240,28 @@ const CustomizePanel: FC<Props> = ({
 
           {/* LEFT — graph card list */}
           <div className={styles.left}>
-            <p className={styles.leftHint}>Selecciona una gráfica para configurarla.</p>
+            <div className={styles.leftSearch}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SearchBarComponent
+                  infoText="Buscar gráfica…"
+                  onChange={setGraphSearch}
+                  fontSize="0.78rem"
+                />
+              </div>
+              <ChartTypeFilterBubble
+                value={graphTypeFilter}
+                types={uniqueTypes}
+                onChange={setGraphTypeFilter}
+              />
+            </div>
 
             {available.length === 0 ? (
               <p className={styles.empty}>No hay gráficas configurables para tu rol.</p>
             ) : (
               <ul className={styles.list}>
-                {available.map(g => {
+                {visibleList.length === 0 ? (
+                  <p className={styles.empty}>Sin resultados.</p>
+                ) : visibleList.map(g => {
                   const active  = g.id === validSelectedId;
                   const visible = isVisible(g.id);
                   return (

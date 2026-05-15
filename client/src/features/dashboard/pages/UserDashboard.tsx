@@ -40,7 +40,9 @@ const UserDashboard: FC = () => {
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
   const { data, projects, loading, error } = useUserDashboardData(selectedProjectIds);
   const { visible, available, toggle, isVisible } = useVisibleGraphs('user');
-  const [showCustomizePanel, setShowCustomizePanel] = useState(false);
+  const [showCustomizePanel, setShowCustomizePanel] = useState(
+    () => sessionStorage.getItem('customizePanelOpen_user') === 'true',
+  );
 
   const firstName = user?.nombre ?? 'Usuario';
 
@@ -73,7 +75,7 @@ const UserDashboard: FC = () => {
           <div className={styles.headerActions}>
             <button
               className={styles.customizeBtn}
-              onClick={() => setShowCustomizePanel(true)}
+              onClick={() => { setShowCustomizePanel(true); sessionStorage.setItem('customizePanelOpen_user', 'true'); }}
               aria-label="Personalizar dashboard"
             >
               <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -114,7 +116,7 @@ const UserDashboard: FC = () => {
 
       <CustomizePanel
         open={showCustomizePanel}
-        onClose={() => setShowCustomizePanel(false)}
+        onClose={() => { setShowCustomizePanel(false); sessionStorage.removeItem('customizePanelOpen_user'); }}
         available={available}
         isVisible={isVisible}
         toggle={toggle}

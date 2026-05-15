@@ -4,8 +4,6 @@ import { env } from '@/core/config/env';
 export async function callGemini(prompt: string, attempt = 1): Promise<string> {
   if (!env.geminiApiKey) throw new Error('VITE_GEMINI_API_KEY is not set in your .env file.');
 
-  console.log('[Gemini] using key:', env.geminiApiKey.slice(0, 8) + '…');
-
   const ai = new GoogleGenAI({ apiKey: env.geminiApiKey });
 
   try {

@@ -9,7 +9,9 @@ const ProjectDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
   const { visible, available, pmProjectIds, toggle, isVisible, loading: graphsLoading } =
     useVisibleGraphs('project');
-  const [showCustomizePanel, setShowCustomizePanel]   = useState(false);
+  const [showCustomizePanel, setShowCustomizePanel] = useState(
+    () => sessionStorage.getItem('customizePanelOpen_project') === 'true',
+  );
   const [selectedProjectIds, setSelectedProjectIds]   = useState<number[] | null>(null);
 
   if (loading || graphsLoading) {
@@ -59,7 +61,7 @@ const ProjectDashboard: FC = () => {
           <div className={styles.headerActions}>
             <button
               className={styles.customizeBtn}
-              onClick={() => setShowCustomizePanel(true)}
+              onClick={() => { setShowCustomizePanel(true); sessionStorage.setItem('customizePanelOpen_project', 'true'); }}
               aria-label="Personalizar dashboard"
             >
               <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -79,7 +81,7 @@ const ProjectDashboard: FC = () => {
 
       <CustomizePanel
         open={showCustomizePanel}
-        onClose={() => setShowCustomizePanel(false)}
+        onClose={() => { setShowCustomizePanel(false); sessionStorage.removeItem('customizePanelOpen_project'); }}
         available={available}
         isVisible={isVisible}
         toggle={toggle}
