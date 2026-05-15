@@ -389,3 +389,69 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+[functions.github-oauth-callback]
+enabled = true
+verify_jwt = false
+import_map = "./functions/github-oauth-callback/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/github-oauth-callback/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/github-oauth-callback/*.html" ]
+
+[functions.github-install-callback]
+enabled = true
+verify_jwt = false
+import_map = "./functions/github-install-callback/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/github-install-callback/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/github-install-callback/*.html" ]
+
+[functions.github-create-branch]
+enabled = true
+verify_jwt = true
+import_map = "./functions/github-create-branch/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/github-create-branch/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/github-create-branch/*.html" ]
+
+[functions.github-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/github-webhook/deno.json"
+entrypoint = "./functions/github-webhook/index.ts"
+
+[functions.github-create-pr]
+enabled = true
+verify_jwt = true
+import_map = "./functions/github-create-pr/deno.json"
+entrypoint = "./functions/github-create-pr/index.ts"
+
+[functions.github-user-connect]
+enabled = true
+verify_jwt = false
+import_map = "./functions/github-user-connect/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/github-user-connect/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/github-user-connect/*.html" ]
+
+[functions.github-user-disconnect]
+enabled = true
+verify_jwt = true
+import_map = "./functions/github-user-disconnect/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/github-user-disconnect/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/github-user-disconnect/*.html" ]
