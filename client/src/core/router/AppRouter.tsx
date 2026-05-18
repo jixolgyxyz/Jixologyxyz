@@ -5,6 +5,7 @@ import LoginPage from '@/features/auth/pages/LogInPage';
 import ProfilePage from '@/features/profile/pages';
 import UserDashboardPage from '@/features/dashboard/pages/UserDashboard';
 import AdminDashboardPage from '@/features/dashboard/pages/AdminDashboard';
+import ProjectDashboardPage from '@/features/dashboard/pages/ProjectDashboard';
 import EmailVerificationPage from '@/features/verification/pages/EmailVerification';
 import AdminPage from '@/features/admin/pages/adminPage';
 import ProjectPage from '@/features/project/projectHub/pages/ProjectsPage';
@@ -39,9 +40,10 @@ export function AppRouter() {
           <Route path="/perfil"            element={<ProfilePage />} />
         </Route>
         <Route element={<AppLayoutHs title="Dashboard"/>}>
-          <Route path="/dashboard-usuario" element={<UserDashboardPage />} />
-          <Route path="/notificaciones"    element={<NotificationsPage />} />
-          <Route path="/notificaciones/:id" element={<NotificationDetailPage />} />
+          <Route path="/dashboard-usuario"   element={<UserDashboardPage />} />
+          <Route path="/dashboard-proyectos" element={<ProjectDashboardPage />} />
+          <Route path="/notificaciones"      element={<NotificationsPage />} />
+          <Route path="/notificaciones/:id"  element={<NotificationDetailPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={ADMIN_VIEWS} />}>
           <Route element={<AppLayoutHs title="Dashboard Admin"/>}>

@@ -18,6 +18,10 @@ export interface AdminItemRow {
   statusOrden:       number;
   isTerminal:        boolean;
   fecha_vencimiento: string | null;
+  complejidad:       number | null;
+  tiempo:            number | null;
+  typeName:          string | null;
+  priorityName:      string | null;
 }
 
 export interface AdminSprintRow {
@@ -66,13 +70,14 @@ export async function fetchAdminProjects(): Promise<AdminProjectRow[]> {
 export async function fetchAdminItems(): Promise<AdminItemRow[]> {
   const { data, error } = await supabase
     .from('backlog_item')
-    .select('id, id_proyecto, id_estatus, fecha_vencimiento, estatus_backlog_item(nombre, es_terminal, orden)');
+    .select('id, id_proyecto, id_estatus, fecha_vencimiento, complejidad, tiempo, estatus_backlog_item(nombre, es_terminal, orden), tipo_backlog_item(nombre), prioridad_backlog_item(nombre)');
 
   if (error) throw new Error(error.message);
 
   return (data ?? []).map(r => {
-    const s = r.estatus_backlog_item as unknown as
-      { nombre: string; es_terminal: boolean; orden: number } | null;
+    const s = r.estatus_backlog_item as unknown as { nombre: string; es_terminal: boolean; orden: number } | null;
+    const t = r.tipo_backlog_item    as unknown as { nombre: string } | null;
+    const p = r.prioridad_backlog_item as unknown as { nombre: string } | null;
     return {
       id:                r.id,
       id_proyecto:       r.id_proyecto,
@@ -81,6 +86,10 @@ export async function fetchAdminItems(): Promise<AdminItemRow[]> {
       statusOrden:       s?.orden       ?? 99,
       isTerminal:        s?.es_terminal ?? false,
       fecha_vencimiento: r.fecha_vencimiento ?? null,
+      complejidad:       r.complejidad  ?? null,
+      tiempo:            r.tiempo       ?? null,
+      typeName:          t?.nombre      ?? null,
+      priorityName:      p?.nombre      ?? null,
     };
   });
 }
