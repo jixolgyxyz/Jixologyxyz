@@ -11,7 +11,7 @@ import ContextMenu from '@/shared/components/ContextMenu';
 import type { MenuComponent } from '@/shared/components/ContextMenu';
 import { useBacklogItems } from '@/features/project/Backlog/hooks/useBacklogItems';
 import { useBacklogMeta } from '@/features/project/Backlog/hooks/useBacklogMeta';
-import { acceptSugerencia, updateBacklogItem } from '@/features/project/Backlog/services/backlog.service';
+import { acceptSugerencia, updateBacklogItem, deleteBacklogItem } from '@/features/project/Backlog/services/backlog.service';
 import { useUser } from '@/core/auth/userContext';
 import type { BacklogItemRecord, BacklogStatusRecord, BacklogPriorityRecord, SprintRecord } from '@/features/project/Backlog/types/backlog.types';
 import styles from './ProjectBacklog.module.css';
@@ -292,6 +292,16 @@ const ProjectBacklog: React.FC = () => {
             }}
             onViewDetails={() => { setOpenInEditMode(false); setViewingItem(item); }}
             onEdit={() => { setOpenInEditMode(true); setViewingItem(item); }}
+            onDelete={async () => {
+              if (!window.confirm(`¿Eliminar "${item.nombre}"? Esta acción no se puede deshacer.`)) return;
+              try {
+                await deleteBacklogItem(item.id);
+                if (viewingId === item.id) { setViewingItem(null); setOpenInEditMode(false); }
+                refreshAll();
+              } catch (err) {
+                console.error('Error eliminando ítem:', err);
+              }
+            }}
             onAcceptSuggestion={isPM && isSuggestion ? async () => {
               await acceptSugerencia(item.id, user!.id);
               refreshAll();
