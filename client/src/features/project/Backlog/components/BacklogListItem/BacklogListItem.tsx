@@ -186,6 +186,7 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
       {/* Title */}
       <span
         className={`${styles.title} ${onViewDetails ? styles.titleClickable : ''}`}
+        data-backlog-title
         onClick={onViewDetails}
       >
         {title}

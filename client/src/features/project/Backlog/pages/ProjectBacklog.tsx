@@ -155,6 +155,19 @@ const ProjectBacklog: React.FC = () => {
   const setFilterUser   = (v: number | null)  => setParam('user',   v);
   const setFilterSprint = (v: number | null)  => setParam('sprint', v);
 
+  useEffect(() => {
+    if (viewingId === null) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (target.closest('[data-detail-panel]')) return;
+      if (target.closest('[data-backlog-title]')) return;
+      setViewingItem(null);
+      setOpenInEditMode(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [viewingId]);
+
   const loading = itemsLoading || metaLoading;
   const allStatuses = meta.statuses.map(toBacklogStatus);
 
