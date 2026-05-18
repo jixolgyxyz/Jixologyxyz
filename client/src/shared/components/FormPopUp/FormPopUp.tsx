@@ -33,21 +33,27 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
     return () => window.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
-  // Reset the "click started outside" flag whenever the window loses focus.
-  // Without this, switching browser tabs can leave startedOutside=true, causing
-  // the modal to close the moment the user clicks back into the window.
-  useEffect(() => {
-    if (!isOpen) return;
-    const reset = () => { startedOutside.current = false; };
-    window.addEventListener('blur', reset);
-    return () => window.removeEventListener('blur', reset);
-  }, [isOpen]);
-
   useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
+  // Tracks whether the window currently has focus.
+  // A separate ref keeps it out of startedOutside's effect closure, which
+  // was triggering the react-hooks/immutability lint error.
+  const windowFocusedRef = useRef(true);
+  useEffect(() => {
+    if (!isOpen) return;
+    const onBlur  = () => { windowFocusedRef.current = false; };
+    const onFocus = () => { windowFocusedRef.current = true;  };
+    window.addEventListener('blur',  onBlur);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('blur',  onBlur);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [isOpen]);
 
   const startedOutside = useRef(false);
@@ -56,7 +62,7 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
   return (
       <div className={styles.overlay}
         onMouseDown={(e) => {
-          startedOutside.current = closeOnOverlayClick && e.target === e.currentTarget;
+          startedOutside.current = closeOnOverlayClick && windowFocusedRef.current && e.target === e.currentTarget;
         }}
         onMouseUp={(e) => {
           if (startedOutside.current && e.target === e.currentTarget) {

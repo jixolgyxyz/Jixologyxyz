@@ -98,7 +98,7 @@ const UserContextMenu: React.FC<UserContextMenuProps> = ({
     const wasAssigned = localCustomIds.has(etiqueta.id);
     setLocalCustomIds(prev => {
       const next = new Set(prev);
-      wasAssigned ? next.delete(etiqueta.id) : next.add(etiqueta.id);
+      if (wasAssigned) next.delete(etiqueta.id); else next.add(etiqueta.id);
       return next;
     });
     try {
@@ -111,7 +111,7 @@ const UserContextMenu: React.FC<UserContextMenuProps> = ({
     } catch (err) {
       setLocalCustomIds(prev => {
         const next = new Set(prev);
-        wasAssigned ? next.add(etiqueta.id) : next.delete(etiqueta.id);
+        if (wasAssigned) next.add(etiqueta.id); else next.delete(etiqueta.id);
         return next;
       });
       onError(err instanceof Error ? err.message : String(err));
@@ -122,7 +122,7 @@ const UserContextMenu: React.FC<UserContextMenuProps> = ({
     const wasAssigned = localPredIds.has(etiqueta.id);
     setLocalPredIds(prev => {
       const next = new Set(prev);
-      wasAssigned ? next.delete(etiqueta.id) : next.add(etiqueta.id);
+      if (wasAssigned) next.delete(etiqueta.id); else next.add(etiqueta.id);
       return next;
     });
     try {
@@ -135,7 +135,7 @@ const UserContextMenu: React.FC<UserContextMenuProps> = ({
     } catch (err) {
       setLocalPredIds(prev => {
         const next = new Set(prev);
-        wasAssigned ? next.add(etiqueta.id) : next.delete(etiqueta.id);
+        if (wasAssigned) next.add(etiqueta.id); else next.delete(etiqueta.id);
         return next;
       });
       onError(err instanceof Error ? err.message : String(err));
