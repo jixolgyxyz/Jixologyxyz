@@ -12,6 +12,7 @@ export interface FormPopUpProps {
   children: ReactNode;
   wide?: boolean;
   bodyRef?: React.RefObject<HTMLDivElement | null>;
+  closeOnOverlayClick?: boolean;
 }
 
 const FormPopUp: React.FC<FormPopUpProps> = ({
@@ -23,6 +24,7 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
   children,
   wide,
   bodyRef,
+  closeOnOverlayClick = true,
 }) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -30,6 +32,16 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
+
+  // Reset the "click started outside" flag whenever the window loses focus.
+  // Without this, switching browser tabs can leave startedOutside=true, causing
+  // the modal to close the moment the user clicks back into the window.
+  useEffect(() => {
+    if (!isOpen) return;
+    const reset = () => { startedOutside.current = false; };
+    window.addEventListener('blur', reset);
+    return () => window.removeEventListener('blur', reset);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -44,7 +56,7 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
   return (
       <div className={styles.overlay}
         onMouseDown={(e) => {
-          startedOutside.current = e.target === e.currentTarget;
+          startedOutside.current = closeOnOverlayClick && e.target === e.currentTarget;
         }}
         onMouseUp={(e) => {
           if (startedOutside.current && e.target === e.currentTarget) {

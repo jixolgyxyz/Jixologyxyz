@@ -200,7 +200,7 @@ docker build -t jixology-server -f server/Dockerfile .
 
 ```bash
 # Client — available at http://localhost
-docker run -d -p 80:80 --name jixology-client jixology-client
+docker run -d -p 5173:80 --name jixology-client jixology-client
 
 # Server — available at http://localhost:3000
 docker run -d -p 3000:3000 --env-file server/.env --name jixology-server jixology-server

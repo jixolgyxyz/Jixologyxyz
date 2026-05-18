@@ -1,18 +1,15 @@
 import React from 'react';
 import { NavLink, useParams } from 'react-router-dom';
 import styles from './ProjectHeader.module.css';
-import { useIsProjectAdmin } from '@/features/project/hooks/useIsProjectAdmin';
 
 const Header: React.FC = () => {
   const { id } = useParams();
-  const projectId = Number(id);
-  const { isProjectAdmin } = useIsProjectAdmin(projectId);
 
   const NAV_ITEMS = [
-    { label: 'Tareas',    to: `/proyectos/${id}/tasks` },
-    { label: 'Backlog',   to: `/proyectos/${id}/backlog` },
-    { label: 'Bitácora',  to: `/proyectos/${id}/bitacora` },
-    ...(isProjectAdmin ? [{ label: 'Configuracion', to: `/proyectos/${id}/configuracion` }] : []),
+    { label: 'Tareas',         to: `/proyectos/${id}/tasks` },
+    { label: 'Backlog',        to: `/proyectos/${id}/backlog` },
+    { label: 'Bitácora',       to: `/proyectos/${id}/bitacora` },
+    { label: 'Configuracion',  to: `/proyectos/${id}/configuracion` },
   ];
 
   return (
