@@ -156,7 +156,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
         onClick={(e) => {
           e.stopPropagation();
           const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          onEdit?.({ x: rect.left, y: rect.top + rect.height / 2 });
+          onEdit?.({ x: rect.right, y: rect.bottom });
         }}
       >
         <EllipsisVerticalIcon className={styles.optionsButtonIcon} />

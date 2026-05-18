@@ -11,11 +11,11 @@ import { useProjectEtiquetas } from '../hooks/useProjectEtiquetas';
 import { useProjectFte } from '../hooks/useProjectFte';
 import { useToast } from '../hooks/useToast';
 import { useUser } from '@/core/auth/userContext';
-import { deleteEtiquetaWithCascade, upsertProyectoFte, fetchGithubConfig, buildGithubInstallUrl, type GithubConfigRecord } from '../services/projectConfig.service';
+import { deleteEtiquetaWithCascade, upsertProyectoFte, removeMemberFromProject,  fetchGithubConfig, buildGithubInstallUrl, type GithubConfigRecord } from '../services/projectConfig.service';
 import InviteUserForm from '../components/InviteUserForm';
 import CreateEtiquetaForm from '../components/CreateEtiquetaForm';
 import EditEtiquetaForm from '../components/EditEtiquetaForm';
-import UserEtiquetasPanel from '../components/UserEtiquetasPanel';
+import UserContextMenu from '../components/UserContextMenu';
 import { MemberHoverCard } from '../components/MemberHoverCard';
 import type { EtiquetaPersonalizadaRecord, FteMemberRecord } from '../types/projectConfig.types';
 import styles from './ProjectConfigPage.module.css';
@@ -31,8 +31,8 @@ const ProjectConfigPage: React.FC = () => {
   const { fteData, loading: fteLoading, refresh: refreshFte } = useProjectFte(PROJECT_ID);
   const { toast, showError, clearToast } = useToast();
 
-  // SAdmins (1) and Admins (2) can always invite; PMs in this project can too
-  const canInvite = (() => {
+  // SAdmins (1) and Admins (2) can always edit; PMs in this project can too
+  const canEdit = (() => {
     if (user?.idRolGlobal === 1 || user?.idRolGlobal === 2) return true;
     const pmEntry = etiquetasPredeterminadas.find(e => e.nombre === 'PM');
     if (!pmEntry) return false;
@@ -71,10 +71,15 @@ const ProjectConfigPage: React.FC = () => {
   const [showCreateEtiqueta, setShowCreateEtiqueta] = useState(false);
   const [editingEtiqueta, setEditingEtiqueta]       = useState<EtiquetaPersonalizadaRecord | null>(null);
   const [deletingEtiqueta, setDeletingEtiqueta]     = useState<EtiquetaPersonalizadaRecord | null>(null);
-  const [etiquetasPanel, setEtiquetasPanel] = useState<{
+  const [userContextMenu, setUserContextMenu] = useState<{
     userId: number;
     userName: string;
     position: { x: number; y: number };
+  } | null>(null);
+
+  const [removingMember, setRemovingMember] = useState<{
+    userId: number;
+    userName: string;
   } | null>(null);
 
   // ── Jornada local state ───────────────────────────────────────────
@@ -117,6 +122,19 @@ const ProjectConfigPage: React.FC = () => {
       .map(e => ({ label: e.nombre, color: e.color_bloque, textColor: e.color_letra }));
 
     return [...predRoles, ...customRoles];
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!removingMember) return;
+    const target = removingMember;
+    setRemovingMember(null);
+    try {
+      await removeMemberFromProject(target.userId, PROJECT_ID);
+      refreshMembers();
+      refreshFte();
+    } catch (err: unknown) {
+      showError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -175,7 +193,7 @@ const ProjectConfigPage: React.FC = () => {
               {members.length} {members.length === 1 ? 'miembro' : 'miembros'}
             </p>
           </div>
-          {canInvite && (
+          {canEdit && (
             <ButtonComponent
               label="Invitar usuario"
               icon={<UserPlusIcon width={16} height={16} />}
@@ -200,9 +218,9 @@ const ProjectConfigPage: React.FC = () => {
                     fullName={fullName}
                     email={member.email}
                     roles={roles}
-                    onEdit={pos => setEtiquetasPanel(prev =>
+                    onEdit={canEdit ? pos => setUserContextMenu(prev =>
                       prev?.userId === member.id ? null : { userId: member.id, userName: fullName, position: pos }
-                    )}
+                    ) : undefined}
                     onAvatarEnter={rect => { cancelHide(); setHoveredMember({ userId: member.id, name: fullName, email: member.email, roles, rect }); }}
                     onAvatarLeave={startHide}
                   />
@@ -244,12 +262,14 @@ const ProjectConfigPage: React.FC = () => {
                       step={0.5}
                       value={localHours[member.id] ?? ''}
                       placeholder="0"
+                      disabled={!canEdit}
                       onChange={e => {
+                        if (!canEdit) return;
                         const val = e.target.value;
                         if (member.max_horas !== null && val !== '' && parseFloat(val) > member.max_horas) return;
                         setLocalHours(prev => ({ ...prev, [member.id]: val }));
                       }}
-                      onBlur={() => handleFteBlur(member)}
+                      onBlur={() => canEdit && handleFteBlur(member)}
                     />
                     <span className={styles.fteMax}>
                       {member.max_horas !== null
@@ -280,11 +300,13 @@ const ProjectConfigPage: React.FC = () => {
             <h2 className={styles.panelTitle}>Etiquetas personalizadas</h2>
             <p className={styles.panelSubtitle}>Haz clic en una etiqueta para editarla</p>
           </div>
-          <ButtonComponent
-            label="Nueva etiqueta"
-            icon={<PlusIcon width={16} height={16} />}
-            onClick={() => setShowCreateEtiqueta(true)}
-          />
+          {canEdit && (
+            <ButtonComponent
+              label="Nueva etiqueta"
+              icon={<PlusIcon width={16} height={16} />}
+              onClick={() => setShowCreateEtiqueta(true)}
+            />
+          )}
         </div>
 
         <div className={styles.panelContent}>
@@ -296,16 +318,24 @@ const ProjectConfigPage: React.FC = () => {
             <div className={styles.etiquetasGrid}>
               {etiquetas.map(et => (
                 <div key={et.id} className={styles.etiquetaCard}>
-                  <button type="button" className={styles.etiquetaBadgeBtn} onClick={() => setEditingEtiqueta(et)} title="Editar etiqueta">
+                  {canEdit ? (
+                    <button type="button" className={styles.etiquetaBadgeBtn} onClick={() => setEditingEtiqueta(et)} title="Editar etiqueta">
+                      <span className={styles.etiquetaBadge} style={{ backgroundColor: et.color_bloque, color: et.color_letra }}>
+                        {et.nombre}
+                      </span>
+                      <PencilIcon className={styles.editIcon} />
+                    </button>
+                  ) : (
                     <span className={styles.etiquetaBadge} style={{ backgroundColor: et.color_bloque, color: et.color_letra }}>
                       {et.nombre}
                     </span>
-                    <PencilIcon className={styles.editIcon} />
-                  </button>
+                  )}
                   {et.descripcion && <span className={styles.etiquetaDesc}>{et.descripcion}</span>}
-                  <button type="button" className={styles.deleteBtn} aria-label={`Eliminar etiqueta ${et.nombre}`} onClick={() => setDeletingEtiqueta(et)}>
-                    <TrashIcon className={styles.deleteBtnIcon} />
-                  </button>
+                  {canEdit && (
+                    <button type="button" className={styles.deleteBtn} aria-label={`Eliminar etiqueta ${et.nombre}`} onClick={() => setDeletingEtiqueta(et)}>
+                      <TrashIcon className={styles.deleteBtnIcon} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -403,22 +433,45 @@ const ProjectConfigPage: React.FC = () => {
         />
       )}
 
-      {etiquetasPanel && (
-        <UserEtiquetasPanel
-          userId={etiquetasPanel.userId}
+      {userContextMenu && (
+        <UserContextMenu
+          userId={userContextMenu.userId}
           projectId={PROJECT_ID}
-          userName={etiquetasPanel.userName}
+          userName={userContextMenu.userName}
           asignadorId={user?.id ?? 0}
           etiquetas={etiquetas}
           memberEtiquetas={memberEtiquetas}
           etiquetasPredeterminadas={etiquetasPredeterminadas}
           memberEtiquetasPred={memberEtiquetasPred}
-          position={etiquetasPanel.position}
-          onClose={() => setEtiquetasPanel(null)}
+          position={userContextMenu.position}
+          onClose={() => setUserContextMenu(null)}
           onChanged={refreshMembers}
           onError={showError}
+          onRemoveUser={(userId, userName) => setRemovingMember({ userId, userName })}
+          onCreateEtiqueta={() => setShowCreateEtiqueta(true)}
+          onEditEtiqueta={et => setEditingEtiqueta(et)}
         />
       )}
+
+      <FormPopUp
+        eyebrow="Miembros del proyecto"
+        title="Eliminar del proyecto"
+        subtitle={removingMember
+          ? `¿Eliminar a "${removingMember.userName}" del proyecto? Sus backlog items asignados quedarán sin responsable. Esta acción no se puede deshacer.`
+          : ''}
+        isOpen={removingMember !== null}
+        onClose={() => setRemovingMember(null)}
+      >
+        <div className={styles.confirmActions}>
+          <button type="button" className={styles.confirmCancelBtn} onClick={() => setRemovingMember(null)}>
+            Cancelar
+          </button>
+          <button type="button" className={styles.confirmDeleteBtn} onClick={handleConfirmRemoveMember}>
+            <TrashIcon width={14} height={14} />
+            Eliminar
+          </button>
+        </div>
+      </FormPopUp>
 
       <FormPopUp
         eyebrow="Etiquetas personalizadas"

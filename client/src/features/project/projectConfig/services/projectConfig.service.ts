@@ -199,13 +199,14 @@ export async function removeEtiquetaPersonalizada(
   userId: number,
   etiquetaId: number,
 ): Promise<void> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from('etiqueta_proyecto_personalizada')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('id_usuario', userId)
     .eq('id_etiqueta_proyecto_personalizada', etiquetaId);
 
   if (error) throw new Error(error.message);
+  if (!count) throw new Error('No tienes permiso para quitar esta etiqueta.');
 }
 
 // ── Predefined etiqueta assignments ──────────────────────────────
@@ -246,14 +247,15 @@ export async function removeEtiquetaPredeterminada(
   etiquetaId: number,
   projectId: number,
 ): Promise<void> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from('etiqueta_proyecto_predeterminada')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('id_usuario', userId)
     .eq('id_etiqueta_proyecto_predeterminada', etiquetaId)
     .eq('id_proyecto', projectId);
 
   if (error) throw new Error(error.message);
+  if (!count) throw new Error('No tienes permiso para quitar esta etiqueta.');
 }
 
 // ── Etiqueta edit / delete with cascade ──────────────────────────
@@ -293,6 +295,51 @@ export async function deleteEtiquetaWithCascade(id: number): Promise<void> {
     .eq('id', id);
 
   if (error) throw new Error(error.message);
+}
+
+// ── Member removal ────────────────────────────────────────────────
+
+export async function removeMemberFromProject(
+  userId: number,
+  projectId: number,
+): Promise<void> {
+  // 1. Remove predeterminada etiqueta assignments for this project
+  const { error: predErr } = await supabase
+    .from('etiqueta_proyecto_predeterminada')
+    .delete()
+    .eq('id_usuario', userId)
+    .eq('id_proyecto', projectId);
+  if (predErr) throw new Error(predErr.message);
+
+  // 2. Remove personalizada etiqueta assignments for this project's etiquetas
+  const { data: catalog } = await supabase
+    .from('catalogo_etiqueta_proyecto_personalizada')
+    .select('id')
+    .eq('id_proyecto', projectId);
+  if (catalog && catalog.length > 0) {
+    const { error: custErr } = await supabase
+      .from('etiqueta_proyecto_personalizada')
+      .delete()
+      .eq('id_usuario', userId)
+      .in('id_etiqueta_proyecto_personalizada', (catalog as { id: number }[]).map(e => e.id));
+    if (custErr) throw new Error(custErr.message);
+  }
+
+  // 3. Unassign their backlog items in this project
+  const { error: backlogErr } = await supabase
+    .from('backlog_item')
+    .update({ id_usuario_responsable: null })
+    .eq('id_usuario_responsable', userId)
+    .eq('id_proyecto', projectId);
+  if (backlogErr) throw new Error(backlogErr.message);
+
+  // 4. Remove from the project
+  const { error: memberErr } = await supabase
+    .from('usuario_proyecto')
+    .delete()
+    .eq('id_usuario', userId)
+    .eq('id_proyecto', projectId);
+  if (memberErr) throw new Error(memberErr.message);
 }
 
 // ── Jornada / FTE ─────────────────────────────────────────────────
