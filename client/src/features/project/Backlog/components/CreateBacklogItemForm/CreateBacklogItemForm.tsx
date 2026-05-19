@@ -454,7 +454,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
               Cancelar
             </button>
             <button type="submit" className={styles.submitBtn}
-              disabled={submitting || !form.nombre.trim() || !form.id_estatus || !form.id_tipo}>
+              disabled={submitting}>
               {submitting ? 'Guardando...' : 'Crear ítem'}
             </button>
           </div>
