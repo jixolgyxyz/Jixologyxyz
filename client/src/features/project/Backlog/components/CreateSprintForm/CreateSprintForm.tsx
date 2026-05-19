@@ -1,184 +1,228 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  ChevronDownIcon,
-  ChevronDoubleUpIcon,
-  ChevronUpIcon,
-  MinusIcon,
-  ChevronDoubleDownIcon,
-} from '@heroicons/react/24/outline';
+import React, { useEffect, useState } from 'react';
 import FormPopUp from '@/shared/components/FormPopUp';
 import styles from './CreateSprintForm.module.css';
-import { useBacklogMeta } from '../../hooks/useBacklogMeta';
-import { useCreateSprint } from '../../hooks/useCreateSprint'; //Aqui me quede
-import { createSugerencia } from '../../services/backlog.service';
-import { useUser } from '@/core/auth/userContext';
-import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload } from '../../types/backlog.types';
+import { useCreateSprint } from '../../hooks/useCreateSprint';
+import { useUpdateSprint } from '../../hooks/useUpdateSprint';
+import type { CreateSprintPayload, UpdateSprintPayload, SprintRecord } from '../../types/backlog.types';
 
-
-// ── Friendly error messages ───────────────────────────────────────
-function friendlyError(msg: string): string {
-  if (msg.includes('id_tipo') && msg.includes('not-null'))
-    return 'Debes seleccionar un tipo para el ítem.';
-  if (msg.includes('id_estatus') && msg.includes('not-null'))
-    return 'Debes seleccionar un estatus para el ítem.';
-  if (msg.includes('nombre') && msg.includes('not-null'))
-    return 'El nombre del ítem es obligatorio.';
-  if (msg.includes('violates not-null constraint'))
-    return 'Faltan campos obligatorios. Revisa el formulario e intenta de nuevo.';
-  if (msg.includes('duplicate key') || msg.includes('unique constraint'))
-    return 'Ya existe un ítem con esos datos. Cambia el nombre e intenta de nuevo.';
-  if (msg.includes('network') || msg.includes('fetch'))
-    return 'Error de conexión. Comprueba tu internet e intenta de nuevo.';
-  return 'Ocurrió un error al crear el ítem. Intenta de nuevo.';
+// Store sprint dates at UTC noon so the calendar date is unambiguous in every timezone
+function toUtcNoon(dateStr: string): string {
+  return `${dateStr}T12:00:00.000Z`;
 }
 
-// ── Hierarchy: which type can be parent of which ──────────────────
-const PARENT_TYPE_NAME: Record<string, string> = {
-  'Historia de Usuario': 'Épica',
-  'Tarea':               'Historia de Usuario',
-  'Subtarea':            'Tarea',
-  'Bug':                 'Subtarea',
-};
-
-// ── Main form ─────────────────────────────────────────────────────
-interface CreateBacklogItemFormProps {
+interface CreateSprintFormProps {
   projectId: number;
   userId: number;
   isOpen: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  sprintToEdit?: SprintRecord;
+  existingSprints?: SprintRecord[];
 }
 
-interface FormState {
+interface SprintFormState {
   nombre: string;
-  descripcion: string;
-  id_tipo: string;
-  id_estatus: string;
-  id_prioridad: string;
-  id_sprint: string;
+  objetivo: string;
   fecha_inicio: string;
-  fecha_vencimiento: string;
-  id_backlog_item_padre: string;
-  id_usuario_responsable: string;
-  complejidad: number | null;
+  fecha_final: string;
 }
 
-const EMPTY_FORM: FormState = {
-  nombre: '', descripcion: '', id_tipo: '', id_estatus: '',
-  id_prioridad: '', id_sprint: '', fecha_inicio: '', fecha_vencimiento: '',
-  id_backlog_item_padre: '', id_usuario_responsable: '', complejidad: null,
+const EMPTY_FORM: SprintFormState = {
+  nombre: '',
+  objetivo: '',
+  fecha_inicio: '',
+  fecha_final: '',
 };
 
-const CreateSprintForm: React.FC<CreateBacklogItemFormProps> = ({
-  projectId, userId, isOpen, onClose, onCreated,
-}) => {
-  const { meta, loading: metaLoading } = useBacklogMeta(projectId);
-  const { submit, loading: submitting, error } = useCreateSprint();
-  const { user } = useUser();
-  const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [nombreTouched,  setNombreTouched]  = useState(false);
-  const [estatusTouched, setEstatusTouched] = useState(false);
-  const [tipoTouched,    setTipoTouched]    = useState(false);
+const SPRINT_DEFAULT_STATUS = 1;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+function toFormDate(iso: string | null | undefined): string {
+  if (!iso) return '';
+  return iso.slice(0, 10);
+}
+
+const CreateSprintForm: React.FC<CreateSprintFormProps> = ({
+  projectId, userId, isOpen, onClose, onCreated, sprintToEdit, existingSprints = [],
+}) => {
+  const isEditMode = sprintToEdit != null;
+  const { submit: create, loading: creating, error: createError } = useCreateSprint();
+  const { submit: update, loading: updating, error: updateError } = useUpdateSprint();
+  const submitting = creating || updating;
+  const hookError  = createError ?? updateError;
+
+  const [form, setForm] = useState<SprintFormState>(EMPTY_FORM);
+  const [nombreTouched, setNombreTouched] = useState(false);
+  const [nombreError,   setNombreError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && sprintToEdit) {
+        setForm({
+          nombre:       sprintToEdit.nombre,
+          objetivo:     sprintToEdit.objetivo ?? '',
+          fecha_inicio: toFormDate(sprintToEdit.fecha_inicio),
+          fecha_final:  toFormDate(sprintToEdit.fecha_final),
+        });
+      } else {
+        setForm(EMPTY_FORM);
+      }
+      setNombreTouched(false);
+      setNombreError(null);
+    }
+  }, [isOpen, isEditMode, sprintToEdit]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+    if (name === 'nombre') setNombreError(null);
+  };
+
+  const handleClose = () => {
+    setNombreTouched(false);
+    setNombreError(null);
+    onClose();
+  };
+
+  const validateNombre = (nombre: string): string | null => {
+    if (!nombre.trim()) return 'El nombre del sprint es obligatorio.';
+    const duplicate = existingSprints.some(
+      s => s.nombre.trim().toLowerCase() === nombre.trim().toLowerCase()
+        && s.id !== sprintToEdit?.id,
+    );
+    if (duplicate) return 'Ya existe un sprint con ese nombre en este proyecto.';
+    return null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setNombreTouched(true);
-    setEstatusTouched(true);
-    setTipoTouched(true);
-    if (!form.nombre.trim() || !form.id_estatus || !form.id_tipo) return;
-    const payload: CreateSprintPayload = {
-      nombre:                 form.nombre.trim(),
-      objetivo:            form.descripcion || null,
-      id_tipo:                form.id_tipo                ? Number(form.id_tipo)                : null,
-      id_estatus:             Number(form.id_estatus),
-      id_prioridad:           form.id_prioridad           ? Number(form.id_prioridad)           : null,
-      id_sprint:              form.id_sprint              ? Number(form.id_sprint)              : null,
-      fecha_inicio:           form.fecha_inicio           || null,
-      fecha_vencimiento:      form.fecha_vencimiento      || null,
-      id_backlog_item_padre:  form.id_backlog_item_padre  ? Number(form.id_backlog_item_padre)  : null,
-      id_usuario_responsable: form.id_usuario_responsable ? Number(form.id_usuario_responsable) : null,
-      id_proyecto:            projectId,
-      id_usuario_creador:     userId,
-      complejidad:            form.complejidad,
-    };
+
+    const nameErr = validateNombre(form.nombre);
+    if (nameErr) { setNombreError(nameErr); return; }
+    if (!form.fecha_inicio || !form.fecha_final) return;
+
     try {
-      const newItem = await submit(payload);
-      if (!isAdmin && newItem?.id) {
-        await createSugerencia(newItem.id);
+      if (isEditMode && sprintToEdit) {
+        const payload: UpdateSprintPayload = {
+          nombre:       form.nombre.trim(),
+          objetivo:     form.objetivo || null,
+          fecha_inicio: toUtcNoon(form.fecha_inicio),
+          fecha_final:  toUtcNoon(form.fecha_final),
+        };
+        await update(sprintToEdit.id, payload);
+      } else {
+        const payload: CreateSprintPayload = {
+          nombre:             form.nombre.trim(),
+          objetivo:           form.objetivo || null,
+          fecha_inicio:       toUtcNoon(form.fecha_inicio),
+          fecha_final:        toUtcNoon(form.fecha_final),
+          id_proyecto:        projectId,
+          id_usuario_creador: userId,
+          id_estatus:         SPRINT_DEFAULT_STATUS,
+        };
+        await create(payload);
       }
       onCreated?.();
       onClose();
-    } catch { /* shown via error state */ }
+    } catch { /* shown via hookError */ }
   };
+
+  const nameValidationError = nombreTouched ? validateNombre(form.nombre) : null;
 
   return (
     <FormPopUp
       eyebrow="Backlog"
-      title="Nuevo Sprint"
-      subtitle="Crea un nuevo Sprint para una nueva fase de desarrollo."
+      title={isEditMode ? 'Editar Sprint' : 'Nuevo Sprint'}
+      subtitle={
+        isEditMode
+          ? 'Modifica el nombre, objetivo o fechas del sprint.'
+          : 'Crea un nuevo Sprint para una nueva fase de desarrollo.'
+      }
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
     >
-      {metaLoading ? (
-        <p className={styles.loading}>Cargando opciones...</p>
-      ) : (
-        <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <form className={styles.form} onSubmit={handleSubmit} noValidate>
 
-          {/* Nombre */}
+        {/* Nombre */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="sprint-nombre">
+            Nombre <span className={styles.required}>*</span>
+          </label>
+          <input
+            id="sprint-nombre"
+            name="nombre"
+            type="text"
+            className={`${styles.input} ${nameValidationError ? styles.inputError : ''}`}
+            placeholder="Sprint 1"
+            value={form.nombre}
+            onChange={handleChange}
+            onBlur={() => setNombreTouched(true)}
+            required
+          />
+          {nameValidationError && (
+            <p className={styles.fieldError}>{nameValidationError}</p>
+          )}
+        </div>
+
+        {/* Objetivo */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="sprint-objetivo">Objetivo</label>
+          <textarea
+            id="sprint-objetivo"
+            name="objetivo"
+            className={styles.textarea}
+            placeholder="Metas que se buscan en el Sprint"
+            rows={3}
+            value={form.objetivo}
+            onChange={handleChange}
+          />
+        </div>
+
+        {/* Fechas */}
+        <div className={styles.row}>
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="nombre">
-              Nombre <span className={styles.required}>*</span>
+            <label className={styles.label} htmlFor="sprint-fecha-inicio">
+              Fecha inicio <span className={styles.required}>*</span>
             </label>
             <input
-              id="nombre" name="nombre" type="text"
-              className={`${styles.input} ${nombreTouched && !form.nombre.trim() ? styles.inputError : ''}`}
-              placeholder="Sprint 1"
-              value={form.nombre}
+              id="sprint-fecha-inicio"
+              name="fecha_inicio"
+              className={styles.input}
+              type="date"
+              value={form.fecha_inicio}
               onChange={handleChange}
-              onBlur={() => setNombreTouched(true)}
-              required
             />
-            {nombreTouched && !form.nombre.trim() && (
-              <p className={styles.fieldError}>El nombre del ítem es obligatorio.</p>
-            )}
           </div>
-
-          {/* Descripción */}
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="descripcion">Objetivo</label>
-            <textarea id="descripcion" name="descripcion" className={styles.textarea}
-              placeholder="Metas que se buscan en el Sprint" rows={3} value={form.descripcion} onChange={handleChange} />
+            <label className={styles.label} htmlFor="sprint-fecha-final">
+              Fecha final <span className={styles.required}>*</span>
+            </label>
+            <input
+              id="sprint-fecha-final"
+              name="fecha_final"
+              className={styles.input}
+              type="date"
+              value={form.fecha_final}
+              onChange={handleChange}
+            />
           </div>
+        </div>
 
-          {/* Row: Fechas */}
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label className={styles.label}>Fecha inicio <span className={styles.required}>*</span></label>
-              <input name="fecha_inicio" className={styles.input} type="date" value={form.fecha_inicio} onChange={handleChange} />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label}>Fecha vencimiento <span className={styles.required}>*</span></label>
-              <input name="fecha_vencimiento" className={styles.input} type="date" value={form.fecha_vencimiento} onChange={handleChange} />
-            </div>
-          </div>
+        {hookError && <p className={styles.error}>{hookError}</p>}
 
-          {error && <p className={styles.error}>{friendlyError(error)}</p>}
-
-          <div className={styles.actions}>
-            <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
-              Cancelar
-            </button>
-            <button type="submit" className={styles.submitBtn}
-              disabled={submitting || !form.nombre.trim() || !form.fecha_inicio || !form.fecha_vencimiento}>
-              {submitting ? 'Guardando...' : 'Crear ítem'}
-            </button>
-          </div>
-        </form>
-      )}
+        <div className={styles.actions}>
+          <button type="button" className={styles.cancelBtn} onClick={handleClose} disabled={submitting}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className={styles.submitBtn}
+            disabled={submitting || !form.nombre.trim() || !form.fecha_inicio || !form.fecha_final}
+          >
+            {submitting ? 'Guardando...' : isEditMode ? 'Guardar cambios' : 'Crear Sprint'}
+          </button>
+        </div>
+      </form>
     </FormPopUp>
   );
 };

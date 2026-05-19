@@ -7,6 +7,7 @@ export interface UserProfile {
   apellido: string | null;
   email: string;
   idZonaHoraria: number | null;
+  zonaHoraria: string | null;
   idRolGlobal: number | null;
   rol: string | null;
   activo: boolean;
@@ -15,14 +16,15 @@ export interface UserProfile {
 export async function fetchCurrentUser(authId: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from("usuario")
-    .select("id, auth_id, nombre, apellido, email, id_zona_horaria, id_rol_global, activo, rol_global(nombre)")
+    .select("id, auth_id, nombre, apellido, email, id_zona_horaria, id_rol_global, activo, rol_global(nombre), zona_horaria(nombre)")
     .eq("auth_id", authId)
     .maybeSingle();
 
   if (error) throw new Error(`${error.message}, ${error.code}`);
   if (!data) return null;
 
-  const rolGlobal = data.rol_global as unknown as { nombre: string } | null;
+  const rolGlobal   = data.rol_global   as unknown as { nombre: string } | null;
+  const zonaHoraria = data.zona_horaria as unknown as { nombre: string } | null;
 
   return {
     id: data.id,
@@ -31,6 +33,7 @@ export async function fetchCurrentUser(authId: string): Promise<UserProfile | nu
     apellido: data.apellido,
     email: data.email,
     idZonaHoraria: data.id_zona_horaria,
+    zonaHoraria: zonaHoraria?.nombre ?? null,
     idRolGlobal: data.id_rol_global,
     rol: rolGlobal?.nombre ?? null,
     activo: data.activo,

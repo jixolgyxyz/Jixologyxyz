@@ -23,6 +23,7 @@ const SQL_FILES = [
   path.join(ROOT, 'scripts', 'InsertDummySprint.sql'),
   path.join(ROOT, 'scripts', 'InsertDummyBacklogItems.sql'),
   path.join(ROOT, 'scripts', 'InsertDummyJornadaFTE.sql'),
+  path.join(ROOT, 'scripts', 'InsertZonaHorarias.sql')
 ];
 
 async function withRetry(label, fn, attempts = 5, delayMs = 3000) {

@@ -17,6 +17,8 @@ import { useUserProfile } from '@/features/user/services/user.service';
 import {
   getOwnProfileEditService,
   updateOwnProfileService,
+  fetchZonaHorarias,
+  type ZonaHorariaOption,
 } from '@/features/profile/services/profileEdit.service';
 import { useUser } from '@/core/auth/userContext';
 import { useAdminUserEdit } from '@/features/admin/hooks/useAdminUserEdit';
@@ -81,7 +83,7 @@ function ProfileContent({
   userId: number;
   adminEditMode?: boolean;
 }) {
-  const { user: currentUser } = useUser();
+  const { user: currentUser, refreshUser } = useUser();
 
   const [showLootbox, setShowLootbox] = useState(false);
   const [popup, setPopup] = useState<PopupState | null>(null);
@@ -90,6 +92,7 @@ function ProfileContent({
   const [selfValues, setSelfValues] = useState<SelfProfileFormValues>(emptySelfValues);
   const [selfLoading, setSelfLoading] = useState(false);
   const [selfSaving, setSelfSaving] = useState(false);
+  const [zonaHorariaOptions, setZonaHorariaOptions] = useState<ZonaHorariaOption[]>([]);
 
   const isOwnProfile = currentUser?.id === userId;
   const isAdmin = currentUser?.idRolGlobal === 1;
@@ -164,10 +167,14 @@ function ProfileContent({
       setSelfLoading(true);
 
       try {
-        const editable = await getOwnProfileEditService();
+        const [editable, zonas] = await Promise.all([
+          getOwnProfileEditService(),
+          fetchZonaHorarias(),
+        ]);
 
         if (cancelled) return;
 
+        setZonaHorariaOptions(zonas);
         setSelfValues((prev) => ({
           ...prev,
           aboutMe: editable.sobre_mi ?? '',
@@ -245,6 +252,16 @@ function ProfileContent({
   };
 
   const submitSelfEdit = async () => {
+    const jornadaNum = toNullableNumber(selfValues.jornada);
+    if (jornadaNum !== null && jornadaNum < 0) {
+      setPopup({
+        type: 'error',
+        title: 'Valor inválido',
+        message: 'La jornada no puede ser negativa.',
+      });
+      return;
+    }
+
     setSelfSaving(true);
 
     try {
@@ -268,6 +285,8 @@ function ProfileContent({
             ? ''
             : String(reloaded.jornada),
       }));
+
+      await refreshUser();
 
       setPopup({
         type: 'notification',
@@ -403,6 +422,7 @@ function ProfileContent({
                 ? (isFullEdit ? handleAdminChange : handleSelfChange)
                 : undefined
             }
+            zonaHorariaOptions={zonaHorariaOptions}
             onSubmitFullEdit={
               canUseFormEdit
                 ? async () => {

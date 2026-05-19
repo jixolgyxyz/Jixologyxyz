@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, PlusIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import BacklogListItem from '@/features/project/Backlog/components/BacklogListItem';
 import type { BacklogStatus, Priority, BacklogItemType } from '@/features/project/Backlog/components/BacklogListItem';
 import CreateBacklogItemForm from '@/features/project/Backlog/components/CreateBacklogItemForm';
@@ -91,22 +91,44 @@ function FilterBubble({ label, selectedLabel, elements }: FilterBubbleProps) {
   );
 }
 
+function formatSprintDate(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('es-MX', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 // ── Main component ────────────────────────────────────────────────
 const ProjectBacklog: React.FC = () => {
   const { id } = useParams();
   const PROJECT_ID = Number(id);
-  const USER_ID = 1;
   const { user } = useUser();
   const { items, loading: itemsLoading, refresh } = useBacklogItems(PROJECT_ID);
   const { meta, loading: metaLoading, refresh: refreshMeta } = useBacklogMeta(PROJECT_ID);
   const isPM = user != null && meta.etiquetas.some(
     e => e.id_usuario === user.id && e.id_etiqueta_proyecto_predeterminada === 1,
   );
+  const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
+  const canManageSprints = isPM || isAdmin;
   const refreshAll = () => { refresh(); refreshMeta(); };
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCreateSprintForm, setShowCreateSprintForm] = useState(false);
+  const [editingSprint, setEditingSprint] = useState<SprintRecord | null>(null);
+  const [showNewDropdown, setShowNewDropdown] = useState(false);
+  const newDropdownRef = useRef<HTMLDivElement>(null);
   const [expandedItems, setExpandedItems]   = useState<Set<number>>(new Set());
   const [openInEditMode, setOpenInEditMode] = useState(false);
+
+  useEffect(() => {
+    if (!showNewDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (newDropdownRef.current && !newDropdownRef.current.contains(e.target as Node))
+        setShowNewDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showNewDropdown]);
 
   const toggleExpanded = (itemId: number) => {
     setExpandedItems(prev => {
@@ -182,7 +204,7 @@ const ProjectBacklog: React.FC = () => {
     }
     const groups: { sprint: SprintRecord | null; items: BacklogItemRecord[] }[] = [];
     for (const sprint of meta.sprints) {
-      if (map.has(sprint.id)) groups.push({ sprint, items: map.get(sprint.id)! });
+      groups.push({ sprint, items: map.get(sprint.id) ?? [] });
     }
     if (map.has(null)) groups.push({ sprint: null, items: map.get(null)! });
     return groups;
@@ -303,22 +325,37 @@ const ProjectBacklog: React.FC = () => {
           activeFilter={null}
           onFilterChange={() => {}}
         >
-          <button
-            type="button"
-            className={styles.newItemBtn}
-            onClick={() => setShowCreateForm(true)}
-          >
-            <PlusIcon width={16} height={16} />
-            Nuevo ítem
-          </button>
-          <button
-            type="button"
-            className={styles.newItemBtn}
-            onClick={() => setShowCreateSprintForm(true)}
-          >
-            <PlusIcon width={16} height={16} />
-            Nuevo Sprint
-          </button>
+          <div ref={newDropdownRef} className={styles.newDropdownWrapper}>
+            <button
+              type="button"
+              className={styles.newItemBtn}
+              onClick={() => setShowNewDropdown(o => !o)}
+            >
+              <PlusIcon width={16} height={16} />
+              Nuevo
+              <ChevronDownIcon width={12} height={12} />
+            </button>
+            {showNewDropdown && (
+              <div className={styles.newDropdownMenu}>
+                <button
+                  type="button"
+                  className={styles.newDropdownOption}
+                  onClick={() => { setShowNewDropdown(false); setShowCreateForm(true); }}
+                >
+                  Ítem
+                </button>
+                {canManageSprints && (
+                  <button
+                    type="button"
+                    className={styles.newDropdownOption}
+                    onClick={() => { setShowNewDropdown(false); setShowCreateSprintForm(true); }}
+                  >
+                    Sprint
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </FilterBar>
       </div>
 
@@ -334,7 +371,7 @@ const ProjectBacklog: React.FC = () => {
           <div className={styles.list}>
             {Array.from({ length: 6 }).map((_, i) => <SkeletonBacklogItem key={i} />)}
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : sprintGroups.length === 0 ? (
           <p className={styles.empty}>No hay ítems en el backlog.</p>
         ) : (
           sprintGroups.map(({ sprint, items: groupItems }) => (
@@ -346,6 +383,21 @@ const ProjectBacklog: React.FC = () => {
                 <span className={styles.sprintCount}>
                   {groupItems.length} {groupItems.length === 1 ? 'ítem' : 'ítems'}
                 </span>
+                {sprint && (
+                  <span className={styles.sprintDates}>
+                    {formatSprintDate(sprint.fecha_inicio)} — {formatSprintDate(sprint.fecha_final)}
+                  </span>
+                )}
+                {sprint && canManageSprints && (
+                  <button
+                    type="button"
+                    className={styles.sprintEditBtn}
+                    onClick={() => setEditingSprint(sprint)}
+                    title="Editar sprint"
+                  >
+                    <PencilSquareIcon width={14} height={14} />
+                  </button>
+                )}
               </div>
 
               <div className={styles.list}>
@@ -358,17 +410,19 @@ const ProjectBacklog: React.FC = () => {
 
       <CreateBacklogItemForm
         projectId={PROJECT_ID}
-        userId={USER_ID}
+        userId={user?.id ?? 0}
         isOpen={showCreateForm}
         onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
         onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
       />
       <CreateSprintForm
         projectId={PROJECT_ID}
-        userId={USER_ID}
-        isOpen={showCreateSprintForm}
-        onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
-        onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
+        userId={user?.id ?? 0}
+        isOpen={showCreateSprintForm || editingSprint !== null}
+        sprintToEdit={editingSprint ?? undefined}
+        existingSprints={meta.sprints}
+        onClose={() => { setShowCreateSprintForm(false); setEditingSprint(null); }}
+        onCreated={() => { refreshAll(); setShowCreateSprintForm(false); setEditingSprint(null); }}
       />
 
       {viewingItem && (() => {
