@@ -11,7 +11,7 @@ import { useProjectEtiquetas } from '../hooks/useProjectEtiquetas';
 import { useProjectFte } from '../hooks/useProjectFte';
 import { useToast } from '../hooks/useToast';
 import { useUser } from '@/core/auth/userContext';
-import { deleteEtiquetaWithCascade, upsertProyectoFte, removeMemberFromProject,  fetchGithubConfig, buildGithubInstallUrl, type GithubConfigRecord } from '../services/projectConfig.service';
+import { deleteEtiquetaWithCascade, upsertProyectoFte, removeMemberFromProject, fetchGithubConfig, buildGithubInstallUrl, fetchGithubUserOrgs, fetchGithubInstallationRepos, saveGithubProjectConfig, disconnectGithubProject, GithubNotConnectedError, type GithubConfigRecord, type GithubOrg, type GithubRepo } from '../services/projectConfig.service';
 import InviteUserForm from '../components/InviteUserForm';
 import CreateEtiquetaForm from '../components/CreateEtiquetaForm';
 import EditEtiquetaForm from '../components/EditEtiquetaForm';
@@ -42,10 +42,19 @@ const ProjectConfigPage: React.FC = () => {
   })();
 
   // ── GitHub integration ────────────────────────────────────────────
-  const [githubConfig, setGithubConfig] = useState<GithubConfigRecord | null>(null);
-  const [githubOrg, setGithubOrg]       = useState('');
-  const [githubRepo, setGithubRepo]     = useState('');
+  const [githubConfig, setGithubConfig]   = useState<GithubConfigRecord | null>(null);
   const [githubLoading, setGithubLoading] = useState(true);
+
+  const [orgs, setOrgs]               = useState<GithubOrg[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
+  const [githubNotLinked, setGithubNotLinked] = useState(false);
+  const [selectedOrg, setSelectedOrg] = useState<GithubOrg | null>(null);
+
+  const [repos, setRepos]               = useState<GithubRepo[]>([]);
+  const [reposLoading, setReposLoading] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState('');
+  const [githubSaving, setGithubSaving] = useState(false);
+  const [confirmDisconnectGithub, setConfirmDisconnectGithub] = useState(false);
 
   useEffect(() => {
     fetchGithubConfig(PROJECT_ID)
@@ -61,9 +70,68 @@ const ProjectConfigPage: React.FC = () => {
     }
   }, [searchParams, setSearchParams, PROJECT_ID]);
 
-  const handleGithubConnect = () => {
-    if (!githubOrg.trim() || !githubRepo.trim()) return;
-    window.location.href = buildGithubInstallUrl(PROJECT_ID, githubOrg.trim(), githubRepo.trim());
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'github-installed') {
+        setOrgsLoading(true);
+        fetchGithubUserOrgs()
+          .then(setOrgs)
+          .catch(() => setOrgs([]))
+          .finally(() => setOrgsLoading(false));
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  // Load orgs when the GitHub panel is shown (no config yet)
+  useEffect(() => {
+    if (githubConfig || githubLoading) return;
+    setOrgsLoading(true);
+    fetchGithubUserOrgs()
+      .then(setOrgs)
+      .catch((err) => {
+        if (err instanceof GithubNotConnectedError) setGithubNotLinked(true);
+        setOrgs([]);
+      })
+      .finally(() => setOrgsLoading(false));
+  }, [githubConfig, githubLoading]);
+
+  // Load repos whenever the selected org changes
+  useEffect(() => {
+    if (!selectedOrg) { setRepos([]); setSelectedRepo(''); return; }
+    setReposLoading(true);
+    setSelectedRepo('');
+    fetchGithubInstallationRepos(selectedOrg.installation_id)
+      .then(setRepos)
+      .catch(() => setRepos([]))
+      .finally(() => setReposLoading(false));
+  }, [selectedOrg]);
+
+  const handleGithubDisconnect = async () => {
+    setConfirmDisconnectGithub(false);
+    try {
+      await disconnectGithubProject(PROJECT_ID);
+      setGithubConfig(null);
+      setSelectedOrg(null);
+      setSelectedRepo('');
+    } catch (err: unknown) {
+      showError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleGithubConnect = async () => {
+    if (!selectedOrg || !selectedRepo) return;
+    setGithubSaving(true);
+    try {
+      await saveGithubProjectConfig(PROJECT_ID, selectedOrg.login, selectedRepo, selectedOrg.installation_id);
+      const config = await fetchGithubConfig(PROJECT_ID);
+      setGithubConfig(config);
+    } catch (err: unknown) {
+      showError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setGithubSaving(false);
+    }
   };
 
   // ── Modal visibility ──────────────────────────────────────────────
@@ -358,6 +426,7 @@ const ProjectConfigPage: React.FC = () => {
             <div className={styles.skeletonFte} />
           ) : githubConfig ? (
             <div className={styles.githubConnected}>
+              <div className={styles.githubDivision}>
               <svg className={styles.githubIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
               </svg>
@@ -365,39 +434,83 @@ const ProjectConfigPage: React.FC = () => {
                 <span className={styles.githubRepo}>{githubConfig.github_org}/{githubConfig.github_repo}</span>
                 <span className={styles.githubInstall}>Installation ID: {githubConfig.installation_id}</span>
               </div>
+              </div>
+              {canEdit && (
+                <button
+                  type="button"
+                  className={styles.confirmDeleteBtn}
+                  onClick={() => setConfirmDisconnectGithub(true)}
+                >
+                  <TrashIcon width={14} height={14} />
+                  Desconectar
+                </button>
+              )}
+            </div>
+          ) : githubNotLinked ? (
+            <div className={styles.githubNotLinked}>
+              <p>Tu cuenta no está vinculada a GitHub.</p>
+              <a href="/perfil" className={styles.githubNotLinkedLink}>Conecta tu cuenta en tu perfil</a>
             </div>
           ) : (
             <div className={styles.githubForm}>
               <div className={styles.githubInputGroup}>
                 <label className={styles.githubLabel}>Organización</label>
-                <input
+                <select
                   className={styles.githubInput}
-                  type="text"
-                  placeholder="mi-organizacion"
-                  value={githubOrg}
-                  onChange={e => setGithubOrg(e.target.value)}
-                />
+                  value={selectedOrg?.login ?? ''}
+                  disabled={orgsLoading}
+                  onChange={e => {
+                    const found = orgs.find(o => o.login === e.target.value) ?? null;
+                    setSelectedOrg(found);
+                  }}
+                >
+                  <option value="">{orgsLoading ? 'Cargando organizaciones…' : 'Selecciona una organización'}</option>
+                  {orgs.map(o => (
+                    <option key={o.login} value={o.login}>{o.login}</option>
+                  ))}
+                </select>
               </div>
               <div className={styles.githubInputGroup}>
                 <label className={styles.githubLabel}>Repositorio</label>
-                <input
+                <select
                   className={styles.githubInput}
-                  type="text"
-                  placeholder="mi-repositorio"
-                  value={githubRepo}
-                  onChange={e => setGithubRepo(e.target.value)}
-                />
+                  value={selectedRepo}
+                  disabled={!selectedOrg || reposLoading}
+                  onChange={e => setSelectedRepo(e.target.value)}
+                >
+                  <option value="">
+                    {!selectedOrg ? 'Primero selecciona una organización' : reposLoading ? 'Cargando repositorios…' : 'Selecciona un repositorio'}
+                  </option>
+                  {repos.map(r => (
+                    <option key={r.name} value={r.name}>{r.name}{r.private ? ' 🔒' : ''}</option>
+                  ))}
+                </select>
               </div>
               <button
                 type="button"
                 className={styles.githubConnectBtn}
-                disabled={!githubOrg.trim() || !githubRepo.trim()}
+                disabled={!selectedOrg || !selectedRepo || githubSaving}
                 onClick={handleGithubConnect}
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
                 </svg>
-                Conectar con GitHub
+                {githubSaving ? 'Guardando…' : 'Conectar con GitHub'}
+              </button>
+              <button
+                type="button"
+                className={styles.githubNotLinkedLink}
+                style={{ fontSize: '0.78rem', marginTop: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                onClick={() => {
+                  const state = btoa(JSON.stringify({ projectId: PROJECT_ID }));
+                  window.open(
+                    `https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_SLUG as string}/installations/new?state=${state}`,
+                    'github-install',
+                    'width=1000,height=700',
+                  );
+                }}
+              >
+                Instalar app en otra organización →
               </button>
             </div>
           )}
@@ -487,6 +600,24 @@ const ProjectConfigPage: React.FC = () => {
           <button type="button" className={styles.confirmDeleteBtn} onClick={handleConfirmDelete}>
             <TrashIcon width={14} height={14} />
             Eliminar
+          </button>
+        </div>
+      </FormPopUp>
+
+      <FormPopUp
+        eyebrow="Integración con GitHub"
+        title="Desconectar repositorio"
+        subtitle={`¿Desconectar ${githubConfig?.github_org}/${githubConfig?.github_repo}? Los branches y PRs existentes no se eliminarán, pero dejarás de crear nuevos automáticamente.`}
+        isOpen={confirmDisconnectGithub}
+        onClose={() => setConfirmDisconnectGithub(false)}
+      >
+        <div className={styles.confirmActions}>
+          <button type="button" className={styles.confirmCancelBtn} onClick={() => setConfirmDisconnectGithub(false)}>
+            Cancelar
+          </button>
+          <button type="button" className={styles.confirmDeleteBtn} onClick={handleGithubDisconnect}>
+            <TrashIcon width={14} height={14} />
+            Desconectar
           </button>
         </div>
       </FormPopUp>

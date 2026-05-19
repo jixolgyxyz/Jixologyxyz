@@ -343,11 +343,19 @@
 .githubConnected {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.875rem;
   padding: 0.75rem 1rem;
   border: 1px solid var(--color-clarity-gray-2);
   border-radius: 12px;
   background: var(--color-clarity-gray-1);
+}
+
+.githubDivision {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 1rem;
 }
 
 .githubIcon {
@@ -442,6 +450,26 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.githubNotLinked {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-clarity-gray-3, #f5f5f5);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--color-anchor-gray-1);
+}
+
+.githubNotLinkedLink {
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.githubNotLinkedLink:hover { text-decoration: underline; }
 
 /* ── Delete confirmation dialog ──────────────────────────────────── */
 .confirmActions {

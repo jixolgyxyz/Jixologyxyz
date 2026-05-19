@@ -8,7 +8,6 @@ import type { Project } from '../types/Project';
 export type ProjectContextData = Pick<Project,
   | 'id'
   | 'nombre'
-  | 'cliente'
   | 'id_estatus'
 > & {
   metodologia: string;
@@ -67,7 +66,6 @@ export async function fetchProjectContext(projectId: number): Promise<ProjectCon
   return {
     id: data.id,
     nombre: data.nombre,
-    cliente: data.cliente,
     id_estatus: data.id_estatus,
     metodologia: Array.isArray(data.metodologia_proyecto)
     ? data.metodologia_proyecto[0].nombre

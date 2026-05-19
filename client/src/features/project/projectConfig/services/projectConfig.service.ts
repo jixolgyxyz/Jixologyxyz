@@ -450,6 +450,74 @@ export function buildGithubInstallUrl(projectId: number, org: string, repo: stri
   return `https://github.com/apps/${appSlug}/installations/new?state=${state}`;
 }
 
+export interface GithubOrg {
+  installation_id: number;
+  login: string;
+  avatar_url: string;
+}
+
+export interface GithubRepo {
+  name: string;
+  full_name: string;
+  private: boolean;
+}
+
+async function getAuthHeader(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('No auth session');
+  return `Bearer ${token}`;
+}
+
+const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+export class GithubNotConnectedError extends Error {}
+
+export async function fetchGithubUserOrgs(): Promise<GithubOrg[]> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-user-orgs`, {
+    headers: { Authorization: authHeader },
+  });
+  if (res.status === 404) throw new GithubNotConnectedError();
+  if (!res.ok) throw new Error('Failed to fetch GitHub orgs');
+  return res.json() as Promise<GithubOrg[]>;
+}
+
+export async function fetchGithubInstallationRepos(installationId: number): Promise<GithubRepo[]> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(
+    `${FUNCTIONS_URL}/functions/v1/github-user-repos?installation_id=${installationId}`,
+    { headers: { Authorization: authHeader } },
+  );
+  if (!res.ok) throw new Error('Failed to fetch GitHub repos');
+  return res.json() as Promise<GithubRepo[]>;
+}
+
+export async function disconnectGithubProject(projectId: number): Promise<void> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-project-disconnect`, {
+    method: 'DELETE',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId }),
+  });
+  if (!res.ok) throw new Error('Failed to disconnect GitHub');
+}
+
+export async function saveGithubProjectConfig(
+  projectId: number,
+  org: string,
+  repo: string,
+  installationId: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from('proyecto_github_config')
+    .upsert(
+      { id_proyecto: projectId, github_org: org, github_repo: repo, installation_id: installationId },
+      { onConflict: 'id_proyecto' },
+    );
+  if (error) throw new Error(error.message);
+}
+
 export function buildFteData(
   members: Array<{ id: number; nombre: string | null; apellido: string | null; email: string; jornada: number | null }>,
   fteEntries: ProyectoFteRecord[],
