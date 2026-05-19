@@ -14,6 +14,7 @@ import {
   MinusCircleIcon,
   PresentationChartBarIcon,
   ChevronDownIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/solid';
 import { signOutService } from '@/features/auth/services/auth.service';
 
@@ -25,7 +26,7 @@ const Sidebar: React.FC<ISidebarProps> = () => {
   const navigate = useNavigate();
   const { user } = useUser();
   const { projectIds: pmProjectIds } = usePmProjects();
-  const [dashOpen, setDashOpen] = useState(true);
+  const [dashOpen, setDashOpen] = useState(false);
 
   if (!user) return null;
 
@@ -112,17 +113,6 @@ const Sidebar: React.FC<ISidebarProps> = () => {
               </NavLink>
             </li>
 
-            <li className={styles.menuItem}>
-              <NavLink to="/perfil">
-                <UserCircleIcon className={styles.icon} />
-                <span><b>Perfil</b></span>
-              </NavLink>
-            </li>
-
-            <li className={styles.menuItem}>
-              <NotificationBell variant="sidebar" />
-            </li>
-
             {user.idRolGlobal === 1 && (
               <li className={styles.menuItem}>
                 <NavLink to="/usuarios">
@@ -131,6 +121,26 @@ const Sidebar: React.FC<ISidebarProps> = () => {
                 </NavLink>
               </li>
             )}
+
+            <li className={styles.deadSpace}></li>
+
+            <li className={styles.menuItem}>
+              <NotificationBell variant="sidebar" />
+            </li>
+
+            <li className={styles.menuItem}>
+              <NavLink to="/perfil">
+                <UserCircleIcon className={styles.icon} />
+                <span><b>Perfil</b></span>
+              </NavLink>
+            </li>
+            
+            <li className={styles.menuItem}>
+              <NavLink to="/tienda">
+                <ShoppingBagIcon className={styles.icon} />
+                <span><b>Tienda</b></span>
+              </NavLink>
+            </li>
           </div>
 
           <div>
