@@ -181,16 +181,27 @@ client/
   ```
   SUPABASE_URL=your_supabase_url
   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+  JWT_SECRET=your_jwt_secret
   PORT=3000
   ```
   Find these values in the Supabase dashboard under **Project Settings → API**.
+
+> **Important:** The client build bakes environment variables into the JS bundle at build time.  
+> You must pass the real production values via `--build-arg` — the local `.env` file is excluded from Docker builds.
 
 ### 1. Build the images
 Run both commands from the **repo root**:
 
 ```bash
 # Client (Nginx, serves the React app)
-docker build -t jixology-client -f client/Dockerfile client/
+# Replace each value with your real Supabase / API / Gemini credentials
+docker build \
+  --build-arg VITE_SUPABASE_URL=https://your-project-id.supabase.co \
+  --build-arg VITE_SUPABASE_ANON_KEY=your-anon-key \
+  --build-arg VITE_BUSINESS_API_URL=http://localhost:3000 \
+  --build-arg VITE_GEMINI_API_KEY=your-gemini-api-key \
+  -t jixology-client \
+  -f client/Dockerfile client/
 
 # Server (Express + Socket.io)
 docker build -t jixology-server -f server/Dockerfile .
@@ -200,7 +211,7 @@ docker build -t jixology-server -f server/Dockerfile .
 
 ```bash
 # Client — available at http://localhost
-docker run -d -p 80:80 --name jixology-client jixology-client
+docker run -d -p 5173:80 --name jixology-client jixology-client
 
 # Server — available at http://localhost:3000
 docker run -d -p 3000:3000 --env-file server/.env --name jixology-server jixology-server

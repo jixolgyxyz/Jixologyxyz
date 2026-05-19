@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 import { useUser } from '@/core/auth/userContext';
+import { usePmProjects } from '@/features/dashboard/hooks/usePmProjects';
 import NotificationBell from '@/features/notifications/components/NotificationBell';
 
 import {
@@ -11,10 +12,10 @@ import {
   BookOpenIcon,
   UserPlusIcon,
   MinusCircleIcon,
+  PresentationChartBarIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/solid';
 import { signOutService } from '@/features/auth/services/auth.service';
-
-//const ADMIN_VIEWS = [1,2];
 
 export interface ISidebarProps {
   children?: ReactNode;
@@ -23,8 +24,13 @@ export interface ISidebarProps {
 const Sidebar: React.FC<ISidebarProps> = () => {
   const navigate = useNavigate();
   const { user } = useUser();
+  const { projectIds: pmProjectIds } = usePmProjects();
+  const [dashOpen, setDashOpen] = useState(true);
 
   if (!user) return null;
+
+  const isAdmin = user.idRolGlobal === 1 || user.idRolGlobal === 2;
+  const hasPmProjects = pmProjectIds.size > 0;
 
   const handleLogout = async () => {
     try {
@@ -40,11 +46,63 @@ const Sidebar: React.FC<ISidebarProps> = () => {
       <aside className={styles.sidebar}>
         <ul className={styles.menu}>
           <div>
+            {/* ── Dashboard group (collapsible) ─────────────────────── */}
             <li className={styles.menuItem}>
-              <NavLink to="/dashboard-usuario">
+              <button
+                type="button"
+                className={styles.dashToggle}
+                onClick={() => setDashOpen(o => !o)}
+              >
                 <BeakerIcon className={styles.icon} />
-                <span><b>Dashboard</b></span>
-              </NavLink>
+                <span className={styles.dashToggleLabel}>
+                  <b>Dashboard</b>
+                  <ChevronDownIcon
+                    className={`${styles.dashChevron} ${dashOpen ? styles.dashChevronOpen : ''}`}
+                  />
+                </span>
+              </button>
+
+              <ul className={`${styles.dashChildren} ${dashOpen ? styles.dashChildrenOpen : ''}`}>
+                <li>
+                  <NavLink
+                    to="/dashboard-usuario"
+                    className={({ isActive }) =>
+                      `${styles.dashChild} ${isActive ? styles.dashChildActive : ''}`
+                    }
+                  >
+                    <BeakerIcon className={styles.dashChildIcon} />
+                    <span className={styles.dashChildText}><b>Dashboard</b> Usuario</span>
+                  </NavLink>
+                </li>
+
+                {hasPmProjects && (
+                  <li>
+                    <NavLink
+                      to="/dashboard-proyectos"
+                      className={({ isActive }) =>
+                        `${styles.dashChild} ${isActive ? styles.dashChildActive : ''}`
+                      }
+                    >
+                      <PresentationChartBarIcon className={styles.dashChildIcon} />
+                      <span className={styles.dashChildText}><b>Dashboard</b> Proyectos</span>
+                    </NavLink>
+                  </li>
+                )}
+
+                {isAdmin && (
+                  <li>
+                    <NavLink
+                      to="/dashboard-admin"
+                      className={({ isActive }) =>
+                        `${styles.dashChild} ${isActive ? styles.dashChildActive : ''}`
+                      }
+                    >
+                      <PresentationChartBarIcon className={styles.dashChildIcon} />
+                      <span className={styles.dashChildText}><b>Dashboard</b> Admin</span>
+                    </NavLink>
+                  </li>
+                )}
+              </ul>
             </li>
 
             <li className={styles.menuItem}>

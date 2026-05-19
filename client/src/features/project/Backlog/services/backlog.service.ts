@@ -152,7 +152,8 @@ export async function updateBacklogItem(id: number, payload: UpdateBacklogItemPa
       id_backlog_item_padre:  payload.id_backlog_item_padre  ?? null,
       id_usuario_responsable: payload.id_usuario_responsable ?? null,
       complejidad:            payload.complejidad ?? null,
-      ...(payload.tiempo !== undefined ? { tiempo: payload.tiempo ?? null } : {}),
+      ...(payload.tiempo           !== undefined ? { tiempo:           payload.tiempo           ?? null } : {}),
+      ...(payload.tiempo_estimado  !== undefined ? { tiempo_estimado:  payload.tiempo_estimado  ?? null } : {}),
     })
     .eq('id', id)
     .select()
@@ -184,6 +185,15 @@ export async function fetchProjectEtiquetas(projectId: number): Promise<ProjectE
 
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+export async function deleteBacklogItem(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('backlog_item')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
 }
 
 export async function createSugerencia(itemId: number): Promise<void> {

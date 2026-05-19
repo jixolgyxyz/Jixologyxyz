@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { PlusIcon, UserPlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import FormPopUp from '@/shared/components/FormPopUp';
@@ -11,11 +11,11 @@ import { useProjectEtiquetas } from '../hooks/useProjectEtiquetas';
 import { useProjectFte } from '../hooks/useProjectFte';
 import { useToast } from '../hooks/useToast';
 import { useUser } from '@/core/auth/userContext';
-import { deleteEtiquetaWithCascade, upsertProyectoFte } from '../services/projectConfig.service';
+import { deleteEtiquetaWithCascade, upsertProyectoFte, removeMemberFromProject,  fetchGithubConfig, buildGithubInstallUrl, type GithubConfigRecord } from '../services/projectConfig.service';
 import InviteUserForm from '../components/InviteUserForm';
 import CreateEtiquetaForm from '../components/CreateEtiquetaForm';
 import EditEtiquetaForm from '../components/EditEtiquetaForm';
-import UserEtiquetasPanel from '../components/UserEtiquetasPanel';
+import UserContextMenu from '../components/UserContextMenu';
 import { MemberHoverCard } from '../components/MemberHoverCard';
 import type { EtiquetaPersonalizadaRecord, FteMemberRecord } from '../types/projectConfig.types';
 import styles from './ProjectConfigPage.module.css';
@@ -24,14 +24,15 @@ const ProjectConfigPage: React.FC = () => {
   const { id } = useParams();
   const PROJECT_ID = Number(id);
   const { user } = useUser();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { members, memberEtiquetas, memberEtiquetasPred, loading: membersLoading, refresh: refreshMembers } = useProjectMembers(PROJECT_ID);
   const { etiquetas, etiquetasPredeterminadas, loading: etiquetasLoading, refresh: refreshEtiquetas } = useProjectEtiquetas(PROJECT_ID);
   const { fteData, loading: fteLoading, refresh: refreshFte } = useProjectFte(PROJECT_ID);
   const { toast, showError, clearToast } = useToast();
 
-  // SAdmins (1) and Admins (2) can always invite; PMs in this project can too
-  const canInvite = (() => {
+  // SAdmins (1) and Admins (2) can always edit; PMs in this project can too
+  const canEdit = (() => {
     if (user?.idRolGlobal === 1 || user?.idRolGlobal === 2) return true;
     const pmEntry = etiquetasPredeterminadas.find(e => e.nombre === 'PM');
     if (!pmEntry) return false;
@@ -40,15 +41,45 @@ const ProjectConfigPage: React.FC = () => {
     );
   })();
 
+  // ── GitHub integration ────────────────────────────────────────────
+  const [githubConfig, setGithubConfig] = useState<GithubConfigRecord | null>(null);
+  const [githubOrg, setGithubOrg]       = useState('');
+  const [githubRepo, setGithubRepo]     = useState('');
+  const [githubLoading, setGithubLoading] = useState(true);
+
+  useEffect(() => {
+    fetchGithubConfig(PROJECT_ID)
+      .then(setGithubConfig)
+      .catch(() => setGithubConfig(null))
+      .finally(() => setGithubLoading(false));
+  }, [PROJECT_ID]);
+
+  useEffect(() => {
+    if (searchParams.get('github') === 'connected') {
+      setSearchParams({}, { replace: true });
+      fetchGithubConfig(PROJECT_ID).then(setGithubConfig).catch(() => null);
+    }
+  }, [searchParams, setSearchParams, PROJECT_ID]);
+
+  const handleGithubConnect = () => {
+    if (!githubOrg.trim() || !githubRepo.trim()) return;
+    window.location.href = buildGithubInstallUrl(PROJECT_ID, githubOrg.trim(), githubRepo.trim());
+  };
+
   // ── Modal visibility ──────────────────────────────────────────────
   const [showInviteForm, setShowInviteForm]         = useState(false);
   const [showCreateEtiqueta, setShowCreateEtiqueta] = useState(false);
   const [editingEtiqueta, setEditingEtiqueta]       = useState<EtiquetaPersonalizadaRecord | null>(null);
   const [deletingEtiqueta, setDeletingEtiqueta]     = useState<EtiquetaPersonalizadaRecord | null>(null);
-  const [etiquetasPanel, setEtiquetasPanel] = useState<{
+  const [userContextMenu, setUserContextMenu] = useState<{
     userId: number;
     userName: string;
     position: { x: number; y: number };
+  } | null>(null);
+
+  const [removingMember, setRemovingMember] = useState<{
+    userId: number;
+    userName: string;
   } | null>(null);
 
   // ── Jornada local state ───────────────────────────────────────────
@@ -91,6 +122,19 @@ const ProjectConfigPage: React.FC = () => {
       .map(e => ({ label: e.nombre, color: e.color_bloque, textColor: e.color_letra }));
 
     return [...predRoles, ...customRoles];
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!removingMember) return;
+    const target = removingMember;
+    setRemovingMember(null);
+    try {
+      await removeMemberFromProject(target.userId, PROJECT_ID);
+      refreshMembers();
+      refreshFte();
+    } catch (err: unknown) {
+      showError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -149,7 +193,7 @@ const ProjectConfigPage: React.FC = () => {
               {members.length} {members.length === 1 ? 'miembro' : 'miembros'}
             </p>
           </div>
-          {canInvite && (
+          {canEdit && (
             <ButtonComponent
               label="Invitar usuario"
               icon={<UserPlusIcon width={16} height={16} />}
@@ -174,9 +218,9 @@ const ProjectConfigPage: React.FC = () => {
                     fullName={fullName}
                     email={member.email}
                     roles={roles}
-                    onEdit={pos => setEtiquetasPanel(prev =>
+                    onEdit={canEdit ? pos => setUserContextMenu(prev =>
                       prev?.userId === member.id ? null : { userId: member.id, userName: fullName, position: pos }
-                    )}
+                    ) : undefined}
                     onAvatarEnter={rect => { cancelHide(); setHoveredMember({ userId: member.id, name: fullName, email: member.email, roles, rect }); }}
                     onAvatarLeave={startHide}
                   />
@@ -218,12 +262,14 @@ const ProjectConfigPage: React.FC = () => {
                       step={0.5}
                       value={localHours[member.id] ?? ''}
                       placeholder="0"
+                      disabled={!canEdit}
                       onChange={e => {
+                        if (!canEdit) return;
                         const val = e.target.value;
                         if (member.max_horas !== null && val !== '' && parseFloat(val) > member.max_horas) return;
                         setLocalHours(prev => ({ ...prev, [member.id]: val }));
                       }}
-                      onBlur={() => handleFteBlur(member)}
+                      onBlur={() => canEdit && handleFteBlur(member)}
                     />
                     <span className={styles.fteMax}>
                       {member.max_horas !== null
@@ -254,11 +300,13 @@ const ProjectConfigPage: React.FC = () => {
             <h2 className={styles.panelTitle}>Etiquetas personalizadas</h2>
             <p className={styles.panelSubtitle}>Haz clic en una etiqueta para editarla</p>
           </div>
-          <ButtonComponent
-            label="Nueva etiqueta"
-            icon={<PlusIcon width={16} height={16} />}
-            onClick={() => setShowCreateEtiqueta(true)}
-          />
+          {canEdit && (
+            <ButtonComponent
+              label="Nueva etiqueta"
+              icon={<PlusIcon width={16} height={16} />}
+              onClick={() => setShowCreateEtiqueta(true)}
+            />
+          )}
         </div>
 
         <div className={styles.panelContent}>
@@ -270,18 +318,87 @@ const ProjectConfigPage: React.FC = () => {
             <div className={styles.etiquetasGrid}>
               {etiquetas.map(et => (
                 <div key={et.id} className={styles.etiquetaCard}>
-                  <button type="button" className={styles.etiquetaBadgeBtn} onClick={() => setEditingEtiqueta(et)} title="Editar etiqueta">
+                  {canEdit ? (
+                    <button type="button" className={styles.etiquetaBadgeBtn} onClick={() => setEditingEtiqueta(et)} title="Editar etiqueta">
+                      <span className={styles.etiquetaBadge} style={{ backgroundColor: et.color_bloque, color: et.color_letra }}>
+                        {et.nombre}
+                      </span>
+                      <PencilIcon className={styles.editIcon} />
+                    </button>
+                  ) : (
                     <span className={styles.etiquetaBadge} style={{ backgroundColor: et.color_bloque, color: et.color_letra }}>
                       {et.nombre}
                     </span>
-                    <PencilIcon className={styles.editIcon} />
-                  </button>
+                  )}
                   {et.descripcion && <span className={styles.etiquetaDesc}>{et.descripcion}</span>}
-                  <button type="button" className={styles.deleteBtn} aria-label={`Eliminar etiqueta ${et.nombre}`} onClick={() => setDeletingEtiqueta(et)}>
-                    <TrashIcon className={styles.deleteBtnIcon} />
-                  </button>
+                  {canEdit && (
+                    <button type="button" className={styles.deleteBtn} aria-label={`Eliminar etiqueta ${et.nombre}`} onClick={() => setDeletingEtiqueta(et)}>
+                      <TrashIcon className={styles.deleteBtnIcon} />
+                    </button>
+                  )}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── BOTTOM: GitHub integration ───────────────────────────── */}
+      <div className={`${styles.panel} ${styles.panelGithub}`}>
+        <div className={styles.panelHeader}>
+          <div>
+            <h2 className={styles.panelTitle}>Integración con GitHub</h2>
+            <p className={styles.panelSubtitle}>Conecta un repositorio para automatizar branches y PRs</p>
+          </div>
+          {githubConfig && <span className={styles.githubBadge}>Conectado</span>}
+        </div>
+
+        <div className={styles.panelContent}>
+          {githubLoading ? (
+            <div className={styles.skeletonFte} />
+          ) : githubConfig ? (
+            <div className={styles.githubConnected}>
+              <svg className={styles.githubIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
+              </svg>
+              <div className={styles.githubConnectedInfo}>
+                <span className={styles.githubRepo}>{githubConfig.github_org}/{githubConfig.github_repo}</span>
+                <span className={styles.githubInstall}>Installation ID: {githubConfig.installation_id}</span>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.githubForm}>
+              <div className={styles.githubInputGroup}>
+                <label className={styles.githubLabel}>Organización</label>
+                <input
+                  className={styles.githubInput}
+                  type="text"
+                  placeholder="mi-organizacion"
+                  value={githubOrg}
+                  onChange={e => setGithubOrg(e.target.value)}
+                />
+              </div>
+              <div className={styles.githubInputGroup}>
+                <label className={styles.githubLabel}>Repositorio</label>
+                <input
+                  className={styles.githubInput}
+                  type="text"
+                  placeholder="mi-repositorio"
+                  value={githubRepo}
+                  onChange={e => setGithubRepo(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className={styles.githubConnectBtn}
+                disabled={!githubOrg.trim() || !githubRepo.trim()}
+                onClick={handleGithubConnect}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
+                </svg>
+                Conectar con GitHub
+              </button>
             </div>
           )}
         </div>
@@ -316,22 +433,45 @@ const ProjectConfigPage: React.FC = () => {
         />
       )}
 
-      {etiquetasPanel && (
-        <UserEtiquetasPanel
-          userId={etiquetasPanel.userId}
+      {userContextMenu && (
+        <UserContextMenu
+          userId={userContextMenu.userId}
           projectId={PROJECT_ID}
-          userName={etiquetasPanel.userName}
+          userName={userContextMenu.userName}
           asignadorId={user?.id ?? 0}
           etiquetas={etiquetas}
           memberEtiquetas={memberEtiquetas}
           etiquetasPredeterminadas={etiquetasPredeterminadas}
           memberEtiquetasPred={memberEtiquetasPred}
-          position={etiquetasPanel.position}
-          onClose={() => setEtiquetasPanel(null)}
+          position={userContextMenu.position}
+          onClose={() => setUserContextMenu(null)}
           onChanged={refreshMembers}
           onError={showError}
+          onRemoveUser={(userId, userName) => setRemovingMember({ userId, userName })}
+          onCreateEtiqueta={() => setShowCreateEtiqueta(true)}
+          onEditEtiqueta={et => setEditingEtiqueta(et)}
         />
       )}
+
+      <FormPopUp
+        eyebrow="Miembros del proyecto"
+        title="Eliminar del proyecto"
+        subtitle={removingMember
+          ? `¿Eliminar a "${removingMember.userName}" del proyecto? Sus backlog items asignados quedarán sin responsable. Esta acción no se puede deshacer.`
+          : ''}
+        isOpen={removingMember !== null}
+        onClose={() => setRemovingMember(null)}
+      >
+        <div className={styles.confirmActions}>
+          <button type="button" className={styles.confirmCancelBtn} onClick={() => setRemovingMember(null)}>
+            Cancelar
+          </button>
+          <button type="button" className={styles.confirmDeleteBtn} onClick={handleConfirmRemoveMember}>
+            <TrashIcon width={14} height={14} />
+            Eliminar
+          </button>
+        </div>
+      </FormPopUp>
 
       <FormPopUp
         eyebrow="Etiquetas personalizadas"
