@@ -24,7 +24,7 @@ const shopItems = [
     id: 1,
     category: 'styles',
     title: 'Cofre Pixel',
-    description: 'Objetos relacionados con el estilo artistico "Pixel". ¡Cualquiera dentro de esa categoría!.',
+    description: 'Elementos inspirados en un estilo visual retro y minimalista.',
     image: cofreDefault,
     imageHeight: '200px',
   },
@@ -32,7 +32,7 @@ const shopItems = [
     id: 2,
     category: 'styles',
     title: 'Cofre Animado',
-    description: 'Objetos relacionados con el estilo artistico "Animado". ¡Cualquiera dentro de esa categoría!.',
+    description: 'Diseños expresivos y dinámicos con un acabado moderno y creativo.',
     image: cofreDefault,
     imageHeight: '200px',
   },
@@ -40,34 +40,97 @@ const shopItems = [
     id: 3,
     category: 'styles',
     title: 'Cofre Tradicional',
-    description: 'Objetos relacionados con el estilo artistico "Tradicional". ¡Cualquiera dentro de esa categoría!.',
+    description: 'Una colección con un enfoque clásico, limpio y atemporal.',
     image: cofreDefault,
     imageHeight: '200px',
   },
   {
     id: 4,
     category: 'types',
-    title: 'Cofre de Lentes',
-    subcategory: 'lentes',
-    description: 'Cualquier tipo de gafas. ¡(Te) verás genial con estas!',
+    title: 'Cofre de Accesorios',
+    subcategory: [1, 2],
+    description: 'Detalles adicionales para darle más personalidad a tu avatar.',
     image: cofreDefault,
     imageHeight: '200px',
   },
   {
     id: 5,
     category: 'types',
-    title: 'Cofre de Camisas',
-    subcategory: 'camisas',
-    description: 'Cualquier camisa. ¡Viste con orgullo tu mejor prenda!',
+    title: 'Cofre de Barbas',
+    subcategory: [3],
+    description: 'Estilos de barba para complementar distintos tipos de apariencia.',
     image: cofreDefault,
     imageHeight: '200px',
   },
   {
     id: 6,
     category: 'types',
-    title: 'Cofre de Accesorios',
-    subcategory: 'accesorios',
-    description: 'Cualquier accesorio. ¡Es importante mostrar tu estilo único!',
+    title: 'Cofre de Ropa',
+    subcategory: [4, 5],
+    description: 'Prendas y combinaciones para personalizar tu estilo visual.',
+    image: cofreDefault,
+    imageHeight: '200px',
+  },
+  {
+    id: 7,
+    category: 'types',
+    title: 'Cofre de Ojos',
+    subcategory: [6, 7],
+    description: 'Variaciones de ojos y colores para expresar diferentes estilos.',
+    image: cofreDefault,
+    imageHeight: '200px',
+  },
+  {
+    id: 8,
+    category: 'types',
+    title: 'Cofre de Gafas',
+    subcategory: [8, 9],
+    description: 'Una selección de gafas con estilos modernos y clásicos.',
+    image: cofreDefault,
+    imageHeight: '200px',
+  },
+  {
+    id: 9,
+    category: 'types',
+    title: 'Cofre de Cabello',
+    subcategory: [10, 11],
+    description: 'Peinados y colores para crear una apariencia única.',
+    image: cofreDefault,
+    imageHeight: '200px',
+  },
+  {
+    id: 10,
+    category: 'types',
+    title: 'Cofre de Sombrero',
+    subcategory: [12, 13],
+    description: 'Sombreros y accesorios de cabeza para destacar tu avatar.',
+    image: cofreDefault,
+    imageHeight: '200px',
+  },
+  {
+    id: 11,
+    category: 'types',
+    title: 'Cofre de Boca',
+    subcategory: [14, 15],
+    description: 'Expresiones y detalles faciales para darle más carácter al avatar.',
+    image: cofreDefault,
+    imageHeight: '200px',
+  },
+  {
+    id: 12,
+    category: 'types',
+    title: 'Cofre de Fondo',
+    subcategory: [16],
+    description: 'Fondos decorativos para complementar la presentación visual.',
+    image: cofreDefault,
+    imageHeight: '200px',
+  },
+  {
+    id: 18,
+    category: 'types',
+    title: 'Cofre de Piel',
+    subcategory: [18],
+    description: 'Opciones de tonos y acabados para personalizar la apariencia base.',
     image: cofreDefault,
     imageHeight: '200px',
   },
@@ -88,7 +151,7 @@ const ShopPage: React.FC = () => {
   //Variables para manejo de Gachas
   const [showLootbox, setShowLootbox] = useState(false);
   const [popup, setPopup] = useState<PopupState | null>(null);
-  const [lootboxCategory, setLootboxCategory] = useState<string | null>(null); //Pool de Objetos
+  const [lootboxCategory, setLootboxCategory] = useState<number[] | null>(null); //Pool de Objetos
 
   //Datos DEL gacha
   const {
@@ -119,6 +182,33 @@ const ShopPage: React.FC = () => {
       initialFeatures,
     );
 
+  //Filtrado de Items por Cofre
+  console.log('lootboxCategory:', lootboxCategory);
+
+  console.log(
+    'unownedItems:',
+    unownedItems.map((item) => ({
+      nombre: item.nombre,
+      id_atributo_avatar: item.id_atributo_avatar,
+      tipo: typeof item.id_atributo_avatar,
+    }))
+  );
+  const filteredUnownedItems =
+  !lootboxCategory
+    ? unownedItems
+    : unownedItems.filter((item) =>
+        lootboxCategory.includes(item.id_atributo_avatar)
+      );
+
+  console.log(
+    'filteredUnownedItems:',
+    filteredUnownedItems.map((item) => ({
+      nombre: item.nombre,
+      id_atributo_avatar: item.id_atributo_avatar,
+      tipo: typeof item.id_atributo_avatar,
+    }))
+  );
+
   return (<>
     {showLootbox && (
             <div
@@ -129,7 +219,7 @@ const ShopPage: React.FC = () => {
             >
               <div className="lootbox-modal">
                 <AvatarLootBox
-                  unownedItems={unownedItems}
+                  unownedItems={filteredUnownedItems}
                   atributos={atributos}
                   baseFeatures={features}
                   onOpen={addRandomItem}
@@ -175,8 +265,8 @@ const ShopPage: React.FC = () => {
                     <p>{item.description}</p>
 
                     <ButtonComponent
-                      label="Comprar"
-                      onClick={() => { setLootboxCategory("{item.subcategory}"); setShowLootbox(true); setPopup(null); }}
+                      label="Comprar" //COFRES DE ESTILOS, NO FILTRAR
+                      onClick={() => { setShowLootbox(true); setPopup(null); }}
                       />
                   </div>
                 </div>
@@ -213,7 +303,7 @@ const ShopPage: React.FC = () => {
 
                     <ButtonComponent
                       label="Comprar"
-                      onClick={() => { setShowLootbox(true); setPopup(null); }}
+                      onClick={() => { setLootboxCategory(item.subcategory ?? null); setShowLootbox(true); setPopup(null); }}
                       />
                   </div>
                 </div>
