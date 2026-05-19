@@ -416,6 +416,7 @@ const ProjectBacklog: React.FC = () => {
         onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
       />
       <CreateSprintForm
+        key={editingSprint != null ? `edit-${editingSprint.id}` : 'create'}
         projectId={PROJECT_ID}
         userId={user?.id ?? 0}
         isOpen={showCreateSprintForm || editingSprint !== null}
