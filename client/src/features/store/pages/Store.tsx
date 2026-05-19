@@ -8,6 +8,9 @@ import { useUserAvatar } from '../../profile/hooks/useUserAvatar';
 import { useAvatarCatalog } from '../../profile/hooks/useAvatarCatalog';
 import { useAvatarFeatures } from '../../profile/hooks/useAvatarFeatures';
 
+//MESSAGE
+import type { MessagePopUpType } from '../../../shared/components/MessagePopUp';
+
 import { useUser } from '@/core/auth/userContext';
 
 
@@ -150,7 +153,7 @@ const ShopPage: React.FC = () => {
 
   //Variables para manejo de Gachas
   const [showLootbox, setShowLootbox] = useState(false);
-  const [popup, setPopup] = useState<PopupState | null>(null);
+  const [, setPopup] = useState<PopupState | null>(null); //No tengo idea de porque esa coma la hace funcionar... pero lo hace
   const [lootboxCategory, setLootboxCategory] = useState<number[] | null>(null); //Pool de Objetos
 
   //Datos DEL gacha
@@ -167,7 +170,7 @@ const ShopPage: React.FC = () => {
     initialFeatures,
     addRandomItem,
     addingItem,
-  } = useUserAvatar(user?.id, catalog, allElements, atributos);
+  } = useUserAvatar(user?.id ?? 0, catalog, allElements, atributos);
 
   //Datos del Avatar
   const {
@@ -252,7 +255,6 @@ const ShopPage: React.FC = () => {
                       src={item.image}
                       alt={item.title}
                       style={{
-                        width: item.imageWidth,
                         height: item.imageHeight,
                         transform: 'translateY(-0.7rem)',
                       }}
@@ -289,7 +291,6 @@ const ShopPage: React.FC = () => {
                       src={item.image}
                       alt={item.title}
                       style={{
-                        width: item.imageWidth,
                         height: item.imageHeight,
                         transform: 'translateY(-0.7rem)',
                       }}
