@@ -508,8 +508,8 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
     u ? ([u.nombre, u.apellido].filter(Boolean).join(' ') || u.email) : null;
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.panel} onClick={e => e.stopPropagation()}>
+    <div className={styles.overlay}>
+      <div className={styles.panel} data-detail-panel onClick={e => e.stopPropagation()}>
 
         {/* ── Top bar ── */}
         <div className={styles.topBar}>

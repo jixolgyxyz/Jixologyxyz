@@ -41,7 +41,7 @@ async function fillRequiredFields(page: import('@playwright/test').Page, nombre:
 async function openFirstItemDetail(page: import('@playwright/test').Page) {
   await page.locator('[class*="titleClickable"]').first().click();
   // Wait for the "Editar" button that only exists inside the panel
-  const editBtn = page.getByRole('button', { name: 'Editar' });
+  const editBtn = page.getByRole('button', { name: 'Editar', exact: true });
   await editBtn.waitFor({ timeout: 8_000 });
   return editBtn;
 }
@@ -147,9 +147,22 @@ test.describe('Backlog — editar ítem', () => {
   test('abre el panel de detalle al hacer click en el título', async ({ page }) => {
     await goToBacklog(page);
     await createTestItem(page);
-    await openFirstItemDetail(page);
+    // Click the title — opens the detail view panel
+    await page.locator('[class*="titleClickable"]').first().click();
     // Panel is open if the "Editar" button is visible
-    await expect(page.getByRole('button', { name: 'Editar' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Editar', exact: true })).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('abre el panel de edición desde el menú de opciones del ítem', async ({ page }) => {
+    await goToBacklog(page);
+    await createTestItem(page);
+    // Click the ellipsis (⋮) context menu button on the first item
+    await page.locator('[class*="iconBtn"][aria-label="Más opciones"]').first().click();
+    // Click "Editar" in the context menu that appears
+    await page.locator('[class*="element"]').filter({ hasText: 'Editar' }).waitFor({ timeout: 5_000 });
+    await page.locator('[class*="element"]').filter({ hasText: 'Editar' }).click();
+    // Panel is open in edit mode — title input should be visible
+    await expect(page.locator('input[name="nombre"]')).toBeVisible({ timeout: 8_000 });
   });
 
   test('edita el nombre del ítem', async ({ page }) => {
@@ -157,7 +170,7 @@ test.describe('Backlog — editar ítem', () => {
     await createTestItem(page);
     await openFirstItemDetail(page);
 
-    await page.getByRole('button', { name: 'Editar' }).click();
+    await page.getByRole('button', { name: 'Editar', exact: true }).click();
 
     // Edit title input: <input name="nombre">
     const titleInput = page.locator('input[name="nombre"]');
@@ -168,8 +181,8 @@ test.describe('Backlog — editar ítem', () => {
 
     await page.getByRole('button', { name: 'Guardar' }).click();
 
-    // Panel stays open and shows the updated name
-    await expect(page.getByText(newName)).toBeVisible({ timeout: 8_000 });
+    // Panel stays open and shows the updated name (match the heading inside the panel)
+    await expect(page.getByRole('heading', { name: newName, exact: true })).toBeVisible({ timeout: 8_000 });
   });
 
   test('edita la descripción del ítem', async ({ page }) => {
@@ -177,7 +190,7 @@ test.describe('Backlog — editar ítem', () => {
     await createTestItem(page);
     await openFirstItemDetail(page);
 
-    await page.getByRole('button', { name: 'Editar' }).click();
+    await page.getByRole('button', { name: 'Editar', exact: true }).click();
 
     const descTextarea = page.locator('textarea[name="descripcion"]');
     await expect(descTextarea).toBeVisible({ timeout: 5_000 });
@@ -195,7 +208,7 @@ test.describe('Backlog — editar ítem', () => {
     const originalName = await createTestItem(page);
     await openFirstItemDetail(page);
 
-    await page.getByRole('button', { name: 'Editar' }).click();
+    await page.getByRole('button', { name: 'Editar', exact: true }).click();
 
     const titleInput = page.locator('input[name="nombre"]');
     await expect(titleInput).toBeVisible({ timeout: 5_000 });
@@ -212,7 +225,7 @@ test.describe('Backlog — editar ítem', () => {
     await createTestItem(page);
     await openFirstItemDetail(page);
 
-    await page.getByRole('button', { name: 'Editar' }).click();
+    await page.getByRole('button', { name: 'Editar', exact: true }).click();
 
     // Open status pill inside the detail panel
     await page.locator('[class*="pillTrigger"]').first().click();
@@ -234,9 +247,9 @@ test.describe('Backlog — editar ítem', () => {
     await createTestItem(page);
     await openFirstItemDetail(page);
 
-    await page.getByRole('button', { name: 'Cerrar' }).click();
+    await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     // Panel gone — "Editar" button no longer visible
-    await expect(page.getByRole('button', { name: 'Editar' })).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: 'Editar', exact: true })).not.toBeVisible({ timeout: 5_000 });
   });
 });

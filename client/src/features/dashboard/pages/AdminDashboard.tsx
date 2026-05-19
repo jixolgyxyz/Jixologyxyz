@@ -70,7 +70,7 @@ const WeeklyProgressCard: FC<{ data: WeeklyProgressData }> = ({ data }) => {
           <div key={pct} className={styles.weeklyDayTick} style={{ left: `${pct}%` }} />
         ))}
         {todayIndex > 0 && (
-          <div className={styles.weeklyTodayTick} style={{ left: `${todayIndex * 20 - 10}%` }} />
+          <div className={styles.weeklyTodayTick} style={{ left: `${todayIndex * 20}%` }} />
         )}
       </div>
 
@@ -93,7 +93,7 @@ const WeeklyProgressCard: FC<{ data: WeeklyProgressData }> = ({ data }) => {
                   <div key={pct} className={styles.weeklyProjectDayTick} style={{ left: `${pct}%` }} />
                 ))}
                 {todayIndex > 0 && (
-                  <div className={styles.weeklyProjectTodayTick} style={{ left: `${todayIndex * 20 - 10}%` }} />
+                  <div className={styles.weeklyProjectTodayTick} style={{ left: `${todayIndex * 20}%` }} />
                 )}
               </div>
               <span className={styles.weeklyProjectMeta}>{row.completed}/{row.total}</span>

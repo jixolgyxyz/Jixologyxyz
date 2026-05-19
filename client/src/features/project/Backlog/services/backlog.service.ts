@@ -152,6 +152,15 @@ export async function fetchProjectEtiquetas(projectId: number): Promise<ProjectE
   return data ?? [];
 }
 
+export async function deleteBacklogItem(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('backlog_item')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
 export async function createSugerencia(itemId: number): Promise<void> {
   const { error } = await supabase
     .from('backlog_item_sugerencia_creacion')
