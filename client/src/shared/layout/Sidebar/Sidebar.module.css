@@ -249,3 +249,7 @@
 .sidebar:hover :global(.notification-bell__text) {
   opacity: 1;
 }
+
+.deadSpace {
+  min-height: 0px;
+}

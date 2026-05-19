@@ -120,6 +120,14 @@
   bottom: -1px;
 }
 
+.inv-tab::first-letter {
+  text-transform: uppercase;
+}
+
+.button-component {
+  transform: translateY(-2px);
+}
+
 .inv-tab:hover {
   color: var(--color-blueprint-navy);
 }
