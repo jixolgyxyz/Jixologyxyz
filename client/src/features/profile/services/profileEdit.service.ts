@@ -13,6 +13,8 @@ export async function fetchZonaHorarias(): Promise<ZonaHorariaOption[]> {
 
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
 // ── GitHub connection ─────────────────────────────────────────────
 
 export interface GithubUsuarioRecord {

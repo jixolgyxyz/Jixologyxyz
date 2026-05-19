@@ -190,7 +190,7 @@ const ProjectBacklog: React.FC = () => {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [viewingId]);
+  }, [viewingId, setViewingItem]);
 
   const loading = itemsLoading || metaLoading;
   const allStatuses = meta.statuses.map(toBacklogStatus);
