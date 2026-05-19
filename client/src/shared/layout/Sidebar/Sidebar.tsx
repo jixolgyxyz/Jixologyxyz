@@ -14,6 +14,7 @@ import {
   MinusCircleIcon,
   PresentationChartBarIcon,
   ChevronDownIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/solid';
 import { signOutService } from '@/features/auth/services/auth.service';
 
@@ -131,6 +132,13 @@ const Sidebar: React.FC<ISidebarProps> = () => {
                 </NavLink>
               </li>
             )}
+            
+            <li className={styles.menuItem}>
+              <NavLink to="/tienda">
+                <ShoppingBagIcon className={styles.icon} />
+                <span><b>Tienda</b></span>
+              </NavLink>
+            </li>
           </div>
 
           <div>
