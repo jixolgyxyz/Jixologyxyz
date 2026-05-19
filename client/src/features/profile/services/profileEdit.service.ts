@@ -1,5 +1,20 @@
 import { supabase } from '@/core/supabase/supabase.client';
 
+export interface ZonaHorariaOption {
+  id: number;
+  nombre: string;
+}
+
+export async function fetchZonaHorarias(): Promise<ZonaHorariaOption[]> {
+  const { data, error } = await supabase
+    .from('zona_horaria')
+    .select('id, nombre')
+    .order('nombre', { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 // ── GitHub connection ─────────────────────────────────────────────
 
 export interface GithubUsuarioRecord {

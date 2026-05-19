@@ -64,6 +64,23 @@ export interface UpdateBacklogItemPayload {
   tiempo_estimado?: number | null;
 }
 
+export interface UpdateSprintPayload {
+  nombre: string;
+  objetivo?: string | null;
+  fecha_inicio: string | null;
+  fecha_final: string | null;
+}
+
+export interface CreateSprintPayload {
+  nombre: string;
+  objetivo?: string | null;
+  fecha_inicio: string | null;
+  fecha_final: string | null;
+  id_proyecto: number;
+  id_usuario_creador: number;
+  id_estatus: number;
+}
+
 export interface CreateBacklogItemPayload {
   nombre: string;
   descripcion?: string | null;
