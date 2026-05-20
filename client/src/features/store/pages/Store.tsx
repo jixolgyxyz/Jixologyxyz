@@ -16,15 +16,15 @@ import { useUser } from '@/core/auth/userContext';
 
 import cofreDefault from '../resources/CofreDef.png';
 import cofreAccesorio from '../resources/CofreAccesorio.png';
-import cofreBarba from '../resources/cofreBarba.png';
-import cofreCamisa from '../resources/cofreCamisa.png';
-import cofreFondo from '../resources/cofreFondo.png';
-import cofreLentes from '../resources/cofreLentes.png';
-import cofreOjo from '../resources/cofreOjo.png';
-import cofrePelo from '../resources/cofrePelo.png';
-import cofrePiel from '../resources/cofrePiel.png';
-import cofreSombrero from '../resources/cofreSombrero.png';
-import cofreSonrisa from '../resources/cofreSonrisa.png';
+import cofreBarba from '../resources/CofreBarba.png';
+import cofreCamisa from '../resources/CofreCamisa.png';
+import cofreFondo from '../resources/CofreFondo.png';
+import cofreLentes from '../resources/CofreLentes.png';
+import cofreOjo from '../resources/CofreOjo.png';
+import cofrePelo from '../resources/CofrePelo.png';
+import cofrePiel from '../resources/CofrePiel.png';
+import cofreSombrero from '../resources/CofreSombrero.png';
+import cofreSonrisa from '../resources/CofreSonrisa.png';
 
 interface PopupState {
   type: MessagePopUpType;
