@@ -21,7 +21,7 @@ export interface VisibleGraphsResult {
   /** Returns react-grid-layout Layout items for the given visible graphs. */
   getLayoutItems: (visibleGraphs: GraphDescriptor[], cols?: number) => GraphLayoutItem[];
   /** Persists the layout from an onLayoutChange callback. */
-  saveLayout: (layout: Layout[]) => Promise<void>;
+  saveLayout: (layout: Layout) => Promise<void>;
 }
 
 export function useVisibleGraphs(dashboard: DashboardKind): VisibleGraphsResult {

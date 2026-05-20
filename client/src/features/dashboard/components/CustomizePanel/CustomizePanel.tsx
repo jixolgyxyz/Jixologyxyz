@@ -150,6 +150,10 @@ const CHART_ICON: Record<ChartType, ReactElement> = {
 interface Props {
   open:                boolean;
   onClose:             () => void;
+  /** True while the dashboard is in drag/resize mode. */
+  reorganizeMode?:     boolean;
+  /** Toggles reorganize mode. The panel closes itself so the grid is reachable. */
+  onToggleReorganize?: () => void;
   available:           GraphDescriptor[];
   isVisible:           (id: string) => boolean;
   toggle:              (id: string) => void | Promise<void>;
@@ -162,6 +166,8 @@ interface Props {
 const CustomizePanel: FC<Props> = ({
   open,
   onClose,
+  reorganizeMode = false,
+  onToggleReorganize,
   available,
   isVisible,
   toggle,
@@ -229,6 +235,19 @@ const CustomizePanel: FC<Props> = ({
         <header className={styles.header}>
           <div className={styles.headerLeft}>
             <span className={styles.codeBadge}>Personalizar</span>
+            {onToggleReorganize && (
+              <button
+                type="button"
+                className={`${styles.reorganizeBtn} ${reorganizeMode ? styles.reorganizeBtnActive : ''}`}
+                onClick={onToggleReorganize}
+                aria-pressed={reorganizeMode}
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M10 3v14M3 10h14M7 6l3-3 3 3M7 14l3 3 3-3M6 7l-3 3 3 3M14 7l3 3-3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {reorganizeMode ? 'Salir de reorganización' : 'Reorganizar gráficas'}
+              </button>
+            )}
           </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Cerrar">
             <XMarkIcon style={{ width: '1.25rem', height: '1.25rem', display: 'block', flexShrink: 0 }} />

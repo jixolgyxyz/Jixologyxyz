@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   ReferenceLine,
   Cell,
@@ -19,7 +18,6 @@ interface Props {
 }
 
 const TICK_PROPS   = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
-const LEGEND_STYLE = { fontSize: '0.72rem', fontFamily: 'Poppins, sans-serif' };
 const TOOLTIP_STYLE = { fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' };
 
 // Bar fill for actual time: green if on-time/under, red if overrun
@@ -91,16 +89,28 @@ const TimeAccuracyChart: FC<Props> = ({ data }) => {
           />
           <YAxis tick={TICK_PROPS} unit="h" />
           <Tooltip content={<CustomTooltip />} />
-          <Legend iconType="circle" iconSize={8} wrapperStyle={LEGEND_STYLE} />
           <ReferenceLine y={0} stroke="#e5e7eb" />
-          <Bar dataKey="avgEstimated" name="Estimado" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="avgActual" name="Real" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="avgEstimated" name="Estimado" fill="#3b82f6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="avgActual" name="Real" radius={[3, 3, 0, 0]} isAnimationActive={false}>
             {rows.map((entry, i) => (
               <Cell key={i} fill={actualFill(entry.avgEstimated, entry.avgActual)} />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      <div className={styles.legend}>
+        <span className={styles.legendItem}>
+          <span className={styles.legendDot} style={{ background: '#3b82f6' }} />
+          Estimado
+        </span>
+        <span className={styles.legendItem}>
+          <span
+            className={styles.legendDot}
+            style={{ background: 'linear-gradient(90deg, #10b981 50%, #E31837 50%)' }}
+          />
+          Real
+        </span>
+      </div>
     </div>
   );
 };

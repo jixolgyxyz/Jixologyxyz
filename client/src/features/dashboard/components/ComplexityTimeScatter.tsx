@@ -89,6 +89,7 @@ const ComplexityTimeScatter: FC<Props> = ({ data }) => {
           <Tooltip content={<CustomTooltip />} />
           <Scatter
             data={data}
+            isAnimationActive={false}
             shape={(p: { cx?: number; cy?: number; payload?: ComplexityTimePoint }) => <CustomDot {...p} />}
           />
         </ScatterChart>

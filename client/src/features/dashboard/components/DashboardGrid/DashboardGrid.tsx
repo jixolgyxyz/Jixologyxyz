@@ -1,5 +1,10 @@
 import { type FC, type ReactNode, useState, useEffect, useCallback, useRef } from 'react';
-import GridLayout, { type Layout } from 'react-grid-layout';
+// react-grid-layout v2's default GridLayout takes grouped config props (gridConfig,
+// dragConfig…) and silently ignores the v1 flat props this component uses. The
+// `/legacy` wrapper accepts the v1 flat API (cols, rowHeight, margin, isDraggable,
+// draggableHandle…) and converts it internally — so cols/rowHeight/margin take effect.
+import GridLayout from 'react-grid-layout/legacy';
+import type { Layout } from 'react-grid-layout';
 import type { GraphDescriptor } from '../../config/graphCatalog';
 import type { GraphLayoutItem } from '../../hooks/useDashboardPreferences';
 import styles from './DashboardGrid.module.css';
@@ -7,21 +12,41 @@ import styles from './DashboardGrid.module.css';
 interface DashboardGridProps {
   visible: GraphDescriptor[];
   getLayoutItems: (graphs: GraphDescriptor[], cols: number) => GraphLayoutItem[];
-  saveLayout: (layout: Layout[]) => Promise<void>;
-  showCustomizePanel: boolean;
+  saveLayout: (layout: Layout) => Promise<void>;
+  /** When true, cards can be dragged (via the top strip) and resized. */
+  reorganizeMode: boolean;
   renderItem: (g: GraphDescriptor) => ReactNode;
   showGrid?: boolean; // debug: shows grid cell boundaries
 }
 
-const COLS = 12;
+// Fine 48-column grid: resize snaps to one column (~38px wide), 4× finer than
+// the original 12-column grid. 48 stays an exact multiple of 12, so the old
+// catalog widths map to whole integers and RGL's integer layout stays clean.
+const COLS = 48;
 const ROW_HEIGHT = 10;
 const MARGIN = 16;
+
+// react-grid-layout's onLayoutChange fires with a brand-new array reference on
+// every internal render. Feeding that straight back into state always re-renders
+// (a new array never passes React's Object.is bail-out), the legacy wrapper then
+// re-syncs and fires onLayoutChange again — an infinite loop ("Maximum update
+// depth exceeded"). Comparing by value lets us keep the previous reference when
+// nothing meaningful changed, which stops the loop.
+const sameLayout = (a: Layout, b: Layout): boolean => {
+  if (a.length !== b.length) return false;
+  const byId = new Map(a.map(item => [item.i, item]));
+  for (const q of b) {
+    const p = byId.get(q.i);
+    if (!p || p.x !== q.x || p.y !== q.y || p.w !== q.w || p.h !== q.h) return false;
+  }
+  return true;
+};
 
 const DashboardGrid: FC<DashboardGridProps> = ({
   visible,
   getLayoutItems,
   saveLayout,
-  showCustomizePanel,
+  reorganizeMode,
   renderItem,
   showGrid = false,
 }) => {
@@ -35,7 +60,7 @@ const DashboardGrid: FC<DashboardGridProps> = ({
 
   // Local layout state — drives GridLayout as a controlled component.
   // Initialised from DB-loaded values (parent only renders this after loading=false).
-  const [localLayout, setLocalLayout] = useState<Layout[]>(() => getLayoutItems(visible, 12));
+  const [localLayout, setLocalLayout] = useState<Layout>(() => getLayoutItems(visible, COLS));
 
   // True while a drag or resize is in progress.
   const interacting = useRef(false);
@@ -46,21 +71,23 @@ const DashboardGrid: FC<DashboardGridProps> = ({
     const key = visible.map(g => g.id).join(',');
     if (key !== prevVisibleKey.current) {
       prevVisibleKey.current = key;
-      setLocalLayout(getLayoutItems(visible, 12));
+      setLocalLayout(getLayoutItems(visible, COLS));
     }
   }, [visible, getLayoutItems]);
 
   // While dragging/resizing: do NOT feed rounded-integer layout back as the controlled
   // prop — it resets react-grid-layout's internal float position and multiplies snap steps.
   // Only sync local state for non-interaction changes (initial load, item add/remove).
-  const handleLayoutChange = useCallback((layout: Layout[]) => {
-    if (!interacting.current) setLocalLayout(layout);
+  const handleLayoutChange = useCallback((layout: Layout) => {
+    if (interacting.current) return;
+    // Keep the previous reference when nothing changed — see sameLayout above.
+    setLocalLayout(prev => (sameLayout(prev, layout) ? prev : layout));
   }, []);
 
   const handleStart = useCallback(() => { interacting.current = true; }, []);
 
   // On stop: commit final layout to local state and persist to DB.
-  const handleStop = useCallback((layout: Layout[]) => {
+  const handleStop = useCallback((layout: Layout) => {
     interacting.current = false;
     setLocalLayout(layout);
     void saveLayout(layout);
@@ -70,7 +97,10 @@ const DashboardGrid: FC<DashboardGridProps> = ({
   const rowStep  = ROW_HEIGHT + MARGIN;
 
   return (
-    <div className={styles.gridWrapper} style={{ position: 'relative' }}>
+    <div
+      className={`${styles.gridWrapper}${reorganizeMode ? ` ${styles.reorganizing}` : ''}`}
+      style={{ position: 'relative' }}
+    >
       {showGrid && (
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
@@ -87,8 +117,8 @@ const DashboardGrid: FC<DashboardGridProps> = ({
         cols={COLS}
         rowHeight={ROW_HEIGHT}
         width={gridWidth}
-        isDraggable={showCustomizePanel}
-        isResizable={showCustomizePanel}
+        isDraggable={reorganizeMode}
+        isResizable={reorganizeMode}
         draggableHandle={`.${styles.dragHandle}`}
         onLayoutChange={handleLayoutChange}
         onDragStart={handleStart}
@@ -99,7 +129,7 @@ const DashboardGrid: FC<DashboardGridProps> = ({
       >
         {visible.map(g => (
           <div key={g.id} className={styles.gridItem}>
-            {showCustomizePanel && <div className={styles.dragHandle} title="Arrastrar" />}
+            {reorganizeMode && <div className={styles.dragHandle} title="Arrastrar" />}
             {renderItem(g)}
           </div>
         ))}

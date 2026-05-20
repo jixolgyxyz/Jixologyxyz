@@ -14,6 +14,7 @@ const ProjectDashboard: FC = () => {
   const { open: showCustomizePanel, openPanel: openCustomizePanel, closePanel: closeCustomizePanel } =
     useDashboardPanel('project');
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
+  const [reorganizeMode, setReorganizeMode] = useState(false);
 
   if (loading || graphsLoading) {
     return (
@@ -77,13 +78,15 @@ const ProjectDashboard: FC = () => {
         visible={visible}
         getLayoutItems={getLayoutItems}
         saveLayout={saveLayout}
-        showCustomizePanel={showCustomizePanel}
+        reorganizeMode={reorganizeMode}
         renderItem={g => renderAdminGraph(g, data, activeFilter)}
       />
 
       <CustomizePanel
         open={showCustomizePanel}
         onClose={closeCustomizePanel}
+        reorganizeMode={reorganizeMode}
+        onToggleReorganize={() => { setReorganizeMode(m => !m); closeCustomizePanel(); }}
         available={available}
         isVisible={isVisible}
         toggle={toggle}

@@ -28,6 +28,30 @@
   margin: 0;
 }
 
+/* ── Custom legend (replaces recharts <Legend> to avoid its render loop) ── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--color-anchor-gray-2);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 /* ── Tooltip (ScatterChart) ───────────────────────────────────────── */
 .tooltipBox {
   background: var(--color-white);

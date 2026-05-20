@@ -10,7 +10,14 @@ export interface GraphLayoutItem {
   y: number;
   w: number;
   h: number;
+  minW?: number;
+  minH?: number;
 }
+
+// Minimum card size when resizing on the 48-column grid — stops a card from
+// being dragged uselessly thin or short. Applied to every layout item below.
+const MIN_W = 8; // ≈ 1/6 of the grid width
+const MIN_H = 6; // ≈ 140px tall
 
 export function useDashboardPreferences() {
   const { user } = useUser();
@@ -82,13 +89,13 @@ export function useDashboardPreferences() {
 
   // Returns react-grid-layout Layout items for the given visible graphs.
   // Uses saved positions when available, otherwise computes a default left-to-right packing.
-  const getLayoutItems = (visibleGraphs: GraphDescriptor[], cols = 6): GraphLayoutItem[] => {
+  const getLayoutItems = (visibleGraphs: GraphDescriptor[], cols = 48): GraphLayoutItem[] => {
     let col = 0;
     let row = 0;
 
     return visibleGraphs.map(g => {
       const saved = layoutOverrides.get(g.id);
-      if (saved) return saved;
+      if (saved) return { ...saved, minW: MIN_W, minH: MIN_H };
 
       const w = Math.min(g.defaultW, cols);
       const h = g.defaultH;
@@ -96,7 +103,7 @@ export function useDashboardPreferences() {
       // Full-width items always start on a fresh row
       if (w >= cols) {
         if (col > 0) { row += h; col = 0; }
-        const item = { i: g.id, x: 0, y: row, w, h };
+        const item = { i: g.id, x: 0, y: row, w, h, minW: MIN_W, minH: MIN_H };
         row += h;
         col = 0;
         return item;
@@ -106,14 +113,14 @@ export function useDashboardPreferences() {
         col = 0;
         row += h;
       }
-      const item = { i: g.id, x: col, y: row, w, h };
+      const item = { i: g.id, x: col, y: row, w, h, minW: MIN_W, minH: MIN_H };
       col += w;
       if (col >= cols) { col = 0; row += h; }
       return item;
     });
   };
 
-  const saveLayout = async (layout: Layout[]) => {
+  const saveLayout = async (layout: Layout) => {
     if (!user?.id) return;
 
     setLayoutOverrides(prev => {

@@ -55,7 +55,7 @@ const ComplexityScatter: FC<Props> = ({ data }) => {
             labelFormatter={(label) => `Complejidad ${label}`}
             contentStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
           />
-          <Bar dataKey="horas" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="horas" radius={[4, 4, 0, 0]} isAnimationActive={false}>
             {data.map((_entry, index) => (
               <Cell key={`cell-${index}`} fill={COMPLEXITY_COLORS[index]} />
             ))}

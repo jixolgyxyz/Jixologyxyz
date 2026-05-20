@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import type { SprintHoursData } from '../hooks/useUserDashboardData';
@@ -49,21 +48,25 @@ const HoursBySprintBar: FC<Props> = ({ data }) => {
             formatter={(value, name) => [`${value}h`, name]}
             contentStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
           />
-          <Legend
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: '0.72rem', fontFamily: 'Poppins, sans-serif' }}
-          />
           {data.projects.map(p => (
             <Bar
               key={p.name}
               dataKey={p.name}
               fill={p.color}
               radius={[3, 3, 0, 0]}
+              isAnimationActive={false}
             />
           ))}
         </BarChart>
       </ResponsiveContainer>
+      <div className={styles.legend}>
+        {data.projects.map(p => (
+          <span key={p.name} className={styles.legendItem}>
+            <span className={styles.legendDot} style={{ background: p.color }} />
+            {p.name}
+          </span>
+        ))}
+      </div>
     </div>
   );
 };

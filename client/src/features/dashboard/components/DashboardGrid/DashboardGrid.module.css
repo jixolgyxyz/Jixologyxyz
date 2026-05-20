@@ -37,3 +37,14 @@
 .dragHandle:active {
   cursor: grabbing;
 }
+
+/* ── Reorganize mode ──────────────────────────────────────────────── */
+/* Surface the drag strip and resize handles so it's obvious what's
+   grabbable; outside this mode the grid is read-only. */
+.reorganizing .dragHandle {
+  opacity: 1;
+}
+
+.reorganizing :global(.react-resizable-handle) {
+  opacity: 1;
+}

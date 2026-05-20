@@ -43,6 +43,7 @@ const UserDashboard: FC = () => {
   const { data, projects, loading, error } = useUserDashboardData(selectedProjectIds);
   const { visible, available, toggle, isVisible, getLayoutItems, saveLayout } = useVisibleGraphs('user');
   const { open: showCustomizePanel, openPanel: openCustomizePanel, closePanel: closeCustomizePanel } = useDashboardPanel('user');
+  const [reorganizeMode, setReorganizeMode] = useState(false);
 
   const firstName = user?.nombre ?? 'Usuario';
 
@@ -112,14 +113,15 @@ const UserDashboard: FC = () => {
         visible={visible}
         getLayoutItems={getLayoutItems}
         saveLayout={saveLayout}
-        showCustomizePanel={showCustomizePanel}
+        reorganizeMode={reorganizeMode}
         renderItem={g => renderUserGraph(g, data)}
-        showGrid
       />
 
       <CustomizePanel
         open={showCustomizePanel}
         onClose={closeCustomizePanel}
+        reorganizeMode={reorganizeMode}
+        onToggleReorganize={() => { setReorganizeMode(m => !m); closeCustomizePanel(); }}
         available={available}
         isVisible={isVisible}
         toggle={toggle}

@@ -125,6 +125,7 @@ const ProjectStatusDonut: FC<{ data: ProjectStatusSlice[] }> = ({ data }) => (
             outerRadius={90}
             paddingAngle={3}
             dataKey="value"
+            isAnimationActive={false}
           >
             {data.map((entry, i) => (
               <Cell key={i} fill={entry.color} />
@@ -155,6 +156,7 @@ const GlobalItemStatusDonut: FC<{ data: GlobalItemStatusSlice[] }> = ({ data }) 
             outerRadius={90}
             paddingAngle={3}
             dataKey="value"
+            isAnimationActive={false}
           >
             {data.map((entry, i) => (
               <Cell key={i} fill={entry.color} />
@@ -219,7 +221,7 @@ export const VolumeByProjectBar: FC<{ data: ProjectVolumeRow[]; projectFilter?: 
             <Label value="Ítems" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
           </YAxis>
           <Tooltip contentStyle={TOOLTIP_STYLE} />
-          <Bar dataKey="count" name="Ítems" fill="#0A0838" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="count" name="Ítems" fill="#0A0838" radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     )}
@@ -251,8 +253,8 @@ export const SprintHealthBar: FC<{ data: SprintHealthRow[]; projectFilter?: Set<
           </YAxis>
           <Tooltip contentStyle={TOOLTIP_STYLE} />
           <Legend iconType="circle" iconSize={8} verticalAlign="top" wrapperStyle={{ ...LEGEND_STYLE, paddingBottom: 4 }} />
-          <Bar dataKey="active"   name="Activos"     fill="#3b82f6" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="terminal" name="Terminados"  fill="#10b981" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="active"   name="Activos"     fill="#3b82f6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="terminal" name="Terminados"  fill="#10b981" radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     )}
@@ -491,6 +493,7 @@ export const BubblePressureCard: FC<{ data: BacklogPressureRow[]; projectFilter?
               <Tooltip content={<BubbleTooltip />} />
               <Scatter
                 data={filtered}
+                isAnimationActive={false}
                 shape={(p: { cx?: number; cy?: number; index?: number; payload?: BacklogPressureRow }) => <BubbleDot {...p} />}
               />
             </ScatterChart>
@@ -614,7 +617,7 @@ export const RiskMatrixCard: FC<{ data: BacklogPressureRow[]; projectFilter?: Se
             <ReferenceLine x={midX} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: 'media X', position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }} />
             <ReferenceLine y={midY} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: 'media Y', position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }} />
             <Tooltip content={<MatrixTooltip />} />
-            <Scatter data={filtered} shape={(p: { cx?: number; cy?: number; payload?: BacklogPressureRow }) => <MatrixDot {...p} />} />
+            <Scatter data={filtered} isAnimationActive={false} shape={(p: { cx?: number; cy?: number; payload?: BacklogPressureRow }) => <MatrixDot {...p} />} />
           </ScatterChart>
         </ResponsiveContainer>
       )}
@@ -679,7 +682,7 @@ export const FteByProjectBar: FC<{ data: FteProjectRow[]; projectFilter?: Set<nu
             <Label value="FTE" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
           </YAxis>
           <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v} FTE`, 'FTE']} />
-          <Bar dataKey="fte" name="FTE" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="fte" name="FTE" fill="#8b5cf6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     )}
@@ -700,7 +703,7 @@ export const EstimatedHoursByProjectBar: FC<{ data: EstimatedHoursProjectRow[]; 
             <XAxis type="number" tick={TICK_PROPS} unit="h" />
             <YAxis type="category" dataKey="name" tick={{ ...TICK_PROPS, width: 90 }} width={90} />
             <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`, 'Horas estimadas']} />
-            <Bar dataKey="hours" name="Horas estimadas" fill="#3b82f6" radius={[0, 3, 3, 0]} />
+            <Bar dataKey="hours" name="Horas estimadas" fill="#3b82f6" radius={[0, 3, 3, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -724,8 +727,8 @@ export const HoursDonePendingBar: FC<{ data: HoursDonePendingRow[]; projectFilte
             </YAxis>
             <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`]} />
             <Legend iconType="circle" iconSize={8} verticalAlign="top" wrapperStyle={{ ...LEGEND_STYLE, paddingBottom: 4 }} />
-            <Bar dataKey="done"    name="Completadas" fill="#10b981" radius={[3, 3, 0, 0]} stackId="a" />
-            <Bar dataKey="pending" name="Pendientes"  fill="#0A0838" radius={[3, 3, 0, 0]} stackId="a" />
+            <Bar dataKey="done"    name="Completadas" fill="#10b981" radius={[3, 3, 0, 0]} stackId="a" isAnimationActive={false} />
+            <Bar dataKey="pending" name="Pendientes"  fill="#0A0838" radius={[3, 3, 0, 0]} stackId="a" isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -748,7 +751,7 @@ export const OverdueHoursByProjectBar: FC<{ data: OverdueHoursProjectRow[]; proj
               <Label value="Horas" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
             </YAxis>
             <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`, 'Horas en deuda']} />
-            <Bar dataKey="hours" name="Horas en deuda" fill="#E31837" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="hours" name="Horas en deuda" fill="#E31837" radius={[3, 3, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -769,7 +772,7 @@ export const HoursByPriorityBar: FC<{ data: HoursByPriorityRow[]; projectFilter?
             <Label value="Horas" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
           </YAxis>
           <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`, 'Horas estimadas']} />
-          <Bar dataKey="hours" name="Horas" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="hours" name="Horas" radius={[3, 3, 0, 0]} isAnimationActive={false}>
             {data.map((entry, i) => (
               <Cell key={i} fill={entry.color} />
             ))}
@@ -796,6 +799,7 @@ export const HoursByTypeDonut: FC<{ data: HoursByTypeRow[]; projectFilter?: Set<
             innerRadius={55}
             outerRadius={90}
             paddingAngle={3}
+            isAnimationActive={false}
           >
             {data.map((entry, i) => (
               <Cell key={i} fill={entry.color} />
@@ -857,7 +861,7 @@ export const AvgHoursVsComplexityScatter: FC<{ data: AvgHoursComplexityRow[]; pr
             <ReferenceLine x={midX} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: `x̄ comp ${midX}`, position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }} />
             <ReferenceLine y={midY} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: `x̄ ${midY}h`, position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }} />
             <Tooltip content={<AvgHoursComplexityTooltip />} />
-            <Scatter data={rows} shape={(p: { cx?: number; cy?: number; payload?: AvgHoursComplexityRow }) => <AvgHoursComplexityDot {...p} />} />
+            <Scatter data={rows} isAnimationActive={false} shape={(p: { cx?: number; cy?: number; payload?: AvgHoursComplexityRow }) => <AvgHoursComplexityDot {...p} />} />
           </ScatterChart>
         </ResponsiveContainer>
       )}
@@ -909,6 +913,7 @@ const AdminDashboard: FC = () => {
   );
   const { open: showCustomizePanel, openPanel: openCustomizePanel, closePanel: closeCustomizePanel } = useDashboardPanel('admin');
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
+  const [reorganizeMode, setReorganizeMode] = useState(false);
   const { visible, available, toggle, isVisible, getLayoutItems, saveLayout } = useVisibleGraphs('admin');
 
   if (loading) {
@@ -997,7 +1002,7 @@ const AdminDashboard: FC = () => {
         visible={visible}
         getLayoutItems={getLayoutItems}
         saveLayout={saveLayout}
-        showCustomizePanel={showCustomizePanel}
+        reorganizeMode={reorganizeMode}
         renderItem={g => renderGraph(g, data, projectFilter)}
       />
 
@@ -1014,6 +1019,8 @@ const AdminDashboard: FC = () => {
       <CustomizePanel
         open={showCustomizePanel}
         onClose={closeCustomizePanel}
+        reorganizeMode={reorganizeMode}
+        onToggleReorganize={() => { setReorganizeMode(m => !m); closeCustomizePanel(); }}
         available={available}
         isVisible={isVisible}
         toggle={toggle}

@@ -44,7 +44,7 @@ const PriorityBar: FC<Props> = ({ data }) => {
             formatter={(value) => [value, 'Ítems']}
             contentStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
           />
-          <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}

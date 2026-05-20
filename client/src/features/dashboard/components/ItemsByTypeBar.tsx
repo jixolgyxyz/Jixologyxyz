@@ -53,7 +53,7 @@ const ItemsByTypeBar: FC<Props> = ({ data }) => {
             formatter={(value) => [value, 'Ítems']}
             contentStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
           />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={false}>
             {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={TYPE_COLORS[index % TYPE_COLORS.length]} />
             ))}
