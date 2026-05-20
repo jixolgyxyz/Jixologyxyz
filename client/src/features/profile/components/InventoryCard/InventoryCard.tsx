@@ -8,7 +8,7 @@ import SkeletonAvatarTile from '../SkeletonAvatarTile';
 import { TYPE_LABELS, makeVariantTileSvg, makeColorTileSvg } from '../../services/avatar.service';
 import type { AvatarCatalog, DynamicFeatures, FeatureMeta } from '../../types/avatar.types';
 
-interface InventoryCardProps {
+export interface InventoryCardProps {
   catalog:         AvatarCatalog;
   features:        DynamicFeatures;
   onSelectVariant: (meta: FeatureMeta, value: string | null) => void;
