@@ -104,23 +104,20 @@ export async function createBacklogItem(payload: CreateBacklogItemPayload): Prom
   return data;
 }
 
-export async function createSprint(payload: CreateSprintPayload): Promise<SprintRecord> {
-  const { data, error } = await supabase
+export async function createSprint(payload: CreateSprintPayload): Promise<void> {
+  const { error } = await supabase
     .from('sprint')
     .insert({
-      nombre:                payload.nombre,
-      objetivo:              payload.objetivo,
-      fecha_inicio:          payload.fecha_inicio,
-      fecha_final:           payload.fecha_final,
-      id_proyecto:           payload.id_proyecto,
-      id_usuario_creador:    payload.id_usuario_creador,
-      id_estatus:            payload.id_estatus,
-    })
-    .select()
-    .single();
+      nombre:             payload.nombre,
+      objetivo:           payload.objetivo,
+      fecha_inicio:       payload.fecha_inicio,
+      fecha_final:        payload.fecha_final,
+      id_proyecto:        payload.id_proyecto,
+      id_usuario_creador: payload.id_usuario_creador,
+      id_estatus:         payload.id_estatus,
+    });
 
   if (error) throw new Error(error.message);
-  return data;
 }
 
 export async function updateSprint(id: number, payload: UpdateSprintPayload): Promise<void> {

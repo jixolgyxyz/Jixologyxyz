@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { ChevronDownIcon, PlusIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import BacklogListItem from '@/features/project/Backlog/components/BacklogListItem';
@@ -161,8 +161,14 @@ const ProjectBacklog: React.FC = () => {
   // Derive viewingItem from URL + items list (works across tab switches / refreshes)
   const viewingItem  = viewingId != null ? (meta.items.find(i => i.id === viewingId) ?? null) : null;
 
-  const setViewingItem = (item: BacklogItemRecord | null) =>
-    setParam('item', item ? item.id : null);
+  const setViewingItem = useCallback((item: BacklogItemRecord | null) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (item) next.set('item', String(item.id));
+      else next.delete('item');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const setParam = (key: string, value: number | string | null) => {
     setSearchParams(prev => {
@@ -434,6 +440,7 @@ const ProjectBacklog: React.FC = () => {
       <CreateBacklogItemForm
         projectId={PROJECT_ID}
         userId={user?.id ?? 0}
+        meta={meta}
         isOpen={showCreateForm}
         onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
         onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}

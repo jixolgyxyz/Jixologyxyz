@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { createSprint } from '../services/backlog.service';
-import type { CreateSprintPayload, SprintRecord } from '../types/backlog.types';
+import type { CreateSprintPayload } from '../types/backlog.types';
 
 export function useCreateSprint() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
-  const submit = async (payload: CreateSprintPayload): Promise<SprintRecord> => {
+  const submit = async (payload: CreateSprintPayload): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      const sprint = await createSprint(payload);
-      return sprint;
+      await createSprint(payload);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
