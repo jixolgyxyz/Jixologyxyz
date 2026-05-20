@@ -19,14 +19,17 @@ const MIN_H = 6;
 
 const COLS = 48;
 
-async function seedDefaultGraphs(userId: number) {
+async function seedDefaultGraphs(userId: number, isAdmin: boolean) {
+  const catalog = isAdmin
+    ? GRAPH_CATALOG
+    : GRAPH_CATALOG.filter(g => g.visibility === 'user-only' || g.visibility === 'shared');
   // Compute positions per dashboard group so admin and user graphs each
   // pack from (0,0) independently, matching what getLayoutItems produces.
   const positions = new Map<string, { x: number; y: number }>();
 
   for (const dashboardGraphs of [
-    GRAPH_CATALOG.filter(g => g.defaultVisible && g.dashboards.includes('admin')),
-    GRAPH_CATALOG.filter(g => g.defaultVisible && g.dashboards.includes('user')),
+    catalog.filter(g => g.defaultVisible && g.dashboards.includes('admin')),
+    catalog.filter(g => g.defaultVisible && g.dashboards.includes('user')),
   ]) {
     let col = 0;
     let row = 0;
@@ -46,7 +49,7 @@ async function seedDefaultGraphs(userId: number) {
     }
   }
 
-  const rows = GRAPH_CATALOG.map(g => {
+  const rows = catalog.map(g => {
     const pos = positions.get(g.id);
     return {
       id_usuario:     userId,
@@ -102,10 +105,15 @@ export function useDashboardPreferences() {
       }
 
       if ((data ?? []).length === 0) {
+        const isAdmin = user.idRolGlobal === 1 || user.idRolGlobal === 2;
+        const catalog = isAdmin
+          ? GRAPH_CATALOG
+          : GRAPH_CATALOG.filter(g => g.visibility === 'user-only' || g.visibility === 'shared');
+
         let col = 0; let row = 0;
         for (const dashboardGraphs of [
-          GRAPH_CATALOG.filter(g => g.defaultVisible && g.dashboards.includes('admin')),
-          GRAPH_CATALOG.filter(g => g.defaultVisible && g.dashboards.includes('user')),
+          catalog.filter(g => g.defaultVisible && g.dashboards.includes('admin')),
+          catalog.filter(g => g.defaultVisible && g.dashboards.includes('user')),
         ]) {
           col = 0; row = 0;
           for (const g of dashboardGraphs) {
@@ -124,10 +132,10 @@ export function useDashboardPreferences() {
           }
         }
         // Hidden graphs still need a visibility entry in memory
-        for (const g of GRAPH_CATALOG) {
+        for (const g of catalog) {
           if (!nextVis.has(g.id)) nextVis.set(g.id, g.defaultVisible);
         }
-        void seedDefaultGraphs(user.id);
+        void seedDefaultGraphs(user.id, isAdmin);
       }
 
       setOverrides(nextVis);

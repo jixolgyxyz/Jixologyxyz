@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDaysIcon } from '@heroicons/react/24/outline';
 import type { BacklogItemRecord } from '@/features/project/Backlog/types/backlog.types';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 import upStyles from './UpcomingCard.module.css';
 
@@ -39,7 +40,11 @@ const UpcomingCard: FC<Props> = ({ items }) => {
       </div>
 
       {items.length === 0 ? (
-        <p className={styles.empty}>Sin vencimientos próximos</p>
+        <ChartEmpty
+          variant="positive"
+          title="Sin vencimientos próximos"
+          hint="No tienes ítems que venzan en los próximos 7 días."
+        />
       ) : (
         <ul className={styles.overdueList}>
           {items.slice(0, 6).map(item => {

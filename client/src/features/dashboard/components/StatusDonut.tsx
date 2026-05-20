@@ -7,6 +7,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { StatusSlice } from '../hooks/useUserDashboardData';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 interface Props {
@@ -18,7 +19,7 @@ const StatusDonut: FC<Props> = ({ data }) => {
     return (
       <div className={styles.card}>
         <h3 className={styles.title}>Estado de ítems</h3>
-        <p className={styles.empty}>Sin datos</p>
+        <ChartEmpty hint="Tus ítems asignados aparecerán aquí agrupados por estado." />
       </div>
     );
   }

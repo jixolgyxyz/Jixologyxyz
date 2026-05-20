@@ -10,6 +10,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import type { ComplexityTimePoint } from '../hooks/useUserDashboardData';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 interface Props {
@@ -50,7 +51,7 @@ const ComplexityTimeScatter: FC<Props> = ({ data }) => {
     return (
       <div className={styles.card}>
         <h3 className={styles.title}>Estimación vs. complejidad</h3>
-        <p className={styles.empty}>Sin datos — asigna complejidad y tiempo estimado a tus ítems</p>
+        <ChartEmpty hint="Asigna complejidad y tiempo estimado a tus ítems para ver esta gráfica." />
       </div>
     );
   }

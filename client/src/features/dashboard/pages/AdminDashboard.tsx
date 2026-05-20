@@ -32,6 +32,7 @@ import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
 import type { GraphDescriptor } from '../config/graphCatalog';
 import GenerateReportModal from '../components/GenerateReportModal/GenerateReportModal';
 import CustomizePanel from '../components/CustomizePanel/CustomizePanel';
+import ChartEmpty from '../components/ChartEmpty';
 import chartStyles from '../components/ChartCard.module.css';
 import styles from './AdminDashboard.module.css';
 
@@ -116,7 +117,7 @@ const ProjectStatusDonut: FC<{ data: ProjectStatusSlice[] }> = ({ data }) => (
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Estado de proyectos</h3>
     {data.length === 0 ? (
-      <p className={chartStyles.empty}>Sin datos</p>
+      <ChartEmpty hint="Los proyectos activos aparecerán aquí agrupados por su estado." />
     ) : (
       <ResponsiveContainer width="100%" height={240}>
         <PieChart>
@@ -147,7 +148,7 @@ const GlobalItemStatusDonut: FC<{ data: GlobalItemStatusSlice[] }> = ({ data }) 
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Distribución de ítems por estado</h3>
     {data.length === 0 ? (
-      <p className={chartStyles.empty}>Sin datos</p>
+      <ChartEmpty hint="Los ítems del sistema se distribuirán aquí según su estado." />
     ) : (
       <ResponsiveContainer width="100%" height={240}>
         <PieChart>
@@ -180,7 +181,7 @@ export const CompletionRateCard: FC<{ data: ProjectCompletionRow[]; projectFilte
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Tasa de completación por proyecto</h3>
       {rows.length === 0 ? (
-        <p className={chartStyles.empty}>Sin datos</p>
+        <ChartEmpty hint="Agrega ítems a tus proyectos para ver su tasa de completación." />
       ) : (
         <div className={styles.completionList}>
           {rows.map(row => (
@@ -208,7 +209,7 @@ export const VolumeByProjectBar: FC<{ data: ProjectVolumeRow[]; projectFilter?: 
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Volumen de backlog por proyecto</h3>
     {rows.length === 0 ? (
-      <p className={chartStyles.empty}>Sin datos</p>
+      <ChartEmpty hint="El volumen del backlog aparecerá cuando los proyectos tengan ítems pendientes." />
     ) : (
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={rows} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
@@ -239,7 +240,7 @@ export const SprintHealthBar: FC<{ data: SprintHealthRow[]; projectFilter?: Set<
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Salud de sprints por proyecto</h3>
     {rows.length === 0 ? (
-      <p className={chartStyles.empty}>Sin datos</p>
+      <ChartEmpty hint="La salud de los sprints aparecerá cuando haya sprints en curso." />
     ) : (
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={rows} margin={{ top: 24, right: 16, left: 20, bottom: 55 }} barCategoryGap="25%" barGap={2}>
@@ -272,7 +273,11 @@ export const OverdueByProjectCard: FC<{ data: OverdueProjectRow[]; projectFilter
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Ítems vencidos por proyecto</h3>
     {rows.length === 0 ? (
-      <p className={chartStyles.empty}>Sin ítems vencidos</p>
+      <ChartEmpty
+        variant="positive"
+        title="Sin ítems vencidos"
+        hint="Ningún proyecto tiene ítems con la fecha límite vencida."
+      />
     ) : (
       <div className={styles.overdueList}>
         {rows.map((row, i) => (
@@ -302,7 +307,13 @@ export const WeightedRiskCard: FC<{ data: BacklogPressureRow[]; projectFilter?: 
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Riesgo ponderado</h3>
       <p className={styles.pressureSubtitle}>Σ (días vencido × complejidad) por proyecto</p>
-      {rows.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+      {rows.length === 0 ? (
+        <ChartEmpty
+          variant="positive"
+          title="Sin ítems vencidos"
+          hint="El riesgo ponderado se calcula a partir de los ítems vencidos."
+        />
+      ) : (
         <div className={styles.pressureList}>
           {rows.map(row => (
             <div key={row.name} className={styles.pressureRow}>
@@ -327,7 +338,13 @@ export const SegmentedBacklogCard: FC<{ data: BacklogPressureRow[]; projectFilte
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Composición de deuda</h3>
       <p className={styles.pressureSubtitle}>Cada segmento = 1 ítem · ancho = días · color = complejidad</p>
-      {rows.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+      {rows.length === 0 ? (
+        <ChartEmpty
+          variant="positive"
+          title="Sin ítems vencidos"
+          hint="La composición de deuda se arma con los ítems vencidos."
+        />
+      ) : (
         <div className={styles.pressureList}>
           {rows.map(row => (
             <div key={row.name} className={styles.pressureRow}>
@@ -470,7 +487,13 @@ export const BubblePressureCard: FC<{ data: BacklogPressureRow[]; projectFilter?
           )}
         </div>
       </div>
-      {available.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+      {available.length === 0 ? (
+        <ChartEmpty
+          variant="positive"
+          title="Sin ítems vencidos"
+          hint="Esta vista se genera a partir de los ítems vencidos por proyecto."
+        />
+      ) : (
         <>
           <ResponsiveContainer width="100%" height={240}>
             <ScatterChart margin={{ top: 28, right: 28, bottom: 28, left: 20 }}>
@@ -607,7 +630,13 @@ export const RiskMatrixCard: FC<{ data: BacklogPressureRow[]; projectFilter?: Se
           )}
         </div>
       </div>
-      {available.length === 0 ? <p className={chartStyles.empty}>Sin ítems vencidos</p> : (
+      {available.length === 0 ? (
+        <ChartEmpty
+          variant="positive"
+          title="Sin ítems vencidos"
+          hint="La matriz de riesgo se construye con los ítems vencidos."
+        />
+      ) : (
         <ResponsiveContainer width="100%" height={240}>
           <ScatterChart margin={{ top: 24, right: 24, bottom: 28, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
@@ -640,7 +669,11 @@ export const BacklogPressureCard: FC<{ data: BacklogPressureRow[]; projectFilter
         <span className={styles.pressureLegendComplexity}>complejidad</span>
       </div>
       {rows.length === 0 ? (
-        <p className={chartStyles.empty}>Sin ítems vencidos</p>
+        <ChartEmpty
+          variant="positive"
+          title="Sin ítems vencidos"
+          hint="La presión de backlog se mide sobre los ítems vencidos."
+        />
       ) : (
         <div className={styles.pressureList}>
           {rows.map(row => (
@@ -669,7 +702,7 @@ export const FteByProjectBar: FC<{ data: FteProjectRow[]; projectFilter?: Set<nu
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>FTE asignado por proyecto</h3>
     {rows.length === 0 ? (
-      <p className={chartStyles.empty}>Sin datos</p>
+      <ChartEmpty hint="El FTE asignado aparecerá cuando los proyectos tengan horas estimadas." />
     ) : (
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={rows} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
@@ -699,7 +732,9 @@ export const EstimatedHoursByProjectBar: FC<{ data: EstimatedHoursProjectRow[]; 
   return (
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Horas estimadas por proyecto</h3>
-      {rows.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+      {rows.length === 0 ? (
+        <ChartEmpty hint="Estima las horas de tus ítems para ver el total por proyecto." />
+      ) : (
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 48, left: 4, bottom: 4 }} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" horizontal={false} />
@@ -720,7 +755,9 @@ export const HoursDonePendingBar: FC<{ data: HoursDonePendingRow[]; projectFilte
   return (
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Horas completadas vs. pendientes</h3>
-      {rows.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+      {rows.length === 0 ? (
+        <ChartEmpty hint="Registra horas en tus ítems para comparar lo completado y lo pendiente." />
+      ) : (
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={rows} margin={{ top: 24, right: 16, left: 20, bottom: 55 }} barCategoryGap="25%" barGap={2}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
@@ -745,7 +782,13 @@ export const OverdueHoursByProjectBar: FC<{ data: OverdueHoursProjectRow[]; proj
   return (
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Horas en deuda por proyecto</h3>
-      {rows.length === 0 ? <p className={chartStyles.empty}>Sin horas en deuda</p> : (
+      {rows.length === 0 ? (
+        <ChartEmpty
+          variant="positive"
+          title="Sin horas en deuda"
+          hint="Ningún proyecto acumula horas estimadas en ítems vencidos."
+        />
+      ) : (
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={rows} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
@@ -766,7 +809,9 @@ export const OverdueHoursByProjectBar: FC<{ data: OverdueHoursProjectRow[]; proj
 export const HoursByPriorityBar: FC<{ data: HoursByPriorityRow[]; projectFilter?: Set<number> }> = ({ data }) => (
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Horas estimadas por prioridad</h3>
-    {data.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+    {data.length === 0 ? (
+      <ChartEmpty hint="Asigna prioridad y horas estimadas a los ítems para ver esta gráfica." />
+    ) : (
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data} margin={{ top: 4, right: 16, left: 20, bottom: 16 }} barCategoryGap="30%">
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
@@ -790,7 +835,9 @@ export const HoursByPriorityBar: FC<{ data: HoursByPriorityRow[]; projectFilter?
 export const HoursByTypeDonut: FC<{ data: HoursByTypeRow[]; projectFilter?: Set<number> }> = ({ data }) => (
   <div className={chartStyles.card}>
     <h3 className={chartStyles.title}>Horas estimadas por tipo de ítem</h3>
-    {data.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+    {data.length === 0 ? (
+      <ChartEmpty hint="Estima las horas de los ítems para ver el reparto por tipo." />
+    ) : (
       <ResponsiveContainer width="100%" height={240}>
         <PieChart>
           <Pie
@@ -851,7 +898,9 @@ export const AvgHoursVsComplexityScatter: FC<{ data: AvgHoursComplexityRow[]; pr
     <div className={chartStyles.card}>
       <h3 className={chartStyles.title}>Horas promedio vs. complejidad</h3>
       <p className={styles.pressureSubtitle}>X = complejidad promedio · Y = horas promedio estimadas por proyecto</p>
-      {rows.length === 0 ? <p className={chartStyles.empty}>Sin datos</p> : (
+      {rows.length === 0 ? (
+        <ChartEmpty hint="Asigna horas y complejidad a los ítems para comparar proyectos." />
+      ) : (
         <ResponsiveContainer width="100%" height={240}>
           <ScatterChart margin={{ top: 24, right: 24, bottom: 28, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />

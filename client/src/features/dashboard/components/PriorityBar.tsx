@@ -10,6 +10,7 @@ import {
   Cell,
 } from 'recharts';
 import type { PriorityCount } from '../hooks/useUserDashboardData';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 interface Props {
@@ -23,7 +24,7 @@ const PriorityBar: FC<Props> = ({ data }) => {
     return (
       <div className={styles.card}>
         <h3 className={styles.title}>Distribución por prioridad</h3>
-        <p className={styles.empty}>Sin datos</p>
+        <ChartEmpty hint="Asigna prioridad a tus ítems para ver su distribución." />
       </div>
     );
   }
