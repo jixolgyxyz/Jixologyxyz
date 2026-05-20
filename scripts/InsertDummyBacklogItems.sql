@@ -11,7 +11,13 @@
 --   Priority bar   : all 5 priorities represented
 --   Complexity bar : complejidad 1–5 all used
 --   Overdue        : ids 4,9,12,16  (past due 2026-05-10…17, non-terminal)
---   This week      : ids 1,6,11,15,23-34  (2026-05-18..22 Mon-Fri, ~half completed)
+--   This week      : items due 2026-05-18..22 (Mon-Fri) — 22 items across 4 projects
+--
+-- Progresión semanal — pace per project vs. the Wednesday mark (~60% expected):
+--   Proyecto Alpha : 4/5 completados (80%) → adelantado
+--   Proyecto Gamma : 3/5 completados (60%) → en tiempo
+--   Proyecto Delta : 3/5 completados (60%) → en tiempo
+--   Proyecto Beta  : 2/7 completados (29%) → atrasado
 --
 -- fecha_completado spread (terminal Acabado items only):
 --   Before due date : ids 3, 23, 29, 43, 52, 57
@@ -45,10 +51,10 @@ OVERRIDING SYSTEM VALUE VALUES
        'Implementar flujo de autenticación con email y contraseña.',
        NOW(), 1, 2, 2, 1, 1, 1, 1,    2,    false, 3,  480,  420, '2026-05-21', NULL),
 
-  -- Tarea (id=3) — parent: HU id=1  [BEFORE: no due → completed 05-15]
+  -- Tarea (id=3) — parent: HU id=1  [BEFORE: due 05-19 → completed 05-15]
   (3,  'Configurar conexión a Supabase',
        'Instalar cliente y definir variables de entorno.',
-       NOW(), 2, 4, 3, 1, 1, 1, 1,    1,    true,  2,  120,  150, NULL, '2026-05-15 10:30:00+00'),
+       NOW(), 2, 4, 3, 1, 1, 1, 1,    1,    true,  2,  120,  150, '2026-05-19', '2026-05-15 10:30:00+00'),
 
   -- Bug (id=4) — parent: HU id=1
   (4,  'Fix: token expirado no redirige al login',
@@ -119,7 +125,7 @@ OVERRIDING SYSTEM VALUE VALUES
   -- Tarea (id=15) — parent: HU id=14
   (15, 'Crear formulario de registro de inventario',
        'Form nativo con validaciones y persistencia local.',
-       NOW(), 2, 2, 3, 8, 4, 1, 1,    14,   false, 3,  420,  360, '2026-05-22', NULL),
+       NOW(), 2, 2, 3, 8, 4, 1, 1,    14,   false, 3,  420,  360, '2026-05-28', NULL),
 
   -- Bug (id=16) — no parent
   (16, 'Fix: sync falla al reconectar WiFi',
@@ -168,7 +174,7 @@ OVERRIDING SYSTEM VALUE VALUES
   -- En Revisión
   (25, 'Revisar política de CORS en producción',
        'Verificar orígenes permitidos y cabeceras expuestas.',
-       NOW(), 2, 3, 2, 3, 1, 1, 1,    NULL, false, 2,   90,  120, '2026-05-22', NULL),
+       NOW(), 2, 3, 2, 3, 1, 1, 1,    NULL, false, 2,   90,  120, '2026-05-28', NULL),
 
   -- ── Esta semana — Proyecto 2 Beta ─────────────────────────────────
 
@@ -261,7 +267,7 @@ OVERRIDING SYSTEM VALUE VALUES
        NOW(), 3, 1, 2, 9, 4, 1, 1,    NULL, false, 3, NULL,  300, '2026-05-14', NULL),
 
   -- ── Esta semana adicional — Progresión semanal ─────────────────
-  --    (fecha_vencimiento 2026-05-18..22, mix terminal/non-terminal)
+  --    (vencimientos 05-18..22; ids 44,45,50,51,53,54 empujados a 05-28..30)
 
   -- Proyecto 1 (Alpha)
   -- Acabado ✓  [BEFORE: due 05-19 → completed 05-18]
@@ -271,11 +277,11 @@ OVERRIDING SYSTEM VALUE VALUES
 
   (44, 'Revisar expiración de sesiones inactivas',
        'Cerrar sesión automáticamente tras 30 min sin actividad.',
-       NOW(), 2, 2, 3, 2, 1, 1, 1,    NULL, false, 2, NULL,  120, '2026-05-20', NULL),
+       NOW(), 2, 2, 3, 2, 1, 1, 1,    NULL, false, 2, NULL,  120, '2026-05-28', NULL),
 
   (45, 'Documentar endpoints de autenticación',
        'Generar especificación OpenAPI para el módulo de auth.',
-       NOW(), 2, 1, 4, 3, 1, 1, 1,    NULL, false, 1, NULL,   90, '2026-05-22', NULL),
+       NOW(), 2, 1, 4, 3, 1, 1, 1,    NULL, false, 1, NULL,   90, '2026-05-29', NULL),
 
   -- Proyecto 2 (Beta)
   -- Acabado ✓  [AT: due 05-18 → completed 05-18]
@@ -299,11 +305,11 @@ OVERRIDING SYSTEM VALUE VALUES
 
   (50, 'Agregar notificación push al confirmar pago',
        'Enviar push notification al usuario cuando el cobro se aprueba.',
-       NOW(), 2, 1, 3, 7, 3, 1, 1,    NULL, false, 3, NULL,  210, '2026-05-20', NULL),
+       NOW(), 2, 1, 3, 7, 3, 1, 1,    NULL, false, 3, NULL,  210, '2026-05-28', NULL),
 
   (51, 'Validar RFC en formulario de facturación',
        'Verificar formato de RFC mexicano antes de emitir CFDI.',
-       NOW(), 2, 3, 2, 6, 3, 1, 1,    NULL, false, 2, NULL,  150, '2026-05-22', NULL),
+       NOW(), 2, 3, 2, 6, 3, 1, 1,    NULL, false, 2, NULL,  150, '2026-05-29', NULL),
 
   -- Proyecto 4 (Delta)
   -- Acabado ✓  [BEFORE: due 05-18 → completed 05-17]
@@ -313,11 +319,11 @@ OVERRIDING SYSTEM VALUE VALUES
 
   (53, 'Implementar indicador visual de estado de conexión',
        'Banner que avise al usuario cuando está en modo offline.',
-       NOW(), 2, 2, 3, 9, 4, 1, 1,    NULL, false, 4, NULL,  420, '2026-05-21', NULL),
+       NOW(), 2, 2, 3, 9, 4, 1, 1,    NULL, false, 4, NULL,  420, '2026-05-29', NULL),
 
   (54, 'Añadir tests de integración para la cola offline',
        'Verificar que las operaciones pendientes se replican correctamente.',
-       NOW(), 2, 1, 4, 8, 4, 1, 1,    NULL, false, 2, NULL,  180, '2026-05-22', NULL),
+       NOW(), 2, 1, 4, 8, 4, 1, 1,    NULL, false, 2, NULL,  180, '2026-05-30', NULL),
 
   -- ── Completados para gráfica de precisión — complejidad 1 y 5 ────
 
@@ -331,10 +337,10 @@ OVERRIDING SYSTEM VALUE VALUES
        'Integrar Redis para cachear sesiones y reducir carga en DB.',
        NOW(), 2, 4, 1, 3, 1, 1, 1,    NULL, true,  5,  600,  480, '2026-05-16', '2026-05-18 13:00:00+00'),
 
-  -- Complejidad 4 extra — refuerzo de datos  [BEFORE: due 05-15 → completed 05-14]
+  -- Complejidad 4 extra — refuerzo de datos  [BEFORE: due 05-19 → completed 05-14]
   (57, 'Migrar base de datos a esquema multi-tenant',
        'Agregar campo id_tenant y actualizar todas las políticas RLS.',
-       NOW(), 2, 4, 1, 8, 4, 1, 1,    NULL, true,  4,  400,  420, '2026-05-15', '2026-05-14 10:00:00+00')
+       NOW(), 2, 4, 1, 8, 4, 1, 1,    NULL, true,  4,  400,  420, '2026-05-19', '2026-05-14 10:00:00+00')
 
 ON CONFLICT (id) DO NOTHING;
 
@@ -370,5 +376,25 @@ SET
   END
 WHERE id IN (3, 8, 23, 24, 26, 29, 30, 32, 43, 46, 49, 52, 55, 56, 57)
   AND id_estatus = 4;
+
+-- Re-balance fecha_vencimiento so the Progresión Semanal card shows a clear
+-- spread: Alpha ahead, Gamma/Delta on schedule, Beta behind. Needed because the
+-- ON CONFLICT DO NOTHING insert above won't update rows already in the DB.
+UPDATE backlog_item
+SET fecha_vencimiento = CASE id
+  -- pulled into this week (Mon-Fri 2026-05-18..22)
+  WHEN  3 THEN '2026-05-19'::DATE
+  WHEN 57 THEN '2026-05-19'::DATE
+  -- pushed past this week to balance each project's weekly pace
+  WHEN 25 THEN '2026-05-28'::DATE
+  WHEN 44 THEN '2026-05-28'::DATE
+  WHEN 45 THEN '2026-05-29'::DATE
+  WHEN 15 THEN '2026-05-28'::DATE
+  WHEN 50 THEN '2026-05-28'::DATE
+  WHEN 51 THEN '2026-05-29'::DATE
+  WHEN 53 THEN '2026-05-29'::DATE
+  WHEN 54 THEN '2026-05-30'::DATE
+END
+WHERE id IN (3, 15, 25, 44, 45, 50, 51, 53, 54, 57);
 
 COMMIT;
