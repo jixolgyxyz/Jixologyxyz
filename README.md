@@ -150,6 +150,7 @@ Playwright will:
 | `npm run test:e2e:debug` | Run tests with the browser visible and the Playwright inspector attached |
 | `npx playwright show-report` | Open the last HTML report in the browser |
 | `npx playwright test --grep "login"` | Run only tests whose name matches a keyword |
+| `npx playwright test tests/e2e/backlog` |Run only test on the backlog folder |
 
 ---
 

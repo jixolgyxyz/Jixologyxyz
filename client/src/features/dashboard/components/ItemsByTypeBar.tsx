@@ -13,6 +13,7 @@ import type { TypeCount } from '../hooks/useUserDashboardData';
 import styles from './ChartCard.module.css';
 
 const TYPE_COLORS = ['#E31837', '#0A0838', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
+const TICK_PROPS = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
 
 interface Props {
   data: TypeCount[];
@@ -41,19 +42,19 @@ const ItemsByTypeBar: FC<Props> = ({ data }) => {
           <XAxis
             type="number"
             allowDecimals={false}
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
           />
           <YAxis
             dataKey="tipo"
             type="category"
             width={110}
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
           />
           <Tooltip
             formatter={(value) => [value, 'Ítems']}
             contentStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
           />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={false}>
             {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={TYPE_COLORS[index % TYPE_COLORS.length]} />
             ))}

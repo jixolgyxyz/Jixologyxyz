@@ -4,7 +4,6 @@ import {
   Pie,
   Cell,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import type { StatusSlice } from '../hooks/useUserDashboardData';
@@ -37,6 +36,7 @@ const StatusDonut: FC<Props> = ({ data }) => {
             outerRadius={90}
             paddingAngle={3}
             dataKey="value"
+            isAnimationActive={false}
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
@@ -46,13 +46,16 @@ const StatusDonut: FC<Props> = ({ data }) => {
             formatter={(value, name) => [value, name]}
             contentStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
           />
-          <Legend
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
-          />
         </PieChart>
       </ResponsiveContainer>
+      <div className={styles.legend}>
+        {data.map((s, i) => (
+          <span key={i} className={styles.legendItem}>
+            <span className={styles.legendDot} style={{ background: s.color }} />
+            {s.name}
+          </span>
+        ))}
+      </div>
     </div>
   );
 };

@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
+import type { Layout } from 'react-grid-layout';
 import { useUser } from '@/core/auth/userContext';
 import { GRAPH_CATALOG, type GraphDescriptor, type DashboardKind } from '../config/graphCatalog';
-import { useDashboardPreferences } from './useDashboardPreferences';
+import { useDashboardPreferences, type GraphLayoutItem } from './useDashboardPreferences';
 import { usePmProjects } from './usePmProjects';
 
 export interface VisibleGraphsResult {
@@ -17,11 +18,15 @@ export interface VisibleGraphsResult {
   toggle: (graphId: string) => Promise<void>;
   /** Helper for the panel: is this graph currently visible per the user's prefs? */
   isVisible: (graphId: string) => boolean;
+  /** Returns react-grid-layout Layout items for the given visible graphs. */
+  getLayoutItems: (visibleGraphs: GraphDescriptor[], cols?: number) => GraphLayoutItem[];
+  /** Persists the layout from an onLayoutChange callback. */
+  saveLayout: (layout: Layout) => Promise<void>;
 }
 
 export function useVisibleGraphs(dashboard: DashboardKind): VisibleGraphsResult {
   const { user } = useUser();
-  const { isVisible, toggle, loading: prefsLoading } = useDashboardPreferences();
+  const { isVisible, toggle, loading: prefsLoading, getLayoutItems, saveLayout } = useDashboardPreferences();
   const { projectIds: pmProjectIds, loading: pmLoading } = usePmProjects();
 
   const isGlobalAdmin = user?.idRolGlobal === 1 || user?.idRolGlobal === 2;
@@ -58,5 +63,7 @@ export function useVisibleGraphs(dashboard: DashboardKind): VisibleGraphsResult 
     loading: prefsLoading || pmLoading,
     toggle,
     isVisible,
+    getLayoutItems,
+    saveLayout,
   };
 }

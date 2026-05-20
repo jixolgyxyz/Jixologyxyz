@@ -1,0 +1,50 @@
+.gridWrapper {
+  width: 100%;
+}
+
+.gridLayout {
+  /* react-grid-layout injects inline styles; this class is available for overrides */
+}
+
+.gridItem {
+  position: relative;
+  overflow: hidden;
+}
+
+.gridItem > * {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.dragHandle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  cursor: grab;
+  z-index: 10;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.07), transparent);
+  border-radius: 12px 12px 0 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.gridItem:hover .dragHandle {
+  opacity: 1;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+/* ── Reorganize mode ──────────────────────────────────────────────── */
+/* Surface the drag strip and resize handles so it's obvious what's
+   grabbable; outside this mode the grid is read-only. */
+.reorganizing .dragHandle {
+  opacity: 1;
+}
+
+.reorganizing :global(.react-resizable-handle) {
+  opacity: 1;
+}

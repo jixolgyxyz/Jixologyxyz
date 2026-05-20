@@ -6,11 +6,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import type { SprintHoursData } from '../hooks/useUserDashboardData';
 import styles from './ChartCard.module.css';
+
+const TICK_PROPS = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
 
 interface Props {
   data: SprintHoursData;
@@ -39,20 +40,15 @@ const HoursBySprintBar: FC<Props> = ({ data }) => {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="sprint"
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
           />
           <YAxis
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
             unit="h"
           />
           <Tooltip
             formatter={(value, name) => [`${value}h`, name]}
             contentStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
-          />
-          <Legend
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: '0.72rem', fontFamily: 'Poppins, sans-serif' }}
           />
           {data.projects.map(p => (
             <Bar
@@ -60,10 +56,19 @@ const HoursBySprintBar: FC<Props> = ({ data }) => {
               dataKey={p.name}
               fill={p.color}
               radius={[3, 3, 0, 0]}
+              isAnimationActive={false}
             />
           ))}
         </BarChart>
       </ResponsiveContainer>
+      <div className={styles.legend}>
+        {data.projects.map(p => (
+          <span key={p.name} className={styles.legendItem}>
+            <span className={styles.legendDot} style={{ background: p.color }} />
+            {p.name}
+          </span>
+        ))}
+      </div>
     </div>
   );
 };
