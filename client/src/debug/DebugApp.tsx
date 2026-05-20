@@ -115,6 +115,7 @@ function DebugBacklogList() {
 
 function DebugCreateBacklogItem() {
   const [open, setOpen] = useState(false);
+  const { meta } = useBacklogMeta(1);
   return (
     <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
       <button
