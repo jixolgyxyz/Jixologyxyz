@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { GiftIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import './Profile.css';
 
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import UserCard from '../components/UserCard';
-import InventoryCard from '../components/InventoryCard';
+import AvatarInventorySection from '../components/AvatarInventorySection';
+import AvatarShop from '../../store/pages'
 import SkeletonUserCard from '../components/SkeletonUserCard';
-import SkeletonAvatarTile from '../components/SkeletonAvatarTile';
 import { AvatarLootBox } from '../components/AvatarLootBox';
 import MessagePopUp from '../../../shared/components/MessagePopUp';
 import type { MessagePopUpType } from '../../../shared/components/MessagePopUp';
@@ -21,7 +21,6 @@ import { useAdminUserEdit } from '@/features/admin/hooks/useAdminUserEdit';
 
 import ContextMenu from '@/shared/components/ContextMenu';
 import type { MenuComponent } from '@/shared/components/ContextMenu';
-const SKELETON_TILE_COUNT = 10;
 
 function calcAge(fechaNacimiento: string): number {
   const birth = new Date(fechaNacimiento);
@@ -408,6 +407,7 @@ function ProfileContent({
                 'Aún no tienes elementos. Abre una lootbox para obtener tu primer cosmético.',
             }
           : null);
+  const [rightPanelMode, setRightPanelMode] = useState<'inventory' | 'shop'>('shop');
 
   return (
     <>
@@ -430,7 +430,7 @@ function ProfileContent({
           </div>
         </div>
       )}
-
+  
       {activePopup && (
         <MessagePopUp
           type={activePopup.type}
@@ -442,7 +442,7 @@ function ProfileContent({
           }}
         />
       )}
-
+  
       <div className="profile-page">
         {isLoading ? (
           <SkeletonUserCard />
@@ -471,7 +471,7 @@ function ProfileContent({
                     try {
                       if (isFullEdit) {
                         const response = await submitAdminEdit();
-
+  
                         setPopup({
                           type: 'notification',
                           title: 'Usuario actualizado',
@@ -481,7 +481,6 @@ function ProfileContent({
                       } else {
                         await submitSelfEdit();
                       }
-
                       await refresh();
                     } catch (err) {
                       if (isFullEdit) {
@@ -489,14 +488,12 @@ function ProfileContent({
                           err instanceof Error
                             ? err.message
                             : 'No se pudo actualizar el usuario.';
-
                         setPopup({
                           type: 'error',
                           title: 'Error al guardar',
                           message,
                         });
                       }
-
                       throw err;
                     }
                   }
@@ -504,7 +501,6 @@ function ProfileContent({
             }
           />
         )}
-
         <div className="profile-right">
           {isOwnProfile && (
             <div className="profile-section profile-section--github">
@@ -528,10 +524,21 @@ function ProfileContent({
                   <div className="github-skeleton" />
                 ) : githubData ? (
                   <div className="github-connected">
-                    <img className="github-avatar" src={githubData.github_avatar_url ?? ''} alt={githubData.github_username} />
+                    <img
+                      className="github-avatar"
+                      src={githubData.github_avatar_url ?? ''}
+                      alt={githubData.github_username}
+                    />
+  
                     <div className="github-info">
-                      <span className="github-username">@{githubData.github_username}</span>
-                      <span className="github-since">Conectado el {new Date(githubData.connected_at).toLocaleDateString('es-MX')}</span>
+                      <span className="github-username">
+                        @{githubData.github_username}
+                      </span>
+  
+                      <span className="github-since">
+                        Conectado el{' '}
+                        {new Date(githubData.connected_at).toLocaleDateString('es-MX')}
+                      </span>
                     </div>
                     <div className="github-badges">
                       <span className="github-badge">Conectado</span>
@@ -539,8 +546,15 @@ function ProfileContent({
                   </div>
                 ) : (
                   <div className="github-disconnected">
-                    <p className="github-desc">Conecta tu cuenta de GitHub para integrar tus repos y orgs directamente en Jixology.</p>
-                    <button type="button" className="github-connect-btn" onClick={handleGithubConnect}>
+                    <p className="github-desc">
+                      Conecta tu cuenta de GitHub para integrar tus repos y orgs directamente en Jixology.
+                    </p>
+  
+                    <button
+                      type="button"
+                      className="github-connect-btn"
+                      onClick={handleGithubConnect}
+                    >
                       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
                       </svg>
@@ -551,45 +565,35 @@ function ProfileContent({
               </div>
             </div>
           )}
-
-          <div className="profile-section profile-section--inventory">
-            <div className="section-tab">Cosméticos</div>
-
-            <div className="section-body section-body--flush">
-              {showInventory ? (
-                <InventoryCard
-                  catalog={filteredCatalog}
-                  features={features}
-                  onSelectVariant={handleSelectVariant}
-                  onSelectColor={handleSelectColor}
-                  onSelectType={handleSelectType}
-                />
-              ) : (
-                <div className="inv-card">
-                  <div className="inv-grid">
-                    {Array.from({ length: SKELETON_TILE_COUNT }).map((_, i) => (
-                      <SkeletonAvatarTile key={i} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="section-footer">
-              <ButtonComponent
-                label="Abrir lootbox"
-                icon={<GiftIcon width={16} height={16} />}
-                variant="secondary"
-                onClick={() => { setShowLootbox(true); setPopup(null); }}
-                disabled={!canEditAvatar || isLoading || hasError || avatarSaving || addingItem}
-              />
-              <ButtonComponent
-                label={avatarSaving ? 'Guardando…' : 'Guardar avatar'}
-                onClick={handleSaveAvatar}
-                disabled={!canEditAvatar || !showInventory || avatarSaving || addingItem}
-              />
-            </div>
+  
+          <div className="upperBar">
+            <ButtonComponent
+              label="Inventario"
+              onClick={() => setRightPanelMode('inventory')}
+            />
+  
+            <ButtonComponent
+              label="Tienda"
+              onClick={() => setRightPanelMode('shop')}
+            />
           </div>
+  
+          {rightPanelMode === 'inventory' ? (
+            <AvatarInventorySection
+              showInventory={showInventory}
+              filteredCatalog={filteredCatalog}
+              features={features}
+              onSelectVariant={handleSelectVariant}
+              onSelectColor={handleSelectColor}
+              onSelectType={handleSelectType}
+              avatarSaving={avatarSaving}
+              handleSaveAvatar={handleSaveAvatar}
+              canEditAvatar={canEditAvatar}
+              addingItem={addingItem}
+            />
+          ) : (
+            <AvatarShop />
+          )}
         </div>
       </div>
     </>

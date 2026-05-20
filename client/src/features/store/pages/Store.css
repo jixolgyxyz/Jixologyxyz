@@ -3,16 +3,11 @@
   height: 100vh;
   overflow-y: auto;
 
-  padding: 32px;
+  padding: 0px;
   box-sizing: border-box;
-
-  background: linear-gradient(
-    160deg,
-    var(--color-clarity-gray-1) 0%,
-    var(--color-clarity-gray-2) 50%,
-    var(--color-clarity-gray-1) 100%
-  );
-
+  box-shadow:
+  0 2px 8px rgba(10, 8, 56, 0.04),
+  0 12px 40px rgba(10, 8, 56, 0.06);
   font-family: 'Poppins', 'Aptos', sans-serif;
 }
 

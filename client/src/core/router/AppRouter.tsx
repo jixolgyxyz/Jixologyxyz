@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 // --- Páginas ---
 import LoginPage from '@/features/auth/pages/LogInPage';
 import ProfilePage from '@/features/profile/pages';
-import StorePage from '@/features/store/pages';
 import UserDashboardPage from '@/features/dashboard/pages/UserDashboard';
 import AdminDashboardPage from '@/features/dashboard/pages/AdminDashboard';
 import ProjectDashboardPage from '@/features/dashboard/pages/ProjectDashboard';
@@ -39,9 +38,6 @@ export function AppRouter() {
         </Route>
         <Route element={<AppLayoutHs title="Perfil de Usuario"/>}>
           <Route path="/perfil"            element={<ProfilePage />} />
-        </Route>
-        <Route element={<AppLayoutHs title="Tienda de Objetos"/>}>
-          <Route path="/tienda"            element={<StorePage />} />
         </Route>
         <Route element={<AppLayoutHs title="Dashboard"/>}>
           <Route path="/dashboard-usuario"   element={<UserDashboardPage />} />
