@@ -135,6 +135,7 @@ function DebugCreateBacklogItem() {
       <CreateBacklogItemForm
         projectId={1}
         userId={1}
+        meta={meta}
         isOpen={open}
         onClose={() => setOpen(false)}
         onCreated={() => setOpen(false)}
