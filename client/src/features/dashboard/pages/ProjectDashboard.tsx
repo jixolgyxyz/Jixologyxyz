@@ -1,10 +1,11 @@
-import { type FC, useState } from 'react';
+import { type FC, useState, useCallback, useMemo } from 'react';
 import { useAdminDashboardData } from '../hooks/useAdminDashboardData';
 import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
 import { useDashboardPanel } from '../hooks/useDashboardPanel';
 import DashboardGrid from '../components/DashboardGrid/DashboardGrid';
 import CustomizePanel from '../components/CustomizePanel/CustomizePanel';
 import { renderAdminGraph } from './AdminDashboard';
+import type { GraphDescriptor } from '../config/graphCatalog';
 import styles from './UserDashboard.module.css';
 
 const ProjectDashboard: FC = () => {
@@ -15,6 +16,18 @@ const ProjectDashboard: FC = () => {
     useDashboardPanel('project');
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
   const [reorganizeMode, setReorganizeMode] = useState(false);
+
+  const activeFilter = useMemo<Set<number>>(
+    () => selectedProjectIds && selectedProjectIds.length > 0
+      ? new Set(selectedProjectIds.filter(id => pmProjectIds.has(id)))
+      : pmProjectIds,
+    [selectedProjectIds, pmProjectIds],
+  );
+
+  const renderItemFn = useCallback(
+    (g: GraphDescriptor) => data ? renderAdminGraph(g, data, activeFilter) : null,
+    [data, activeFilter],
+  );
 
   if (loading || graphsLoading) {
     return (
@@ -41,11 +54,6 @@ const ProjectDashboard: FC = () => {
   }
 
   if (!data) return null;
-
-  const activeFilter: Set<number> =
-    selectedProjectIds && selectedProjectIds.length > 0
-      ? new Set(selectedProjectIds.filter(id => pmProjectIds.has(id)))
-      : pmProjectIds;
 
   const pmProjects = data.completionByProject
     .filter(r => pmProjectIds.has(r.id))
@@ -79,7 +87,7 @@ const ProjectDashboard: FC = () => {
         getLayoutItems={getLayoutItems}
         saveLayout={saveLayout}
         reorganizeMode={reorganizeMode}
-        renderItem={g => renderAdminGraph(g, data, activeFilter)}
+        renderItem={renderItemFn}
       />
 
       <CustomizePanel

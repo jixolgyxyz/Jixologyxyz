@@ -65,15 +65,15 @@ const DashboardGrid: FC<DashboardGridProps> = ({
   // True while a drag or resize is in progress.
   const interacting = useRef(false);
 
-  // When the visible graph list changes (add/remove via customize panel), re-sync.
-  const prevVisibleKey = useRef(visible.map(g => g.id).join(','));
-  useEffect(() => {
-    const key = visible.map(g => g.id).join(',');
-    if (key !== prevVisibleKey.current) {
-      prevVisibleKey.current = key;
-      setLocalLayout(getLayoutItems(visible, COLS));
-    }
-  }, [visible, getLayoutItems]);
+  // When the visible graph list changes (add/remove via customize panel), re-sync
+  // the layout during render (not in an effect) to avoid the cascading-render
+  // lint error and to keep the update synchronous with the new visible array.
+  const [syncedKey, setSyncedKey] = useState(() => visible.map(g => g.id).join(','));
+  const currentKey = visible.map(g => g.id).join(',');
+  if (currentKey !== syncedKey) {
+    setSyncedKey(currentKey);
+    setLocalLayout(getLayoutItems(visible, COLS));
+  }
 
   // While dragging/resizing: do NOT feed rounded-integer layout back as the controlled
   // prop — it resets react-grid-layout's internal float position and multiplies snap steps.

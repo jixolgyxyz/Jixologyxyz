@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import { type FC, useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -59,7 +59,8 @@ const CustomTooltip = ({
 };
 
 const TimeAccuracyChart: FC<Props> = ({ data }) => {
-  const hasData = data.some(d => d.count > 0);
+  const rows = useMemo(() => data.filter(d => d.count > 0), [data]);
+  const hasData = rows.length > 0;
 
   if (!hasData) {
     return (
@@ -69,9 +70,6 @@ const TimeAccuracyChart: FC<Props> = ({ data }) => {
       </div>
     );
   }
-
-  // Only show complexity levels that have data
-  const rows = data.filter(d => d.count > 0);
 
   return (
     <div className={styles.card}>

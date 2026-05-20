@@ -11,6 +11,8 @@ import {
 import type { SprintHoursData } from '../hooks/useUserDashboardData';
 import styles from './ChartCard.module.css';
 
+const TICK_PROPS = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
+
 interface Props {
   data: SprintHoursData;
 }
@@ -38,10 +40,10 @@ const HoursBySprintBar: FC<Props> = ({ data }) => {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="sprint"
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
           />
           <YAxis
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
             unit="h"
           />
           <Tooltip

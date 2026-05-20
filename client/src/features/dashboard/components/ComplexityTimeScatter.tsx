@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import { type FC, useMemo } from 'react';
 import {
   ScatterChart,
   Scatter,
@@ -17,6 +17,7 @@ interface Props {
 }
 
 const TICK_PROPS = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
+const COMPLEXITY_TICKS = [1, 2, 3, 4, 5];
 
 const COMPLEXITY_COLORS = ['', '#93c5fd', '#60a5fa', '#3b82f6', '#1d4ed8', '#0A0838'];
 
@@ -40,6 +41,11 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: { payl
 };
 
 const ComplexityTimeScatter: FC<Props> = ({ data }) => {
+  const yMax = useMemo(
+    () => (data.length ? Math.ceil(Math.max(...data.map(d => d.horas)) * 1.15) : 10),
+    [data],
+  );
+
   if (data.length === 0) {
     return (
       <div className={styles.card}>
@@ -67,19 +73,16 @@ const ComplexityTimeScatter: FC<Props> = ({ data }) => {
             name="Complejidad"
             tick={TICK_PROPS}
             domain={[0.5, 5.5]}
-            ticks={[1, 2, 3, 4, 5]}
-          >
-            <ReferenceLine x={avgComplexity} stroke="#94a3b8" strokeDasharray="4 3" />
-          </XAxis>
+            ticks={COMPLEXITY_TICKS}
+          />
           <YAxis
             dataKey="horas"
             type="number"
             name="Horas"
             tick={TICK_PROPS}
             unit="h"
-            domain={[0, (max: number) => Math.ceil(max * 1.15)]}
-          >
-          </YAxis>
+            domain={[0, yMax]}
+          />
           <ReferenceLine x={avgComplexity} stroke="#94a3b8" strokeDasharray="4 3"
             label={{ value: `x̄ comp ${avgComplexity}`, position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', fontFamily: 'Poppins, sans-serif' }}
           />

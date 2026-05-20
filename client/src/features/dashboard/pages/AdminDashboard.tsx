@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FC } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type FC } from 'react';
 import { useDashboardPanel } from '../hooks/useDashboardPanel';
 import DashboardGrid from '../components/DashboardGrid/DashboardGrid';
 import {
@@ -38,7 +38,10 @@ import styles from './AdminDashboard.module.css';
 // ── Shared tooltip style ───────────────────────────────────────────────
 const TOOLTIP_STYLE = { fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' };
 const TICK_PROPS    = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
+const TICK_PROPS_W80 = { ...TICK_PROPS, width: 80 };
+const TICK_PROPS_W90 = { ...TICK_PROPS, width: 90 };
 const LEGEND_STYLE  = { fontSize: '0.72rem', fontFamily: 'Poppins, sans-serif' };
+const LEGEND_STYLE_PB4 = { ...LEGEND_STYLE, paddingBottom: 4 };
 const AXIS_LABEL    = { style: { fontSize: '0.7rem', fontFamily: 'Poppins, sans-serif', fill: 'var(--color-anchor-gray-1)' } };
 
 // Drops project rows not in `filter`. If `filter` is undefined, returns the
@@ -212,7 +215,7 @@ export const VolumeByProjectBar: FC<{ data: ProjectVolumeRow[]; projectFilter?: 
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="name"
-            tick={{ ...TICK_PROPS, width: 80 }}
+            tick={TICK_PROPS_W80}
             angle={-35}
             textAnchor="end"
             interval={0}
@@ -243,7 +246,7 @@ export const SprintHealthBar: FC<{ data: SprintHealthRow[]; projectFilter?: Set<
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="name"
-            tick={{ ...TICK_PROPS, width: 80 }}
+            tick={TICK_PROPS_W80}
             angle={-35}
             textAnchor="end"
             interval={0}
@@ -252,7 +255,7 @@ export const SprintHealthBar: FC<{ data: SprintHealthRow[]; projectFilter?: Set<
             <Label value="Sprints" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
           </YAxis>
           <Tooltip contentStyle={TOOLTIP_STYLE} />
-          <Legend iconType="circle" iconSize={8} verticalAlign="top" wrapperStyle={{ ...LEGEND_STYLE, paddingBottom: 4 }} />
+          <Legend iconType="circle" iconSize={8} verticalAlign="top" wrapperStyle={LEGEND_STYLE_PB4} />
           <Bar dataKey="active"   name="Activos"     fill="#3b82f6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
           <Bar dataKey="terminal" name="Terminados"  fill="#10b981" radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </BarChart>
@@ -673,7 +676,7 @@ export const FteByProjectBar: FC<{ data: FteProjectRow[]; projectFilter?: Set<nu
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="name"
-            tick={{ ...TICK_PROPS, width: 80 }}
+            tick={TICK_PROPS_W80}
             angle={-35}
             textAnchor="end"
             interval={0}
@@ -701,7 +704,7 @@ export const EstimatedHoursByProjectBar: FC<{ data: EstimatedHoursProjectRow[]; 
           <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 48, left: 4, bottom: 4 }} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" horizontal={false} />
             <XAxis type="number" tick={TICK_PROPS} unit="h" />
-            <YAxis type="category" dataKey="name" tick={{ ...TICK_PROPS, width: 90 }} width={90} />
+            <YAxis type="category" dataKey="name" tick={TICK_PROPS_W90} width={90} />
             <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`, 'Horas estimadas']} />
             <Bar dataKey="hours" name="Horas estimadas" fill="#3b82f6" radius={[0, 3, 3, 0]} isAnimationActive={false} />
           </BarChart>
@@ -721,12 +724,12 @@ export const HoursDonePendingBar: FC<{ data: HoursDonePendingRow[]; projectFilte
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={rows} margin={{ top: 24, right: 16, left: 20, bottom: 55 }} barCategoryGap="25%" barGap={2}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
-            <XAxis dataKey="name" tick={{ ...TICK_PROPS, width: 80 }} angle={-35} textAnchor="end" interval={0} />
+            <XAxis dataKey="name" tick={TICK_PROPS_W80} angle={-35} textAnchor="end" interval={0} />
             <YAxis tick={TICK_PROPS} unit="h">
               <Label value="Horas" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
             </YAxis>
             <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${v}h`]} />
-            <Legend iconType="circle" iconSize={8} verticalAlign="top" wrapperStyle={{ ...LEGEND_STYLE, paddingBottom: 4 }} />
+            <Legend iconType="circle" iconSize={8} verticalAlign="top" wrapperStyle={LEGEND_STYLE_PB4} />
             <Bar dataKey="done"    name="Completadas" fill="#10b981" radius={[3, 3, 0, 0]} stackId="a" isAnimationActive={false} />
             <Bar dataKey="pending" name="Pendientes"  fill="#0A0838" radius={[3, 3, 0, 0]} stackId="a" isAnimationActive={false} />
           </BarChart>
@@ -746,7 +749,7 @@ export const OverdueHoursByProjectBar: FC<{ data: OverdueHoursProjectRow[]; proj
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={rows} margin={{ top: 4, right: 16, left: 20, bottom: 55 }} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
-            <XAxis dataKey="name" tick={{ ...TICK_PROPS, width: 80 }} angle={-35} textAnchor="end" interval={0} />
+            <XAxis dataKey="name" tick={TICK_PROPS_W80} angle={-35} textAnchor="end" interval={0} />
             <YAxis tick={TICK_PROPS} unit="h">
               <Label value="Horas" angle={-90} position="insideLeft" offset={-8} {...AXIS_LABEL} />
             </YAxis>
@@ -916,6 +919,16 @@ const AdminDashboard: FC = () => {
   const [reorganizeMode, setReorganizeMode] = useState(false);
   const { visible, available, toggle, isVisible, getLayoutItems, saveLayout } = useVisibleGraphs('admin');
 
+  const projectFilter = useMemo<Set<number> | undefined>(
+    () => selectedProjectIds && selectedProjectIds.length > 0 ? new Set(selectedProjectIds) : undefined,
+    [selectedProjectIds],
+  );
+
+  const renderItemFn = useCallback(
+    (g: GraphDescriptor) => data ? renderGraph(g, data, projectFilter) : null,
+    [data, projectFilter],
+  );
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -935,10 +948,6 @@ const AdminDashboard: FC = () => {
   if (!data) return null;
 
   const allProjects = data.completionByProject.map(r => ({ id: r.id, nombre: r.name }));
-  const projectFilter: Set<number> | undefined =
-    selectedProjectIds && selectedProjectIds.length > 0
-      ? new Set(selectedProjectIds)
-      : undefined;
 
   return (
     <div className={styles.page}>
@@ -1003,7 +1012,7 @@ const AdminDashboard: FC = () => {
         getLayoutItems={getLayoutItems}
         saveLayout={saveLayout}
         reorganizeMode={reorganizeMode}
-        renderItem={g => renderGraph(g, data, projectFilter)}
+        renderItem={renderItemFn}
       />
 
       {showReportModal && (

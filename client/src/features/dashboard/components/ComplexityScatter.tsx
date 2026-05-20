@@ -16,8 +16,9 @@ interface Props {
   data: ComplexityBar[];
 }
 
-// Colour ramp: low complexity = muted blue, high = deep navy
 const COMPLEXITY_COLORS = ['#93c5fd', '#60a5fa', '#3b82f6', '#1d4ed8', '#0A0838'];
+const TICK_PROPS = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
+const COMPLEXITY_TICKS = [1, 2, 3, 4, 5];
 
 const ComplexityScatter: FC<Props> = ({ data }) => {
   const hasData = data.some(d => d.count > 0);
@@ -39,12 +40,12 @@ const ComplexityScatter: FC<Props> = ({ data }) => {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="complejidad"
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
-            ticks={[1, 2, 3, 4, 5]}
+            tick={TICK_PROPS}
+            ticks={COMPLEXITY_TICKS}
           />
           <YAxis
             unit="h"
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
             allowDecimals={false}
           />
           <Tooltip

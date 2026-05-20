@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Layout } from 'react-grid-layout';
 import { supabase } from '@/core/supabase/supabase.client';
 import { useUser } from '@/core/auth/userContext';
@@ -14,10 +14,8 @@ export interface GraphLayoutItem {
   minH?: number;
 }
 
-// Minimum card size when resizing on the 48-column grid — stops a card from
-// being dragged uselessly thin or short. Applied to every layout item below.
-const MIN_W = 8; // ≈ 1/6 of the grid width
-const MIN_H = 6; // ≈ 140px tall
+const MIN_W = 8;
+const MIN_H = 6;
 
 export function useDashboardPreferences() {
   const { user } = useUser();
@@ -26,6 +24,7 @@ export function useDashboardPreferences() {
   const [fetched, setFetched]                 = useState(false);
 
   const loading = user?.id != null && !fetched;
+  const userId = user?.id;
 
   useEffect(() => {
     if (!user?.id) return;
@@ -59,37 +58,38 @@ export function useDashboardPreferences() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  const isVisible = (graphId: string): boolean => {
+  const isVisible = useCallback((graphId: string): boolean => {
     if (overrides.has(graphId)) return overrides.get(graphId)!;
     return GRAPH_BY_ID[graphId]?.defaultVisible ?? false;
-  };
+  }, [overrides]);
 
-  const toggle = async (graphId: string) => {
-    if (!user?.id) return;
+  const toggle = useCallback(async (graphId: string) => {
+    if (!userId) return;
 
-    const next = !isVisible(graphId);
+    const current = overrides.has(graphId)
+      ? overrides.get(graphId)!
+      : (GRAPH_BY_ID[graphId]?.defaultVisible ?? false);
+    const next = !current;
 
     setOverrides(prev => {
-      const m = new Map(prev);
-      m.set(graphId, next);
-      return m;
-    });
+        const m = new Map(prev);
+        m.set(graphId, next);
+        return m;
+      });
 
     const { error } = await supabase
       .from('usuario_grafica_visibilidad')
       .upsert(
-        { id_usuario: user.id, codigo_grafica: graphId, visible: next },
+        { id_usuario: userId, codigo_grafica: graphId, visible: next },
         { onConflict: 'id_usuario,codigo_grafica' },
       );
 
     if (error) {
       console.error('No se pudo guardar la visibilidad de la gráfica:', error);
     }
-  };
+  }, [userId, overrides]);
 
-  // Returns react-grid-layout Layout items for the given visible graphs.
-  // Uses saved positions when available, otherwise computes a default left-to-right packing.
-  const getLayoutItems = (visibleGraphs: GraphDescriptor[], cols = 48): GraphLayoutItem[] => {
+  const getLayoutItems = useCallback((visibleGraphs: GraphDescriptor[], cols = 48): GraphLayoutItem[] => {
     let col = 0;
     let row = 0;
 
@@ -100,7 +100,6 @@ export function useDashboardPreferences() {
       const w = Math.min(g.defaultW, cols);
       const h = g.defaultH;
 
-      // Full-width items always start on a fresh row
       if (w >= cols) {
         if (col > 0) { row += h; col = 0; }
         const item = { i: g.id, x: 0, y: row, w, h, minW: MIN_W, minH: MIN_H };
@@ -118,10 +117,10 @@ export function useDashboardPreferences() {
       if (col >= cols) { col = 0; row += h; }
       return item;
     });
-  };
+  }, [layoutOverrides]);
 
-  const saveLayout = async (layout: Layout) => {
-    if (!user?.id) return;
+  const saveLayout = useCallback(async (layout: Layout) => {
+    if (!userId) return;
 
     setLayoutOverrides(prev => {
       const next = new Map(prev);
@@ -130,9 +129,9 @@ export function useDashboardPreferences() {
     });
 
     const rows = layout.map(l => ({
-      id_usuario:      user.id,
+      id_usuario:      userId,
       codigo_grafica:  l.i,
-      visible:         isVisible(l.i),
+      visible:         overrides.has(l.i) ? overrides.get(l.i)! : (GRAPH_BY_ID[l.i]?.defaultVisible ?? false),
       grid_x:          l.x,
       grid_y:          l.y,
       grid_w:          l.w,
@@ -146,7 +145,7 @@ export function useDashboardPreferences() {
     if (error) {
       console.error('No se pudo guardar el layout de la gráfica:', error);
     }
-  };
+  }, [userId, overrides]);
 
   return { isVisible, toggle, loading, getLayoutItems, saveLayout };
 }

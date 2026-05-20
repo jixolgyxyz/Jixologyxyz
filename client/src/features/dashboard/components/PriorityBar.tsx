@@ -16,6 +16,8 @@ interface Props {
   data: PriorityCount[];
 }
 
+const TICK_PROPS = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
+
 const PriorityBar: FC<Props> = ({ data }) => {
   if (data.length === 0) {
     return (
@@ -34,11 +36,11 @@ const PriorityBar: FC<Props> = ({ data }) => {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-clarity-gray-2)" />
           <XAxis
             dataKey="prioridad"
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
           />
           <YAxis
             allowDecimals={false}
-            tick={{ fontSize: 11, fontFamily: 'Poppins, sans-serif' }}
+            tick={TICK_PROPS}
           />
           <Tooltip
             formatter={(value) => [value, 'Ítems']}

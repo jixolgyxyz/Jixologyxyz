@@ -1,4 +1,4 @@
-import { type FC, useState } from 'react';
+import { type FC, useState, useCallback } from 'react';
 import { useDashboardPanel } from '../hooks/useDashboardPanel';
 import DashboardGrid from '../components/DashboardGrid/DashboardGrid';
 import { useUser } from '@/core/auth/userContext';
@@ -46,6 +46,11 @@ const UserDashboard: FC = () => {
   const [reorganizeMode, setReorganizeMode] = useState(false);
 
   const firstName = user?.nombre ?? 'Usuario';
+
+  const renderItemFn = useCallback(
+    (g: GraphDescriptor) => (data ? renderUserGraph(g, data) : null),
+    [data],
+  );
 
   if (loading) {
     return (
@@ -114,7 +119,7 @@ const UserDashboard: FC = () => {
         getLayoutItems={getLayoutItems}
         saveLayout={saveLayout}
         reorganizeMode={reorganizeMode}
-        renderItem={g => renderUserGraph(g, data)}
+        renderItem={renderItemFn}
       />
 
       <CustomizePanel
