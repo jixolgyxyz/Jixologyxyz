@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { SprintHoursData } from '../hooks/useUserDashboardData';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 const TICK_PROPS = { fontSize: 11, fontFamily: 'Poppins, sans-serif' };
@@ -22,7 +23,7 @@ const HoursBySprintBar: FC<Props> = ({ data }) => {
     return (
       <div className={styles.card}>
         <h3 className={styles.title}>Horas por sprint</h3>
-        <p className={styles.empty}>Sin datos</p>
+        <ChartEmpty hint="Únete a un sprint con ítems estimados para ver tus horas." />
       </div>
     );
   }

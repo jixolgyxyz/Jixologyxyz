@@ -10,6 +10,7 @@ import {
   Cell,
 } from 'recharts';
 import type { TypeCount } from '../hooks/useUserDashboardData';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 const TYPE_COLORS = ['#E31837', '#0A0838', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
@@ -24,7 +25,7 @@ const ItemsByTypeBar: FC<Props> = ({ data }) => {
     return (
       <div className={styles.card}>
         <h3 className={styles.title}>Ítems por tipo</h3>
-        <p className={styles.empty}>Sin datos</p>
+        <ChartEmpty hint="Tus ítems asignados se desglosarán aquí por tipo." />
       </div>
     );
   }

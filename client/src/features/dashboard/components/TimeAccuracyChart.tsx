@@ -11,6 +11,7 @@ import {
   Cell,
 } from 'recharts';
 import type { TimeAccuracyBar } from '../hooks/useUserDashboardData';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 interface Props {
@@ -66,7 +67,7 @@ const TimeAccuracyChart: FC<Props> = ({ data }) => {
     return (
       <div className={styles.card}>
         <h3 className={styles.title}>Precisión de estimación</h3>
-        <p className={styles.empty}>Sin ítems completados con estimación y tiempo real registrados</p>
+        <ChartEmpty hint="Completa ítems con tiempo estimado y real registrado para medir tu precisión." />
       </div>
     );
   }

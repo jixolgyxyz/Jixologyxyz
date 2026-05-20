@@ -10,6 +10,7 @@ import {
   Cell,
 } from 'recharts';
 import type { ComplexityBar } from '../hooks/useUserDashboardData';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 interface Props {
@@ -27,7 +28,7 @@ const ComplexityScatter: FC<Props> = ({ data }) => {
     return (
       <div className={styles.card}>
         <h3 className={styles.title}>Horas por complejidad</h3>
-        <p className={styles.empty}>Sin datos — asigna complejidad a tus ítems</p>
+        <ChartEmpty hint="Asigna complejidad a tus ítems para ver esta gráfica." />
       </div>
     );
   }
