@@ -38,7 +38,7 @@ const shopItems = [
     title: 'Cofre Pixel',
     description: 'Elementos inspirados en un estilo visual retro y minimalista.',
     image: cofreEspecial,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 2,
@@ -46,7 +46,7 @@ const shopItems = [
     title: 'Cofre Animado',
     description: 'Diseños expresivos y dinámicos con un acabado moderno y creativo.',
     image: cofreEspecial,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 3,
@@ -54,7 +54,7 @@ const shopItems = [
     title: 'Cofre Tradicional',
     description: 'Una colección con un enfoque clásico, limpio y atemporal.',
     image: cofreEspecial,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 4,
@@ -63,7 +63,7 @@ const shopItems = [
     subcategory: [1, 2],
     description: 'Detalles adicionales para darle más personalidad a tu avatar.',
     image: cofreAccesorio,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 5,
@@ -72,7 +72,7 @@ const shopItems = [
     subcategory: [3],
     description: 'Estilos de barba para complementar distintos tipos de apariencia.',
     image: cofreBarba,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 6,
@@ -81,7 +81,7 @@ const shopItems = [
     subcategory: [4, 5],
     description: 'Prendas y combinaciones para personalizar tu estilo visual.',
     image: cofreCamisa,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 7,
@@ -90,7 +90,7 @@ const shopItems = [
     subcategory: [6, 7],
     description: 'Variaciones de ojos y colores para expresar diferentes estilos.',
     image: cofreOjo,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 8,
@@ -99,7 +99,7 @@ const shopItems = [
     subcategory: [8, 9],
     description: 'Una selección de gafas con estilos modernos y clásicos.',
     image: cofreLentes,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 9,
@@ -108,7 +108,7 @@ const shopItems = [
     subcategory: [10, 11],
     description: 'Peinados y colores para crear una apariencia única.',
     image: cofrePelo,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 10,
@@ -117,7 +117,7 @@ const shopItems = [
     subcategory: [12, 13],
     description: 'Sombreros y accesorios de cabeza para destacar tu avatar.',
     image: cofreSombrero,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 11,
@@ -126,7 +126,7 @@ const shopItems = [
     subcategory: [14, 15],
     description: 'Expresiones y detalles faciales para darle más carácter al avatar.',
     image: cofreSonrisa,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 12,
@@ -135,7 +135,7 @@ const shopItems = [
     subcategory: [16],
     description: 'Fondos decorativos para complementar la presentación visual.',
     image: cofreFondo,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
   {
     id: 18,
@@ -144,7 +144,7 @@ const shopItems = [
     subcategory: [18],
     description: 'Opciones de tonos y acabados para personalizar la apariencia base.',
     image: cofrePiel,
-    imageHeight: '200px',
+    imageHeight: '190px',
   },
 ];
 
