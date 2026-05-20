@@ -91,11 +91,7 @@
 
 .shop-item-image {
   height: 140px;
-
   border-radius: 8px;
-
-  background: #d3d3d3;
-
   display: flex;
   align-items: center;
   justify-content: center;
