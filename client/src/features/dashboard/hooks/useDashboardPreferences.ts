@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Layout } from 'react-grid-layout';
 import { supabase } from '@/core/supabase/supabase.client';
 import { useUser } from '@/core/auth/userContext';
-import { GRAPH_BY_ID, type GraphDescriptor } from '../config/graphCatalog';
+import { GRAPH_BY_ID, GRAPH_CATALOG, type GraphDescriptor } from '../config/graphCatalog';
 
 export interface GraphLayoutItem {
   i: string;
@@ -16,6 +16,57 @@ export interface GraphLayoutItem {
 
 const MIN_W = 8;
 const MIN_H = 6;
+
+const COLS = 48;
+
+async function seedDefaultGraphs(userId: number) {
+  // Compute positions per dashboard group so admin and user graphs each
+  // pack from (0,0) independently, matching what getLayoutItems produces.
+  const positions = new Map<string, { x: number; y: number }>();
+
+  for (const dashboardGraphs of [
+    GRAPH_CATALOG.filter(g => g.defaultVisible && g.dashboards.includes('admin')),
+    GRAPH_CATALOG.filter(g => g.defaultVisible && g.dashboards.includes('user')),
+  ]) {
+    let col = 0;
+    let row = 0;
+    for (const g of dashboardGraphs) {
+      const w = Math.min(g.defaultW, COLS);
+      const h = g.defaultH;
+      if (w >= COLS) {
+        if (col > 0) { row += h; col = 0; }
+        positions.set(g.id, { x: 0, y: row });
+        row += h; col = 0;
+        continue;
+      }
+      if (col + w > COLS) { col = 0; row += h; }
+      positions.set(g.id, { x: col, y: row });
+      col += w;
+      if (col >= COLS) { col = 0; row += h; }
+    }
+  }
+
+  const rows = GRAPH_CATALOG.map(g => {
+    const pos = positions.get(g.id);
+    return {
+      id_usuario:     userId,
+      codigo_grafica: g.id,
+      visible:        g.defaultVisible,
+      grid_w:         g.defaultW,
+      grid_h:         g.defaultH,
+      grid_x:         pos?.x ?? null,
+      grid_y:         pos?.y ?? null,
+    };
+  });
+
+  const { error } = await supabase
+    .from('usuario_grafica_visibilidad')
+    .upsert(rows, { onConflict: 'id_usuario,codigo_grafica' });
+
+  if (error) {
+    console.error('No se pudieron guardar los valores por defecto de las gráficas:', error);
+  }
+}
 
 export function useDashboardPreferences() {
   const { user } = useUser();
@@ -48,6 +99,35 @@ export function useDashboardPreferences() {
         if (row.grid_x != null && row.grid_y != null && row.grid_w != null && row.grid_h != null) {
           nextLayout.set(id, { i: id, x: row.grid_x, y: row.grid_y, w: row.grid_w, h: row.grid_h });
         }
+      }
+
+      if ((data ?? []).length === 0) {
+        let col = 0; let row = 0;
+        for (const dashboardGraphs of [
+          GRAPH_CATALOG.filter(g => g.defaultVisible && g.dashboards.includes('admin')),
+          GRAPH_CATALOG.filter(g => g.defaultVisible && g.dashboards.includes('user')),
+        ]) {
+          col = 0; row = 0;
+          for (const g of dashboardGraphs) {
+            const w = Math.min(g.defaultW, COLS); const h = g.defaultH;
+            if (w >= COLS) {
+              if (col > 0) { row += h; col = 0; }
+              nextVis.set(g.id, g.defaultVisible);
+              nextLayout.set(g.id, { i: g.id, x: 0, y: row, w, h });
+              row += h; col = 0; continue;
+            }
+            if (col + w > COLS) { col = 0; row += h; }
+            nextVis.set(g.id, g.defaultVisible);
+            nextLayout.set(g.id, { i: g.id, x: col, y: row, w, h });
+            col += w;
+            if (col >= COLS) { col = 0; row += h; }
+          }
+        }
+        // Hidden graphs still need a visibility entry in memory
+        for (const g of GRAPH_CATALOG) {
+          if (!nextVis.has(g.id)) nextVis.set(g.id, g.defaultVisible);
+        }
+        void seedDefaultGraphs(user.id);
       }
 
       setOverrides(nextVis);
