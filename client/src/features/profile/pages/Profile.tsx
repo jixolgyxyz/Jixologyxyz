@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { GiftIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import './Profile.css';
 
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import UserCard from '../components/UserCard';
-import InventoryCard from '../components/InventoryCard';
 import AvatarInventorySection from '../components/AvatarInventorySection';
 import AvatarShop from '../../store/pages'
 import SkeletonUserCard from '../components/SkeletonUserCard';
-import SkeletonAvatarTile from '../components/SkeletonAvatarTile';
 import { AvatarLootBox } from '../components/AvatarLootBox';
 import MessagePopUp from '../../../shared/components/MessagePopUp';
 import type { MessagePopUpType } from '../../../shared/components/MessagePopUp';
@@ -23,7 +21,6 @@ import { useAdminUserEdit } from '@/features/admin/hooks/useAdminUserEdit';
 
 import ContextMenu from '@/shared/components/ContextMenu';
 import type { MenuComponent } from '@/shared/components/ContextMenu';
-const SKELETON_TILE_COUNT = 10;
 
 function calcAge(fechaNacimiento: string): number {
   const birth = new Date(fechaNacimiento);

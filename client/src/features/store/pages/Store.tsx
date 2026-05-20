@@ -126,7 +126,7 @@ const shopItems = [
     title: 'Cofre de Boca',
     subcategory: [14, 15],
     description: 'Expresiones y detalles faciales para darle más carácter al avatar.',
-    image: cofrePelo,
+    image: cofreSonrisa,
     imageHeight: '200px',
   },
   {

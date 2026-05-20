@@ -3,27 +3,28 @@ import React from 'react';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import InventoryCard from '../InventoryCard';
 import SkeletonAvatarTile from '../SkeletonAvatarTile';
+import type { FeatureMeta } from '../../types/avatar.types';
 
 const SKELETON_TILE_COUNT = 10;
 
 interface AvatarInventorySectionProps {
   showInventory: boolean;
-  filteredCatalog: any;
-  features: any;
+  filteredCatalog: React.ComponentProps<typeof InventoryCard>['catalog'] | null;
+  features: React.ComponentProps<typeof InventoryCard>['features'];
 
   onSelectVariant: (
-    featureKey: string,
-    variantIndex: number
+    meta: FeatureMeta,
+    value: string | null
   ) => void;
-
+  
   onSelectColor: (
-    featureKey: string,
-    color: string
+    meta: FeatureMeta,
+    colorValue: string
   ) => void;
-
+  
   onSelectType: (
-    featureKey: string,
-    type: string
+    meta: FeatureMeta,
+    typeValue: string
   ) => void;
 
   avatarSaving: boolean;
@@ -50,7 +51,7 @@ const AvatarInventorySection: React.FC<AvatarInventorySectionProps> = ({
       <div className="section-tab">Cosméticos</div>
 
       <div className="section-body section-body--flush">
-        {showInventory ? (
+        {showInventory && filteredCatalog ?(
           <InventoryCard
             catalog={filteredCatalog}
             features={features}
