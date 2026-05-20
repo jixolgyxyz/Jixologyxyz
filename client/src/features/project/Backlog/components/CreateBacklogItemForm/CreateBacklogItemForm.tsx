@@ -8,11 +8,10 @@ import {
 } from '@heroicons/react/24/outline';
 import FormPopUp from '@/shared/components/FormPopUp';
 import styles from './CreateBacklogItemForm.module.css';
-import { useBacklogMeta } from '../../hooks/useBacklogMeta';
 import { useCreateBacklogItem } from '../../hooks/useCreateBacklogItem';
 import { createSugerencia } from '../../services/backlog.service';
 import { useUser } from '@/core/auth/userContext';
-import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload } from '../../types/backlog.types';
+import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload, BacklogMeta } from '../../types/backlog.types';
 
 // ── Status colour map by orden ────────────────────────────────────
 const STATUS_COLORS: Record<number, { bg: string; text: string }> = {
@@ -206,6 +205,7 @@ const PARENT_TYPE_NAME: Record<string, string> = {
 interface CreateBacklogItemFormProps {
   projectId: number;
   userId: number;
+  meta: BacklogMeta;
   isOpen: boolean;
   onClose: () => void;
   onCreated?: () => void;
@@ -232,9 +232,8 @@ const EMPTY_FORM: FormState = {
 };
 
 const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
-  projectId, userId, isOpen, onClose, onCreated,
+  projectId, userId, meta, isOpen, onClose, onCreated,
 }) => {
-  const { meta, loading: metaLoading } = useBacklogMeta(projectId);
   const { submit, loading: submitting, error } = useCreateBacklogItem();
   const { user } = useUser();
   const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
@@ -285,10 +284,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       isOpen={isOpen}
       onClose={onClose}
     >
-      {metaLoading ? (
-        <p className={styles.loading}>Cargando opciones...</p>
-      ) : (
-        <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <form className={styles.form} onSubmit={handleSubmit} noValidate>
 
           {/* Nombre */}
           <div className={styles.field}>
@@ -458,8 +454,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
               {submitting ? 'Guardando...' : 'Crear ítem'}
             </button>
           </div>
-        </form>
-      )}
+      </form>
     </FormPopUp>
   );
 };

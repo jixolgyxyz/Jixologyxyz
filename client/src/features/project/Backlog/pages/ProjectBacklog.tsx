@@ -434,6 +434,7 @@ const ProjectBacklog: React.FC = () => {
       <CreateBacklogItemForm
         projectId={PROJECT_ID}
         userId={user?.id ?? 0}
+        meta={meta}
         isOpen={showCreateForm}
         onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
         onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
