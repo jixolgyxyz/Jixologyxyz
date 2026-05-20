@@ -8,6 +8,8 @@
   flex-direction: column;
   gap: 8px;
   font-family: 'Poppins', 'Aptos', sans-serif;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .title {

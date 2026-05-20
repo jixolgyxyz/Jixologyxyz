@@ -1,18 +1,19 @@
 import { type FC, useState } from 'react';
 import { useAdminDashboardData } from '../hooks/useAdminDashboardData';
 import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
+import { useDashboardPanel } from '../hooks/useDashboardPanel';
+import DashboardGrid from '../components/DashboardGrid/DashboardGrid';
 import CustomizePanel from '../components/CustomizePanel/CustomizePanel';
 import { renderAdminGraph } from './AdminDashboard';
 import styles from './UserDashboard.module.css';
 
 const ProjectDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
-  const { visible, available, pmProjectIds, toggle, isVisible, loading: graphsLoading } =
+  const { visible, available, pmProjectIds, toggle, isVisible, getLayoutItems, saveLayout, loading: graphsLoading } =
     useVisibleGraphs('project');
-  const [showCustomizePanel, setShowCustomizePanel] = useState(
-    () => sessionStorage.getItem('customizePanelOpen_project') === 'true',
-  );
-  const [selectedProjectIds, setSelectedProjectIds]   = useState<number[] | null>(null);
+  const { open: showCustomizePanel, openPanel: openCustomizePanel, closePanel: closeCustomizePanel } =
+    useDashboardPanel('project');
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
 
   if (loading || graphsLoading) {
     return (
@@ -40,7 +41,6 @@ const ProjectDashboard: FC = () => {
 
   if (!data) return null;
 
-  // Convert number[] | null → Set<number>, always scoped to PM projects
   const activeFilter: Set<number> =
     selectedProjectIds && selectedProjectIds.length > 0
       ? new Set(selectedProjectIds.filter(id => pmProjectIds.has(id)))
@@ -61,7 +61,7 @@ const ProjectDashboard: FC = () => {
           <div className={styles.headerActions}>
             <button
               className={styles.customizeBtn}
-              onClick={() => { setShowCustomizePanel(true); sessionStorage.setItem('customizePanelOpen_project', 'true'); }}
+              onClick={openCustomizePanel}
               aria-label="Personalizar dashboard"
             >
               <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -73,15 +73,17 @@ const ProjectDashboard: FC = () => {
         </div>
       </header>
 
-      <div className={styles.grid}>
-        {visible.map(g => (
-          <div key={g.id}>{renderAdminGraph(g, data, activeFilter)}</div>
-        ))}
-      </div>
+      <DashboardGrid
+        visible={visible}
+        getLayoutItems={getLayoutItems}
+        saveLayout={saveLayout}
+        showCustomizePanel={showCustomizePanel}
+        renderItem={g => renderAdminGraph(g, data, activeFilter)}
+      />
 
       <CustomizePanel
         open={showCustomizePanel}
-        onClose={() => { setShowCustomizePanel(false); sessionStorage.removeItem('customizePanelOpen_project'); }}
+        onClose={closeCustomizePanel}
         available={available}
         isVisible={isVisible}
         toggle={toggle}

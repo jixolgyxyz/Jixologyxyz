@@ -222,22 +222,7 @@
   letter-spacing: 0.05em;
 }
 
-/* ── Chart grid ───────────────────────────────────────────────────── */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-}
-
-.fullWidth {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 800px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* ── Chart grid — styles live in DashboardGrid/DashboardGrid.module.css ── */
 
 /* ── Loading / error states ───────────────────────────────────────── */
 .center {

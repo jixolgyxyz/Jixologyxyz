@@ -16,8 +16,10 @@ const AppLayoutHs: React.FC<IAppLayoutHsProps> = ({ children, title }) => {
       <Header title={title} />
       <div className={styles.belowHeadbar}>
         <Sidebar />
-        <Outlet />
-        {children}
+        <div className={styles.content}>
+          <Outlet />
+          {children}
+        </div>
       </div>
     </div>
   );

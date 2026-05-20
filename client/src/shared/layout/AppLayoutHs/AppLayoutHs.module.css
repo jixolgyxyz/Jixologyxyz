@@ -7,3 +7,9 @@
     width: calc(100% - 55px);
     box-sizing: border-box;
 }
+
+.content {
+    flex: 1;
+    min-width: 0;
+    overflow-x: hidden;
+}

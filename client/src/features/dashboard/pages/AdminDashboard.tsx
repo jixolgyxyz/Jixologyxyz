@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, type FC } from 'react';
+import { useDashboardPanel } from '../hooks/useDashboardPanel';
+import DashboardGrid from '../components/DashboardGrid/DashboardGrid';
 import {
   BarChart, Bar,
   PieChart, Pie, Cell,
@@ -905,11 +907,9 @@ const AdminDashboard: FC = () => {
   const [showReportModal, setShowReportModal] = useState(
     () => sessionStorage.getItem('reportModalOpen') === 'true',
   );
-  const [showCustomizePanel, setShowCustomizePanel] = useState(
-    () => sessionStorage.getItem('customizePanelOpen_admin') === 'true',
-  );
+  const { open: showCustomizePanel, openPanel: openCustomizePanel, closePanel: closeCustomizePanel } = useDashboardPanel('admin');
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
-  const { visible, available, toggle, isVisible } = useVisibleGraphs('admin');
+  const { visible, available, toggle, isVisible, getLayoutItems, saveLayout } = useVisibleGraphs('admin');
 
   if (loading) {
     return (
@@ -946,7 +946,7 @@ const AdminDashboard: FC = () => {
           <div className={styles.reportActions}>
             <button
               className={styles.customizeBtn}
-              onClick={() => { setShowCustomizePanel(true); sessionStorage.setItem('customizePanelOpen_admin', 'true'); }}
+              onClick={openCustomizePanel}
               aria-label="Personalizar dashboard"
             >
               <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -993,11 +993,13 @@ const AdminDashboard: FC = () => {
         <WeeklyProgressCard data={data.weeklyProgress} />
       </div>
 
-      <div className={styles.grid}>
-        {visible.map(g => (
-          <div key={g.id}>{renderGraph(g, data, projectFilter)}</div>
-        ))}
-      </div>
+      <DashboardGrid
+        visible={visible}
+        getLayoutItems={getLayoutItems}
+        saveLayout={saveLayout}
+        showCustomizePanel={showCustomizePanel}
+        renderItem={g => renderGraph(g, data, projectFilter)}
+      />
 
       {showReportModal && (
         <GenerateReportModal
@@ -1011,7 +1013,7 @@ const AdminDashboard: FC = () => {
 
       <CustomizePanel
         open={showCustomizePanel}
-        onClose={() => { setShowCustomizePanel(false); sessionStorage.removeItem('customizePanelOpen_admin'); }}
+        onClose={closeCustomizePanel}
         available={available}
         isVisible={isVisible}
         toggle={toggle}
