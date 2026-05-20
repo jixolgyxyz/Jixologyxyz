@@ -13,8 +13,7 @@ import type { MessagePopUpType } from '../../../shared/components/MessagePopUp';
 
 import { useUser } from '@/core/auth/userContext';
 
-
-import cofreDefault from '../resources/CofreDef.png';
+import cofreEspecial from '../resources/cofreEspecial.png';
 import cofreAccesorio from '../resources/CofreAccesorio.png';
 import cofreBarba from '../resources/CofreBarba.png';
 import cofreCamisa from '../resources/CofreCamisa.png';
@@ -38,7 +37,7 @@ const shopItems = [
     category: 'styles',
     title: 'Cofre Pixel',
     description: 'Elementos inspirados en un estilo visual retro y minimalista.',
-    image: cofreDefault,
+    image: cofreEspecial,
     imageHeight: '200px',
   },
   {
@@ -46,7 +45,7 @@ const shopItems = [
     category: 'styles',
     title: 'Cofre Animado',
     description: 'Diseños expresivos y dinámicos con un acabado moderno y creativo.',
-    image: cofreDefault,
+    image: cofreEspecial,
     imageHeight: '200px',
   },
   {
@@ -54,7 +53,7 @@ const shopItems = [
     category: 'styles',
     title: 'Cofre Tradicional',
     description: 'Una colección con un enfoque clásico, limpio y atemporal.',
-    image: cofreDefault,
+    image: cofreEspecial,
     imageHeight: '200px',
   },
   {

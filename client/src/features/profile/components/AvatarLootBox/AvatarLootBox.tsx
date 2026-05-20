@@ -9,7 +9,7 @@ interface Props {
   unownedItems: ElementoInventarioAvatar[];
   atributos:    AtributoAvatar[];
   baseFeatures: DynamicFeatures;
-  onOpen:       () => Promise<ElementoInventarioAvatar | null>;
+  onOpen:       (item: ElementoInventarioAvatar) => Promise<void>;
   onClose?:     () => void;
   disabled?:    boolean;
 }
@@ -140,7 +140,9 @@ const AvatarLootBox: React.FC<Props> = ({
     setPhase('spinning');
     setWinner(null);
 
-    const wonItem = await onOpen().catch(() => null);
+    const randomIndex = Math.floor(Math.random() * unownedItems.length);
+    const wonItem = unownedItems[randomIndex];
+    await onOpen(wonItem);
     if (!wonItem) {
       setPhase('idle');
       return;
