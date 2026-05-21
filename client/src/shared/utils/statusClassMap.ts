@@ -10,4 +10,5 @@ export const statusClassMap: Record<number, StatusInfo> = {
   3: { cssClass: 'status-delayed',    nombre: 'Retrasado',   isTerminal: false },
   4: { cssClass: 'status-unassigned', nombre: 'Sin Asignar', isTerminal: false },
   5: { cssClass: 'status-archived', nombre: 'Archivado', isTerminal: true},
+  6: { cssClass: 'status-ahead',      nombre: 'Adelantado',  isTerminal: false },
 };

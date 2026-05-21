@@ -11,6 +11,7 @@ import {
   MinusIcon,
 } from '@heroicons/react/24/outline';
 import FormPopUp from '@/shared/components/FormPopUp';
+import PmInvitePicker from './PmInvitePicker';
 import './CreateProject.css';
 
 type Props = {
@@ -46,6 +47,7 @@ export default function CreateProject({ isOpen, onClose, onCreated, userId, isCr
     addStackField,
     removeStackField,
     updateStackField,
+    togglePmUser,
   } = useCreateProjectForm({
     userId,
     projectId,
@@ -152,36 +154,6 @@ export default function CreateProject({ isOpen, onClose, onCreated, userId, isCr
                   </div>
 
                   <div className="create-project-modal__field">
-                    <label className="create-project-modal__label" htmlFor="id_estatus">
-                      Estatus *
-                    </label>
-                    <div className="create-project-modal__select-wrapper">
-                      <select
-                        id="id_estatus"
-                        name="id_estatus"
-                        className="create-project-modal__control create-project-modal__select"
-                        value={values.id_estatus}
-                        onChange={handleFieldChange}
-                        onBlur={handleFieldBlur}
-                        required
-                        aria-invalid={Boolean(errors.id_estatus) && shouldShowError('id_estatus')}
-                      >
-                        <option value="">Selecciona un estatus</option>
-                        {catalogs.estatus_proyecto.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.nombre}
-                          </option>
-                        ))}
-                      </select>
-
-                      <ChevronDownIcon className="create-project-modal__select-icon" />
-                    </div>
-                    {errors.id_estatus && shouldShowError('id_estatus') ? (
-                      <p className="create-project-modal__error">{errors.id_estatus}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="create-project-modal__field">
                     <label className="create-project-modal__label" htmlFor="id_metodologia">
                       Metodología *
                     </label>
@@ -211,6 +183,24 @@ export default function CreateProject({ isOpen, onClose, onCreated, userId, isCr
                     ) : null}
                   </div>
                 </div>
+
+                {isCreate ? (
+                  <div className="create-project-modal__field" style={{ marginTop: '1rem' }}>
+                    <label className="create-project-modal__label">
+                      Invitar usuarios como PM
+                    </label>
+                    <PmInvitePicker
+                      users={catalogs.usuarios}
+                      selectedIds={values.pm_user_ids}
+                      excludeUserId={userId}
+                      disabled={isSubmitting}
+                      onToggle={togglePmUser}
+                    />
+                    <p className="create-project-modal__hint">
+                      Los usuarios seleccionados se agregarán al proyecto con el rol PM. Es opcional.
+                    </p>
+                  </div>
+                ) : null}
               </fieldset>
 
               <div className="create-project-modal__details-toggle-wrapper">

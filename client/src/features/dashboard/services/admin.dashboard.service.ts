@@ -1,5 +1,6 @@
 import { supabase } from '@/core/supabase/supabase.client';
 import { currentWorkWeek } from '../utils/dates';
+import { statusClassMap } from '@/shared/utils/statusClassMap';
 
 // ── Raw DB shapes ──────────────────────────────────────────────────────────
 
@@ -49,21 +50,23 @@ export interface AdminFteRow {
 // ── Fetchers ───────────────────────────────────────────────────────────────
 
 export async function fetchAdminProjects(): Promise<AdminProjectRow[]> {
+  // estatus_calculado = estatus en vivo (project_card_view), derivado del
+  // avance vs. el tiempo transcurrido — no el valor almacenado en proyecto.
   const { data, error } = await supabase
-    .from('proyecto')
-    .select('id, nombre, id_estatus, estatus_proyecto(nombre, es_terminal)')
+    .from('project_card_view')
+    .select('id, nombre, estatus_calculado')
     .order('id', { ascending: true });
 
   if (error) throw new Error(error.message);
 
   return (data ?? []).map(r => {
-    const s = r.estatus_proyecto as unknown as { nombre: string; es_terminal: boolean } | null;
+    const info = statusClassMap[r.estatus_calculado as number];
     return {
-      id:         r.id,
-      nombre:     r.nombre,
-      id_estatus: r.id_estatus,
-      statusName: s?.nombre     ?? 'Desconocido',
-      isTerminal: s?.es_terminal ?? false,
+      id:         r.id as number,
+      nombre:     r.nombre as string,
+      id_estatus: r.estatus_calculado as number,
+      statusName: info?.nombre     ?? 'Desconocido',
+      isTerminal: info?.isTerminal ?? false,
     };
   });
 }

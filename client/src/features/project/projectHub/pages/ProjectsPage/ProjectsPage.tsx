@@ -8,7 +8,7 @@ import type { Project } from '@/features/project/projectHub/types/Project';
 import type { MenuComponent } from '@/shared/components/ContextMenu';
 
 // --- Servicios ---
-import { archiveProject, unarchiveProject, changeProjectStatus, getArchivedProjects } from '@/features/project/projectHub/services/projects.services';
+import { archiveProject, unarchiveProject, getArchivedProjects } from '@/features/project/projectHub/services/projects.services';
 
 // --- Hooks ---
 import { useProjectCards} from '../../hooks/useProjects';
@@ -26,11 +26,12 @@ import TabNav from '@/shared/components/TabNav/TabNav';
 import SearchBarComponent from '@/shared/components/SearchBarComponent/SearchBarComponent';
 import { PlusIcon } from '@heroicons/react/24/outline';
 
-type FilterKey = 'TodosLosProyectos' | 'Completados' | 'EnProgreso' | 'Retrasado' | 'SinAsignar' | 'Archivados';
+type FilterKey = 'TodosLosProyectos' | 'Completados' | 'EnProgreso' | 'Adelantado' | 'Retrasado' | 'SinAsignar' | 'Archivados';
 
 const FILTER_TO_STATUS_ID: Partial<Record<FilterKey, number>> = {
   Completados: 1,
   EnProgreso:  2,
+  Adelantado:  6,
   Retrasado:   3,
   SinAsignar:  4,
 };
@@ -39,6 +40,7 @@ const FILTER_LABELS: Record<FilterKey, string> = {
   TodosLosProyectos: 'Todos',
   Completados:       'Completado',
   EnProgreso:        'En Progreso',
+  Adelantado:        'Adelantado',
   Retrasado:         'Retrasado',
   SinAsignar:        'Sin Asignar',
   Archivados:        'Archivados',
@@ -77,13 +79,8 @@ const ProjectsPage: React.FC = () => {
     void fetchArchived();
   }, [activeFilter, user]);
 
-  const STATUS_OPTIONS: { id: number; label: string }[] = [
-    { id: 1, label: 'Completado' },
-    { id: 2, label: 'En Progreso' },
-    { id: 3, label: 'Retrasado' },
-    { id: 4, label: 'Sin Asignar' },
-  ];
-
+  // El estatus es automático (project_card_view.estatus_calculado): el usuario
+  // ya no lo cambia a mano. Solo se conserva archivar / desarchivar.
   const buildMenuItems = (project: Project): MenuComponent[] => [
     {
       text: 'Abrir',
@@ -93,22 +90,6 @@ const ProjectsPage: React.FC = () => {
       text: 'Editar Proyecto',
       onClick: () => setEditingProjectId(project.id),
     },
-    ...(project.id_estatus !== 5 ? [{
-      text: 'Cambiar Estatus',
-      onClick: () => {},
-      subMenu: STATUS_OPTIONS
-        .filter((s) => s.id !== project.id_estatus)
-        .map((s) => ({
-          text: s.label,
-          statusId: s.id,
-          onClick: async () => {
-            await changeProjectStatus(project.id, user!.id, s.id);
-            setProjects((prev) =>
-              prev.map((p) => p.id === project.id ? { ...p, id_estatus: s.id } : p)
-            );
-          },
-        })),
-    }] : []),
     project.id_estatus !== 5
       ? {
           text: 'Archivar Proyecto',
@@ -116,7 +97,7 @@ const ProjectsPage: React.FC = () => {
             try {
               await archiveProject(project.id, user!.id);
               setProjects((prev) => prev.filter((p) => p.id !== project.id));
-              setArchivedProjects((prev) => [...prev, { ...project, id_estatus: 5 }]);
+              setArchivedProjects((prev) => [...prev, { ...project, id_estatus: 5, estatus_calculado: 5 }]);
             } catch (err) {
               console.error('[Archivar] error:', err);
             }
@@ -128,7 +109,7 @@ const ProjectsPage: React.FC = () => {
             try {
               await unarchiveProject(project.id, user!.id);
               setArchivedProjects((prev) => prev.filter((p) => p.id !== project.id));
-              setProjects((prev) => [...prev, { ...project, id_estatus: 4 }]);
+              setProjects((prev) => [...prev, { ...project, id_estatus: 4, estatus_calculado: 4 }]);
             } catch (err) {
               console.error('[Desarchivar] error:', err);
             }
@@ -141,13 +122,13 @@ const ProjectsPage: React.FC = () => {
     key={project.id}
     projectId={project.id}
     projectName={project.nombre}
-    projectStatus={project.id_estatus}
+    projectStatus={project.estatus_calculado}
     projectStack={project.stack_tecnologico ?? []}
     completition={project.completion_percentage ?? 0}
     projectDescription={project.descripcion}
     projectDueDate={project.fecha_final}
     projectFTE={project.fte}
-    statusLabel={<StatusLabel statusId={project.id_estatus} />}
+    statusLabel={<StatusLabel statusId={project.estatus_calculado} />}
     onClick={() => {
       trackVisit(project.id);
       navigate(`/proyectos/${project.id}/backlog`);
@@ -160,7 +141,7 @@ const ProjectsPage: React.FC = () => {
     const statusId = FILTER_TO_STATUS_ID[activeFilter];
 
     return projects
-      .filter((project) => statusId === undefined || project.id_estatus === statusId)
+      .filter((project) => statusId === undefined || project.estatus_calculado === statusId)
       .filter((project) =>
         project.nombre.toLowerCase().includes(search.toLowerCase()),
       );
@@ -250,13 +231,13 @@ const ProjectsPage: React.FC = () => {
                       key={p.id}
                       projectId={p.id}
                       projectName={p.nombre}
-                      projectStatus={p.id_estatus}
+                      projectStatus={p.estatus_calculado}
                       projectStack={p.stack_tecnologico ?? []}
                       completition={p.completion_percentage ?? 0}
                       projectDescription={p.descripcion}
                       projectDueDate={p.fecha_final}
                       projectFTE={p.fte}
-                      statusLabel={<StatusLabel statusId={p.id_estatus} />}
+                      statusLabel={<StatusLabel statusId={p.estatus_calculado} />}
                       forceExpanded
                       onClick={() => {
                         trackVisit(p.id);
