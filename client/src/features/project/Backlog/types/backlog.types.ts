@@ -95,6 +95,7 @@ export interface CreateBacklogItemPayload {
   id_proyecto: number;
   id_usuario_creador: number;
   complejidad?: number | null;
+  tiempo_estimado?: number | null;   // minutos
 }
 
 export interface UserRecord {

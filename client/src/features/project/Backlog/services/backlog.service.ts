@@ -95,6 +95,8 @@ export async function createBacklogItem(payload: CreateBacklogItemPayload): Prom
       id_backlog_item_padre: payload.id_backlog_item_padre ?? null,
       id_proyecto:           payload.id_proyecto,
       id_usuario_creador:    payload.id_usuario_creador,
+      complejidad:           payload.complejidad ?? null,
+      tiempo_estimado:       payload.tiempo_estimado ?? null,
       es_terminal:           false,
     })
     .select()

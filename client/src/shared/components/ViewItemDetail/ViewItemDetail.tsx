@@ -167,27 +167,6 @@ function PriorityIconSelect({ priorities, value, onChange }: {
   );
 }
 
-// ── Time parsing / formatting ─────────────────────────────────────────
-function parseTimeInput(str: string): number | null {
-  const s = str.trim().toLowerCase();
-  if (!s) return null;
-  const hMatch = s.match(/(\d+)\s*h/);
-  const mMatch = s.match(/(\d+)\s*m/);
-  const h = hMatch ? parseInt(hMatch[1]) : 0;
-  const m = mMatch ? parseInt(mMatch[1]) : 0;
-  const total = h * 60 + m;
-  return total > 0 ? total : null;
-}
-
-function minutesToInput(min: number | null): string {
-  if (!min) return '';
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
 // ── Time tracking popup ───────────────────────────────────────────────
 interface TimeTrackingPopupProps {
   title: string;
@@ -197,7 +176,7 @@ interface TimeTrackingPopupProps {
 }
 
 function TimeTrackingPopup({ title, currentMinutes, onSave, onClose }: TimeTrackingPopupProps) {
-  const [value, setValue]     = useState(minutesToInput(currentMinutes));
+  const [value, setValue]     = useState(currentMinutes ? String(Math.round(currentMinutes / 60)) : '');
   const [error, setError]     = useState('');
   const [saving, setSaving]   = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -205,17 +184,15 @@ function TimeTrackingPopup({ title, currentMinutes, onSave, onClose }: TimeTrack
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const handleSave = () => {
-    const parsed = parseTimeInput(value);
-    if (value.trim() && parsed === null) {
-      setError('Formato inválido. Usa: 2h 30m, 1h, 45m');
-      return;
-    }
+    // El input es en horas enteras; la columna se guarda en minutos.
+    const horas   = Number(value.trim());
+    const minutes = value.trim() === '' || horas <= 0 ? null : horas * 60;
     setSaving(true);
-    onSave(parsed, (msg) => { setError(msg); setSaving(false); });
+    onSave(minutes, (msg) => { setError(msg); setSaving(false); });
   };
 
   return (
-    <div className={styles.timePopupOverlay} onClick={onClose}>
+    <div className={styles.timePopupOverlay} data-detail-panel onClick={onClose}>
       <div className={styles.timePopup} onClick={e => e.stopPropagation()}>
         <div className={styles.timePopupHeader}>
           <span className={styles.timePopupTitle}>{title}</span>
@@ -229,15 +206,16 @@ function TimeTrackingPopup({ title, currentMinutes, onSave, onClose }: TimeTrack
           <input
             ref={inputRef}
             type="text"
+            inputMode="numeric"
             className={`${styles.timePopupInput} ${error ? styles.timePopupInputError : ''}`}
             value={value}
-            onChange={e => { setValue(e.target.value); setError(''); }}
+            onChange={e => { setValue(e.target.value.replace(/[^0-9]/g, '')); setError(''); }}
             onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') onClose(); }}
-            placeholder="ej. 2h 30m"
+            placeholder="ej. 8"
           />
           {error && <span className={styles.timePopupError}>{error}</span>}
           <p className={styles.timePopupHint}>
-            Usa el formato: <strong>2h 30m</strong>, <strong>1h</strong>, <strong>45m</strong>
+            Ingresa el número de horas — solo enteros.
           </p>
         </div>
 
@@ -384,7 +362,6 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
   const [accepting, setAccepting]                 = useState(false);
   const [error, setError]                         = useState<string | null>(null);
   const [showTimePopup, setShowTimePopup]         = useState(false);
-  const [showEstimatedPopup, setShowEstimatedPopup] = useState(false);
 
   useEffect(() => { setForm(itemToForm(item)); setIsEditing(initialEditing); }, [item, initialEditing]);
 
@@ -411,29 +388,6 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
       });
       onUpdated?.();
       setShowTimePopup(false);
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Error al guardar');
-    }
-  };
-
-  const handleEstimatedTimeSave = async (minutes: number | null, onError: (msg: string) => void) => {
-    try {
-      await updateBacklogItem(item.id, {
-        nombre:                 item.nombre,
-        descripcion:            item.descripcion,
-        id_tipo:                item.id_tipo,
-        id_estatus:             item.id_estatus,
-        id_prioridad:           item.id_prioridad,
-        id_sprint:              item.id_sprint,
-        fecha_inicio:           item.fecha_inicio,
-        fecha_vencimiento:      item.fecha_vencimiento,
-        id_backlog_item_padre:  item.id_backlog_item_padre,
-        id_usuario_responsable: item.id_usuario_responsable,
-        complejidad:            item.complejidad,
-        tiempo_estimado:        minutes,
-      });
-      onUpdated?.();
-      setShowEstimatedPopup(false);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Error al guardar');
     }
@@ -653,12 +607,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
             </div>
 
             <div className={styles.detailRow}>
-              <div className={styles.detailLabelRow}>
-                <span className={styles.detailLabel}>Tiempo estimado</span>
-                <button type="button" className={styles.timEditBtn} onClick={() => setShowEstimatedPopup(true)} aria-label="Editar tiempo estimado">
-                  <PencilIcon width={11} height={11} />
-                </button>
-              </div>
+              <span className={styles.detailLabel}>Tiempo estimado</span>
               {item.tiempo_estimado != null
                 ? <span className={styles.detailValue}>{formatTiempo(item.tiempo_estimado)}</span>
                 : <span className={styles.detailEmpty}>Sin estimación</span>
@@ -821,15 +770,6 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
           currentMinutes={item.tiempo ?? null}
           onSave={handleTimeSave}
           onClose={() => setShowTimePopup(false)}
-        />
-      )}
-
-      {showEstimatedPopup && (
-        <TimeTrackingPopup
-          title="Editar tiempo estimado"
-          currentMinutes={item.tiempo_estimado ?? null}
-          onSave={handleEstimatedTimeSave}
-          onClose={() => setShowEstimatedPopup(false)}
         />
       )}
     </div>

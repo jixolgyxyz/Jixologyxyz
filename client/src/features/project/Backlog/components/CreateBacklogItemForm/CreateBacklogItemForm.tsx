@@ -223,12 +223,14 @@ interface FormState {
   id_backlog_item_padre: string;
   id_usuario_responsable: string;
   complejidad: number | null;
+  tiempo_estimado: string;   // horas, como texto del input
 }
 
 const EMPTY_FORM: FormState = {
   nombre: '', descripcion: '', id_tipo: '', id_estatus: '',
   id_prioridad: '', id_sprint: '', fecha_inicio: '', fecha_vencimiento: '',
   id_backlog_item_padre: '', id_usuario_responsable: '', complejidad: null,
+  tiempo_estimado: '',
 };
 
 const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
@@ -251,6 +253,14 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
     setEstatusTouched(true);
     setTipoTouched(true);
     if (!form.nombre.trim() || !form.id_estatus || !form.id_tipo) return;
+
+    // El input es en horas; la columna tiempo_estimado se guarda en minutos.
+    const horas = form.tiempo_estimado.trim();
+    const tiempoEstimadoMin =
+      horas !== '' && Number.isFinite(Number(horas)) && Number(horas) >= 0
+        ? Math.round(Number(horas) * 60)
+        : null;
+
     const payload: CreateBacklogItemPayload = {
       nombre:                 form.nombre.trim(),
       descripcion:            form.descripcion || null,
@@ -265,6 +275,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       id_proyecto:            projectId,
       id_usuario_creador:     userId,
       complejidad:            form.complejidad,
+      tiempo_estimado:        tiempoEstimadoMin,
     };
     try {
       const newItem = await submit(payload);
@@ -376,27 +387,45 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             </div>
           </div>
 
-          {/* Tipo — determines parent options, so placed before Ítem padre */}
-          <div className={styles.field}>
-            <label className={styles.label}>
-              Tipo <span className={styles.required}>*</span>
-            </label>
-            <select
-              name="id_tipo"
-              className={`${styles.select} ${tipoTouched && !form.id_tipo ? styles.inputError : ''}`}
-              value={form.id_tipo}
-              onChange={e => {
-                setTipoTouched(true);
-                setForm(f => ({ ...f, id_tipo: e.target.value, id_backlog_item_padre: '' }));
-              }}
-              onBlur={() => setTipoTouched(true)}
-            >
-              <option value="">Seleccionar tipo...</option>
-              {meta.types.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-            </select>
-            {tipoTouched && !form.id_tipo && (
-              <p className={styles.fieldError}>Selecciona un tipo para continuar.</p>
-            )}
+          {/* Row: Tipo + Tiempo estimado — Tipo determines parent options */}
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <label className={styles.label}>
+                Tipo <span className={styles.required}>*</span>
+              </label>
+              <select
+                name="id_tipo"
+                className={`${styles.select} ${tipoTouched && !form.id_tipo ? styles.inputError : ''}`}
+                value={form.id_tipo}
+                onChange={e => {
+                  setTipoTouched(true);
+                  setForm(f => ({ ...f, id_tipo: e.target.value, id_backlog_item_padre: '' }));
+                }}
+                onBlur={() => setTipoTouched(true)}
+              >
+                <option value="">Seleccionar tipo...</option>
+                {meta.types.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </select>
+              {tipoTouched && !form.id_tipo && (
+                <p className={styles.fieldError}>Selecciona un tipo para continuar.</p>
+              )}
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="tiempo_estimado">Tiempo estimado (h)</label>
+              <input
+                id="tiempo_estimado"
+                name="tiempo_estimado"
+                className={styles.input}
+                type="text"
+                inputMode="numeric"
+                placeholder="Ej. 8"
+                value={form.tiempo_estimado}
+                onChange={e =>
+                  setForm(f => ({ ...f, tiempo_estimado: e.target.value.replace(/[^0-9]/g, '') }))
+                }
+              />
+            </div>
           </div>
 
           {/* Ítem padre — only shown when a type that can have a parent is selected */}
