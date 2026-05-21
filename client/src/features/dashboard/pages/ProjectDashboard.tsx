@@ -4,13 +4,13 @@ import { useVisibleGraphs } from '../hooks/useVisibleGraphs';
 import { useDashboardPanel } from '../hooks/useDashboardPanel';
 import DashboardGrid from '../components/DashboardGrid/DashboardGrid';
 import CustomizePanel from '../components/CustomizePanel/CustomizePanel';
-import { renderAdminGraph } from './AdminDashboard';
+import { renderAdminGraph } from '../components/AdminGraphs';
 import type { GraphDescriptor } from '../config/graphCatalog';
 import styles from './UserDashboard.module.css';
 
 const ProjectDashboard: FC = () => {
   const { data, loading, error } = useAdminDashboardData();
-  const { visible, available, pmProjectIds, toggle, isVisible, getLayoutItems, saveLayout, loading: graphsLoading } =
+  const { visible, available, pmProjectIds, toggle, isVisible, getLayoutItems, saveLayout, loading: graphsLoading, error: graphsError } =
     useVisibleGraphs('project');
   const { open: showCustomizePanel, openPanel: openCustomizePanel, closePanel: closeCustomizePanel } =
     useDashboardPanel('project');
@@ -37,10 +37,10 @@ const ProjectDashboard: FC = () => {
     );
   }
 
-  if (error) {
+  if (error || graphsError) {
     return (
       <div className={styles.page}>
-        <div className={styles.errorBox}>Error al cargar los datos: {error}</div>
+        <div className={styles.errorBox}>Error al cargar los datos: {error ?? graphsError}</div>
       </div>
     );
   }

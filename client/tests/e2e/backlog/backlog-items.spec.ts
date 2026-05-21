@@ -14,12 +14,14 @@ async function goToBacklog(page: import('@playwright/test').Page) {
   const projectId = process.env.E2E_PROJECT_ID;
   if (!projectId) throw new Error('E2E_PROJECT_ID must be set in client/.env.e2e');
   await page.goto(`/proyectos/${projectId}/backlog`);
-  // Wait until the "Nuevo ítem" button is visible — page is ready
-  await page.getByRole('button', { name: 'Nuevo ítem' }).waitFor({ timeout: 15_000 });
+  // Wait until the toolbar "Nuevo" button is visible — page is ready
+  await page.getByRole('button', { name: 'Nuevo' }).waitFor({ timeout: 15_000 });
 }
 
 async function openCreateForm(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: 'Nuevo ítem' }).click();
+  // The toolbar "Nuevo" button opens a dropdown — choose "Ítem" from it.
+  await page.getByRole('button', { name: 'Nuevo' }).click();
+  await page.getByRole('button', { name: 'Ítem', exact: true }).click();
   await page.locator('#nombre').waitFor({ timeout: 5_000 });
 }
 
@@ -53,9 +55,9 @@ async function openFirstItemDetail(page: import('@playwright/test').Page) {
 test.describe('Backlog — crear ítem', () => {
   test.use({ storageState: path.resolve(__dirname, '../.auth/session.json') });
 
-  test('abre el formulario al hacer click en "Nuevo ítem"', async ({ page }) => {
+  test('abre el formulario al crear un nuevo ítem', async ({ page }) => {
     await goToBacklog(page);
-    await page.getByRole('button', { name: 'Nuevo ítem' }).click();
+    await openCreateForm(page);
     await expect(page.locator('#nombre')).toBeVisible();
   });
 

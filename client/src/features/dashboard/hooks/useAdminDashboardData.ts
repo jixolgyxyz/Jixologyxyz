@@ -13,6 +13,8 @@ import {
   type AdminCompletionRow,
   type AdminWeeklyItemRow,
 } from '../services/admin.dashboard.service';
+import { localToday } from '../utils/dates';
+import { PRIORITY_COLORS, STATUS_PALETTE, TYPE_PALETTE, colorMap } from '../config/palettes';
 
 export interface ProjectStatusSlice    { name: string; value: number; color: string }
 export interface ProjectCompletionRow  { id: number; name: string; done: number; total: number; rate: number }
@@ -78,13 +80,6 @@ interface RawData {
   completion:  AdminCompletionRow[];
   weeklyItems: AdminWeeklyItemRow[];
 }
-
-const PROJECT_STATUS_PALETTE = ['#0A0838', '#3b82f6', '#10b981', '#f59e0b', '#E31837', '#8b5cf6'];
-const PRIORITY_COLORS: Record<string, string> = {
-  'Crítica': '#E31837', 'Alta': '#f97316', 'Media': '#6b7280', 'Baja': '#3b82f6', 'Mínima': '#1d4ed8',
-};
-const TYPE_PALETTE = ['#0A0838', '#3b82f6', '#10b981', '#f59e0b', '#E31837', '#8b5cf6', '#ec4899'];
-const ITEM_STATUS_PALETTE    = ['#0A0838', '#3b82f6', '#f59e0b', '#10b981', '#E31837', '#8b5cf6', '#6b7280'];
 
 export function useAdminDashboardData(): AdminDashboardResult {
   const [raw, setRaw]         = useState<RawData | null>(null);
@@ -153,8 +148,9 @@ export function useAdminDashboardData(): AdminDashboardResult {
     for (const p of projects) {
       statusCounts.set(p.statusName, (statusCounts.get(p.statusName) ?? 0) + 1);
     }
+    const projectStatusColors = colorMap([...statusCounts.keys()], STATUS_PALETTE);
     const projectStatus: ProjectStatusSlice[] = Array.from(statusCounts.entries()).map(
-      ([name, value], i) => ({ name, value, color: PROJECT_STATUS_PALETTE[i % PROJECT_STATUS_PALETTE.length] }),
+      ([name, value]) => ({ name, value, color: projectStatusColors.get(name)! }),
     );
 
     // ── Completion per project — from project_card_view ──────────────────
@@ -184,9 +180,10 @@ export function useAdminDashboardData(): AdminDashboardResult {
     for (const item of items) {
       globalCounts.set(item.statusName, (globalCounts.get(item.statusName) ?? 0) + 1);
     }
+    const itemStatusColors = colorMap([...globalCounts.keys()], STATUS_PALETTE);
     const globalItemStatus: GlobalItemStatusSlice[] = Array.from(globalCounts.entries())
       .sort((a, b) => b[1] - a[1])
-      .map(([name, value], i) => ({ name, value, color: ITEM_STATUS_PALETTE[i % ITEM_STATUS_PALETTE.length] }));
+      .map(([name, value]) => ({ name, value, color: itemStatusColors.get(name)! }));
 
     // ── Sprint health per project ────────────────────────────────────────
     const sprintBuckets = new Map<number, { active: number; terminal: number }>();
@@ -218,11 +215,11 @@ export function useAdminDashboardData(): AdminDashboardResult {
       .sort((a, b) => b.fte - a.fte);
 
     // ── Overdue items per project ────────────────────────────────────────
-    const now     = new Date();
-    const nowIso  = now.toISOString();
+    const now   = new Date();
+    const today = localToday();
     const overdueAccum = new Map<number, number>(projects.map(p => [p.id, 0]));
     for (const item of items) {
-      if (!item.isTerminal && item.fecha_vencimiento && item.fecha_vencimiento < nowIso) {
+      if (!item.isTerminal && item.fecha_vencimiento && item.fecha_vencimiento < today) {
         overdueAccum.set(item.id_proyecto, (overdueAccum.get(item.id_proyecto) ?? 0) + 1);
       }
     }
@@ -238,20 +235,18 @@ export function useAdminDashboardData(): AdminDashboardResult {
       debtDays: number; complexitySum: number; weightedScore: number; items: BacklogItemDetail[];
     }>();
     for (const item of items) {
-      if (!item.isTerminal && item.fecha_vencimiento) {
-        const due = new Date(item.fecha_vencimiento);
-        if (due < now) {
-          const days  = Math.floor((now.getTime() - due.getTime()) / 86_400_000);
-          const compl = item.complejidad ?? 0;
-          if (!pressureAccum.has(item.id_proyecto)) {
-            pressureAccum.set(item.id_proyecto, { debtDays: 0, complexitySum: 0, weightedScore: 0, items: [] });
-          }
-          const b = pressureAccum.get(item.id_proyecto)!;
-          b.debtDays      += days;
-          b.complexitySum += compl;
-          b.weightedScore += days * compl;
-          b.items.push({ days, complejidad: compl });
+      if (!item.isTerminal && item.fecha_vencimiento && item.fecha_vencimiento < today) {
+        const due   = new Date(item.fecha_vencimiento);
+        const days  = Math.floor((now.getTime() - due.getTime()) / 86_400_000);
+        const compl = item.complejidad ?? 0;
+        if (!pressureAccum.has(item.id_proyecto)) {
+          pressureAccum.set(item.id_proyecto, { debtDays: 0, complexitySum: 0, weightedScore: 0, items: [] });
         }
+        const b = pressureAccum.get(item.id_proyecto)!;
+        b.debtDays      += days;
+        b.complexitySum += compl;
+        b.weightedScore += days * compl;
+        b.items.push({ days, complejidad: compl });
       }
     }
     const backlogPressure: BacklogPressureRow[] = Array.from(pressureAccum.entries())
@@ -303,7 +298,7 @@ export function useAdminDashboardData(): AdminDashboardResult {
     // ── Overdue hours per project ─────────────────────────────────────────
     const overdueHoursAccum = new Map<number, number>(projects.map(p => [p.id, 0]));
     for (const item of items) {
-      if (!item.isTerminal && item.fecha_vencimiento && item.fecha_vencimiento < nowIso && item.tiempo != null) {
+      if (!item.isTerminal && item.fecha_vencimiento && item.fecha_vencimiento < today && item.tiempo != null) {
         overdueHoursAccum.set(item.id_proyecto, (overdueHoursAccum.get(item.id_proyecto) ?? 0) + item.tiempo / 60);
       }
     }
@@ -330,8 +325,9 @@ export function useAdminDashboardData(): AdminDashboardResult {
         typeHoursMap.set(item.typeName, (typeHoursMap.get(item.typeName) ?? 0) + item.tiempo / 60);
       }
     }
+    const typeColors = colorMap([...typeHoursMap.keys()], TYPE_PALETTE);
     const hoursByType: HoursByTypeRow[] = Array.from(typeHoursMap.entries())
-      .map(([tipo, hours], i) => ({ tipo, hours: Math.round(hours * 10) / 10, color: TYPE_PALETTE[i % TYPE_PALETTE.length] }))
+      .map(([tipo, hours]) => ({ tipo, hours: Math.round(hours * 10) / 10, color: typeColors.get(tipo)! }))
       .sort((a, b) => b.hours - a.hours);
 
     // ── Avg hours vs. avg complexity per project ──────────────────────────

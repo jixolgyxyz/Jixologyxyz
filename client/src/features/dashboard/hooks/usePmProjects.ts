@@ -12,6 +12,7 @@ export function usePmProjects() {
   const { user } = useUser();
   const [projectIds, setProjectIds] = useState<Set<number>>(() => new Set());
   const [fetched, setFetched]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
 
   // Loading is derived: only true when we have a user but haven't completed the fetch yet
   const loading = user?.id != null && !fetched;
@@ -22,12 +23,18 @@ export function usePmProjects() {
     let cancelled = false;
 
     void (async () => {
-      const { data } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('etiqueta_proyecto_predeterminada')
         .select('id_proyecto, catalogo_etiqueta_proyecto_predeterminada(nombre)')
         .eq('id_usuario', user.id);
 
       if (cancelled) return;
+
+      if (fetchError) {
+        setError('No se pudieron cargar tus proyectos como PM.');
+        setFetched(true);
+        return;
+      }
 
       const ids = new Set<number>();
       for (const row of data ?? []) {
@@ -38,11 +45,12 @@ export function usePmProjects() {
       }
 
       setProjectIds(ids);
+      setError(null);
       setFetched(true);
     })();
 
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  return { projectIds, loading };
+  return { projectIds, loading, error };
 }

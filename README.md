@@ -122,9 +122,12 @@ Edit `client/.env.e2e`:
 ```
 E2E_EMAIL=testuser@example.com
 E2E_PASSWORD=your_test_password
+E2E_PROJECT_ID=1
+E2E_TESTER_NAME=Your Name
 ```
 
 > The test user must already exist in Supabase and have an active `usuario` record.
+> `E2E_TESTER_NAME` is stamped into the HTML report (and into the report folder name) so a shared report shows who ran it.
 
 ### 3. Run the tests
 
@@ -141,6 +144,44 @@ Playwright will:
 
 ---
 
+### Generate a shareable report
+
+Use this when you need to hand the results to someone else:
+
+```bash
+cd client
+npm run test:e2e:report
+```
+
+It runs the full suite and saves a **self-contained HTML report** into a folder
+named after the run date and the tester:
+
+```
+client/e2e-reports/2026-05-20_Your-Name/
+```
+
+- The tester name comes from `E2E_TESTER_NAME` in `.env.e2e`. It is used in the
+  folder name and written into the report's metadata, so the recipient can see
+  who produced it. If the variable is missing the folder is just the date.
+- Running it again the same day **overwrites** that folder. To keep every run,
+  append the time:
+  ```bash
+  npm run test:e2e:report -- --time   # → e2e-reports/2026-05-20_14-30-05_Your-Name/
+  ```
+- The report is saved whether the tests pass or fail.
+- When it finishes, the script prints a ready-to-use zip command, e.g.:
+  ```powershell
+  Compress-Archive -Path "client\e2e-reports\2026-05-20_Your-Name\*" -DestinationPath "report.zip"
+  ```
+- Whoever receives the zip opens it with:
+  ```bash
+  npx playwright show-report <unzipped-folder>
+  ```
+
+> `e2e-reports/` is gitignored — the reports are build artifacts, not source.
+
+---
+
 ### Commands
 
 | Command | What it does |
@@ -148,6 +189,8 @@ Playwright will:
 | `npm run test:e2e` | Run all tests headlessly and generate the HTML report |
 | `npm run test:e2e:ui` | Open Playwright's interactive UI — pick and watch individual tests |
 | `npm run test:e2e:debug` | Run tests with the browser visible and the Playwright inspector attached |
+| `npm run test:e2e:report` | Run all tests and save a dated, shareable HTML report under `e2e-reports/` |
+| `npm run test:e2e:report -- --time` | Same, but the report folder also includes the time (keeps multiple same-day runs) |
 | `npx playwright show-report` | Open the last HTML report in the browser |
 | `npx playwright test --grep "login"` | Run only tests whose name matches a keyword |
 | `npx playwright test tests/e2e/backlog` |Run only test on the backlog folder |
@@ -168,8 +211,11 @@ client/
       login/
         login.spec.ts   # Login flow tests
       global.setup.ts   # Runs once before all specs to log in and save session
+  scripts/
+    run-e2e-report.mjs  # Runs the suite + saves a dated, shareable HTML report
+  e2e-reports/          # Gitignored — dated HTML reports from test:e2e:report
   playwright.config.ts  # Playwright configuration
-  .env.e2e              # Gitignored — test credentials
+  .env.e2e              # Gitignored — test credentials + E2E_TESTER_NAME
   .env.e2e.example      # Template — copy this and fill in your credentials
 ```
 

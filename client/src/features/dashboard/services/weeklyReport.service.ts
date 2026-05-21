@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { callGemini } from '@/shared/services/gemini.service';
 import { saveReport, linkCheckIns } from './reporte.service';
+import { currentWorkWeek, localDateString } from '../utils/dates';
 import type { AdminDashboardData } from '../hooks/useAdminDashboardData';
 import type { ReportConfig } from '../hooks/useWeeklyReport';
 
@@ -9,10 +10,13 @@ import type { ReportConfig } from '../hooks/useWeeklyReport';
 function filterData(data: AdminDashboardData, names: string[]): AdminDashboardData {
   const set = new Set(names);
   const keep = <T extends { name: string }>(arr: T[]) => arr.filter(r => set.has(r.name));
+  const completionByProject = keep(data.completionByProject);
   return {
     ...data,
-    activeProjects:          data.projectStatus.filter(p => set.has(p.name) && true).length,
-    completionByProject:     keep(data.completionByProject),
+    // `projectStatus` holds status names, not project names — it can't be
+    // filtered by `set`. Count the selected projects from the kept rows.
+    activeProjects:          completionByProject.length,
+    completionByProject,
     volumeByProject:         keep(data.volumeByProject),
     sprintHealth:            keep(data.sprintHealth),
     fteByProject:            keep(data.fteByProject),
@@ -451,19 +455,14 @@ export async function generateAndDownloadWeeklyReport(
       ? filterData(rawData, config.projectNames)
       : rawData;
   } else {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    monday = new Date(now);
-    monday.setDate(now.getDate() + diff);
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-    dateLabel    = `${fmt(monday)} – ${fmt(friday)}`;
+    const week = currentWorkWeek();
+    monday       = week.monday;
+    dateLabel    = `${fmt(week.monday)} – ${fmt(week.friday)}`;
     filteredData = rawData;
   }
 
   const metrics   = config.type === 'custom' ? config.metrics : undefined;
-  const dateStamp = monday.toISOString().slice(0, 10);
+  const dateStamp = localDateString(monday);
   const baseName  = config.nombre?.trim() || (config.type === 'custom' ? 'Reporte_Personalizado' : 'Reporte_Semanal');
   const nombre    = `${baseName}_${dateStamp}`;
 
