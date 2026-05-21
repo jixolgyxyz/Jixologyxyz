@@ -14,6 +14,8 @@ export interface VisibleGraphsResult {
   pmProjectIds: Set<number>;
   /** True while either prefs or PM lookup is in flight. */
   loading: boolean;
+  /** First load error from the prefs or PM lookup, if any. */
+  error: string | null;
   /** Forwarded toggle from useDashboardPreferences. */
   toggle: (graphId: string) => Promise<void>;
   /** Helper for the panel: is this graph currently visible per the user's prefs? */
@@ -26,8 +28,8 @@ export interface VisibleGraphsResult {
 
 export function useVisibleGraphs(dashboard: DashboardKind): VisibleGraphsResult {
   const { user } = useUser();
-  const { isVisible, toggle, loading: prefsLoading, getLayoutItems, saveLayout } = useDashboardPreferences();
-  const { projectIds: pmProjectIds, loading: pmLoading } = usePmProjects();
+  const { isVisible, toggle, loading: prefsLoading, error: prefsError, getLayoutItems, saveLayout } = useDashboardPreferences();
+  const { projectIds: pmProjectIds, loading: pmLoading, error: pmError } = usePmProjects();
 
   const isGlobalAdmin = user?.idRolGlobal === 1 || user?.idRolGlobal === 2;
   const isPm          = pmProjectIds.size > 0;
@@ -61,6 +63,7 @@ export function useVisibleGraphs(dashboard: DashboardKind): VisibleGraphsResult 
     visible,
     pmProjectIds,
     loading: prefsLoading || pmLoading,
+    error: prefsError ?? pmError ?? null,
     toggle,
     isVisible,
     getLayoutItems,

@@ -1,5 +1,6 @@
 import { supabase } from '@/core/supabase/supabase.client';
 import { buildPdf } from './weeklyReport.service';
+import { localDateString } from '../utils/dates';
 
 export interface ReporteRow {
   id:                  number;
@@ -23,7 +24,7 @@ export async function saveReport(
     .from('reporte')
     .insert({
       contenido,
-      semana_inicio:      semanaInicio.toISOString().slice(0, 10),
+      semana_inicio:      localDateString(semanaInicio),
       id_usuario_creador: userId,
       nombre:             nombre ?? null,
       visibilidad,
@@ -69,18 +70,19 @@ export function downloadReport(r: ReporteRow): void {
 }
 
 export async function fetchReports(userId: number): Promise<ReporteRow[]> {
+  // Visibility is filtered in the query (public reports + the user's own),
+  // so private reports of other users are never transferred to the client.
   const { data, error } = await supabase
     .from('reporte')
     .select('id, nombre, contenido, fecha_creacion, semana_inicio, id_usuario_creador, visibilidad, usuario:id_usuario_creador(nombre, apellido)')
+    .or(`visibilidad.eq.publico,id_usuario_creador.eq.${userId}`)
     .order('fecha_creacion', { ascending: false });
 
   if (error) throw new Error(`Error al obtener reportes: ${error.message}`);
 
-  return (data ?? [])
-    .map((r: Record<string, unknown>) => {
-      const u = r.usuario as { nombre: string | null; apellido: string | null } | null;
-      const creador = u ? [u.nombre, u.apellido].filter(Boolean).join(' ') || null : null;
-      return { ...r, creador } as ReporteRow;
-    })
-    .filter(r => r.visibilidad === 'publico' || r.id_usuario_creador === userId);
+  return (data ?? []).map((r: Record<string, unknown>) => {
+    const u = r.usuario as { nombre: string | null; apellido: string | null } | null;
+    const creador = u ? [u.nombre, u.apellido].filter(Boolean).join(' ') || null : null;
+    return { ...r, creador } as ReporteRow;
+  });
 }

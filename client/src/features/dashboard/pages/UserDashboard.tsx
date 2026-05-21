@@ -41,7 +41,7 @@ const UserDashboard: FC = () => {
   const { user } = useUser();
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
   const { data, projects, loading, error } = useUserDashboardData(selectedProjectIds);
-  const { visible, available, toggle, isVisible, getLayoutItems, saveLayout } = useVisibleGraphs('user');
+  const { visible, available, toggle, isVisible, getLayoutItems, saveLayout, error: graphsError } = useVisibleGraphs('user');
   const { open: showCustomizePanel, openPanel: openCustomizePanel, closePanel: closeCustomizePanel } = useDashboardPanel('user');
   const [reorganizeMode, setReorganizeMode] = useState(false);
 
@@ -60,10 +60,10 @@ const UserDashboard: FC = () => {
     );
   }
 
-  if (error) {
+  if (error || graphsError) {
     return (
       <div className={styles.page}>
-        <div className={styles.errorBox}>Error al cargar los datos: {error}</div>
+        <div className={styles.errorBox}>Error al cargar los datos: {error ?? graphsError}</div>
       </div>
     );
   }

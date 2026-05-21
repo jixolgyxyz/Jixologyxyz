@@ -16,38 +16,65 @@ export interface GraphLayoutItem {
 
 const MIN_W = 8;
 const MIN_H = 6;
+const COLS  = 48;
 
-const COLS = 48;
+interface PackInput { id: string; w: number; h: number }
 
-async function seedDefaultGraphs(userId: number, isAdmin: boolean) {
-  const catalog = isAdmin
+/**
+ * Packs a flat list of graphs left-to-right into a `cols`-wide grid and
+ * returns each graph's top-left position. A full-width graph (w >= cols)
+ * takes its own row. Single source of truth for the default layout.
+ */
+function packGraphs(graphs: PackInput[], cols = COLS): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+  let col = 0;
+  let row = 0;
+
+  for (const g of graphs) {
+    const w = Math.min(g.w, cols);
+
+    if (w >= cols) {
+      if (col > 0) { row += g.h; col = 0; }
+      positions.set(g.id, { x: 0, y: row });
+      row += g.h;
+      col = 0;
+      continue;
+    }
+
+    if (col + w > cols) { col = 0; row += g.h; }
+    positions.set(g.id, { x: col, y: row });
+    col += w;
+    if (col >= cols) { col = 0; row += g.h; }
+  }
+
+  return positions;
+}
+
+/**
+ * Default positions for a seeded catalog: admin graphs and user graphs are
+ * each packed independently from (0,0) so both dashboards start tidy.
+ */
+function computeDefaultPositions(catalog: GraphDescriptor[]): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+  for (const kind of ['admin', 'user'] as const) {
+    const group = catalog
+      .filter(g => g.defaultVisible && g.dashboards.includes(kind))
+      .map(g => ({ id: g.id, w: g.defaultW, h: g.defaultH }));
+    for (const [id, pos] of packGraphs(group)) positions.set(id, pos);
+  }
+  return positions;
+}
+
+/** Graphs a user is allowed to seed: admins get all, others get user/shared. */
+function catalogForUser(isAdmin: boolean): GraphDescriptor[] {
+  return isAdmin
     ? GRAPH_CATALOG
     : GRAPH_CATALOG.filter(g => g.visibility === 'user-only' || g.visibility === 'shared');
-  // Compute positions per dashboard group so admin and user graphs each
-  // pack from (0,0) independently, matching what getLayoutItems produces.
-  const positions = new Map<string, { x: number; y: number }>();
+}
 
-  for (const dashboardGraphs of [
-    catalog.filter(g => g.defaultVisible && g.dashboards.includes('admin')),
-    catalog.filter(g => g.defaultVisible && g.dashboards.includes('user')),
-  ]) {
-    let col = 0;
-    let row = 0;
-    for (const g of dashboardGraphs) {
-      const w = Math.min(g.defaultW, COLS);
-      const h = g.defaultH;
-      if (w >= COLS) {
-        if (col > 0) { row += h; col = 0; }
-        positions.set(g.id, { x: 0, y: row });
-        row += h; col = 0;
-        continue;
-      }
-      if (col + w > COLS) { col = 0; row += h; }
-      positions.set(g.id, { x: col, y: row });
-      col += w;
-      if (col >= COLS) { col = 0; row += h; }
-    }
-  }
+async function seedDefaultGraphs(userId: number, isAdmin: boolean) {
+  const catalog   = catalogForUser(isAdmin);
+  const positions = computeDefaultPositions(catalog);
 
   const rows = catalog.map(g => {
     const pos = positions.get(g.id);
@@ -76,6 +103,7 @@ export function useDashboardPreferences() {
   const [overrides, setOverrides]             = useState<Map<string, boolean>>(() => new Map());
   const [layoutOverrides, setLayoutOverrides] = useState<Map<string, GraphLayoutItem>>(() => new Map());
   const [fetched, setFetched]                 = useState(false);
+  const [error, setError]                     = useState<string | null>(null);
 
   const loading = user?.id != null && !fetched;
   const userId = user?.id;
@@ -86,12 +114,18 @@ export function useDashboardPreferences() {
     let cancelled = false;
 
     void (async () => {
-      const { data } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('usuario_grafica_visibilidad')
         .select('codigo_grafica, visible, grid_x, grid_y, grid_w, grid_h')
         .eq('id_usuario', user.id);
 
       if (cancelled) return;
+
+      if (fetchError) {
+        setError('No se pudieron cargar las preferencias del dashboard.');
+        setFetched(true);
+        return;
+      }
 
       const nextVis    = new Map<string, boolean>();
       const nextLayout = new Map<string, GraphLayoutItem>();
@@ -104,47 +138,33 @@ export function useDashboardPreferences() {
         }
       }
 
+      // First visit — seed visibility + default positions from the catalog.
       if ((data ?? []).length === 0) {
-        const isAdmin = user.idRolGlobal === 1 || user.idRolGlobal === 2;
-        const catalog = isAdmin
-          ? GRAPH_CATALOG
-          : GRAPH_CATALOG.filter(g => g.visibility === 'user-only' || g.visibility === 'shared');
+        const isAdmin   = user.idRolGlobal === 1 || user.idRolGlobal === 2;
+        const catalog   = catalogForUser(isAdmin);
+        const positions = computeDefaultPositions(catalog);
 
-        let col = 0; let row = 0;
-        for (const dashboardGraphs of [
-          catalog.filter(g => g.defaultVisible && g.dashboards.includes('admin')),
-          catalog.filter(g => g.defaultVisible && g.dashboards.includes('user')),
-        ]) {
-          col = 0; row = 0;
-          for (const g of dashboardGraphs) {
-            const w = Math.min(g.defaultW, COLS); const h = g.defaultH;
-            if (w >= COLS) {
-              if (col > 0) { row += h; col = 0; }
-              nextVis.set(g.id, g.defaultVisible);
-              nextLayout.set(g.id, { i: g.id, x: 0, y: row, w, h });
-              row += h; col = 0; continue;
-            }
-            if (col + w > COLS) { col = 0; row += h; }
-            nextVis.set(g.id, g.defaultVisible);
-            nextLayout.set(g.id, { i: g.id, x: col, y: row, w, h });
-            col += w;
-            if (col >= COLS) { col = 0; row += h; }
-          }
-        }
-        // Hidden graphs still need a visibility entry in memory
         for (const g of catalog) {
-          if (!nextVis.has(g.id)) nextVis.set(g.id, g.defaultVisible);
+          nextVis.set(g.id, g.defaultVisible);
+          const pos = positions.get(g.id);
+          if (pos) {
+            nextLayout.set(g.id, {
+              i: g.id, x: pos.x, y: pos.y,
+              w: Math.min(g.defaultW, COLS), h: g.defaultH,
+            });
+          }
         }
         void seedDefaultGraphs(user.id, isAdmin);
       }
 
       setOverrides(nextVis);
       setLayoutOverrides(nextLayout);
+      setError(null);
       setFetched(true);
     })();
 
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, user?.idRolGlobal]);
 
   const isVisible = useCallback((graphId: string): boolean => {
     if (overrides.has(graphId)) return overrides.get(graphId)!;
@@ -177,33 +197,21 @@ export function useDashboardPreferences() {
     }
   }, [userId, overrides]);
 
-  const getLayoutItems = useCallback((visibleGraphs: GraphDescriptor[], cols = 48): GraphLayoutItem[] => {
-    let col = 0;
-    let row = 0;
+  const getLayoutItems = useCallback((visibleGraphs: GraphDescriptor[], cols = COLS): GraphLayoutItem[] => {
+    // Graphs with a saved position keep it; the rest are packed among themselves.
+    const unsaved = visibleGraphs.filter(g => !layoutOverrides.has(g.id));
+    const packed  = packGraphs(unsaved.map(g => ({ id: g.id, w: g.defaultW, h: g.defaultH })), cols);
 
     return visibleGraphs.map(g => {
       const saved = layoutOverrides.get(g.id);
       if (saved) return { ...saved, minW: MIN_W, minH: MIN_H };
 
-      const w = Math.min(g.defaultW, cols);
-      const h = g.defaultH;
-
-      if (w >= cols) {
-        if (col > 0) { row += h; col = 0; }
-        const item = { i: g.id, x: 0, y: row, w, h, minW: MIN_W, minH: MIN_H };
-        row += h;
-        col = 0;
-        return item;
-      }
-
-      if (col + w > cols) {
-        col = 0;
-        row += h;
-      }
-      const item = { i: g.id, x: col, y: row, w, h, minW: MIN_W, minH: MIN_H };
-      col += w;
-      if (col >= cols) { col = 0; row += h; }
-      return item;
+      const pos = packed.get(g.id)!;
+      return {
+        i: g.id, x: pos.x, y: pos.y,
+        w: Math.min(g.defaultW, cols), h: g.defaultH,
+        minW: MIN_W, minH: MIN_H,
+      };
     });
   }, [layoutOverrides]);
 
@@ -235,5 +243,5 @@ export function useDashboardPreferences() {
     }
   }, [userId, overrides]);
 
-  return { isVisible, toggle, loading, getLayoutItems, saveLayout };
+  return { isVisible, toggle, loading, error, getLayoutItems, saveLayout };
 }

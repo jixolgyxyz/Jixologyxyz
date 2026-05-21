@@ -1,4 +1,5 @@
 import { supabase } from '@/core/supabase/supabase.client';
+import { currentWorkWeek } from '../utils/dates';
 
 // ── Raw DB shapes ──────────────────────────────────────────────────────────
 
@@ -135,15 +136,7 @@ export interface AdminWeeklyItemRow {
 }
 
 export async function fetchAdminWeeklyItems(): Promise<AdminWeeklyItemRow[]> {
-  const now  = new Date();
-  const day  = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-  const friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4);
-  friday.setHours(23, 59, 59, 999);
+  const { monday, friday } = currentWorkWeek();
 
   const { data, error } = await supabase
     .from('backlog_item')
