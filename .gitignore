@@ -89,4 +89,5 @@ supabase/coverage/
 client/tests/e2e/.auth/
 client/playwright-report/
 client/test-results/
+client/e2e-reports/
 client/.env.e2e
