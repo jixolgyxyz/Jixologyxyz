@@ -26,6 +26,9 @@ export interface Project {
   total_backlog_items:     number;
   completed_backlog_items: number;
   completion_percentage:   number;
+  // Estatus calculado en vivo (project_card_view). El usuario no lo elige:
+  // se deriva del % completado vs. el % de tiempo transcurrido.
+  estatus_calculado:       number;
 }
 
 // Interfaz para contexto de Projctos.
