@@ -431,12 +431,13 @@ export interface GithubConfigRecord {
   github_org: string;
   github_repo: string;
   installation_id: number;
+  default_branch: string;
 }
 
 export async function fetchGithubConfig(projectId: number): Promise<GithubConfigRecord | null> {
   const { data, error } = await supabase
     .from('proyecto_github_config')
-    .select('id_proyecto, github_org, github_repo, installation_id')
+    .select('id_proyecto, github_org, github_repo, installation_id, default_branch')
     .eq('id_proyecto', projectId)
     .maybeSingle();
 
@@ -508,13 +509,22 @@ export async function saveGithubProjectConfig(
   org: string,
   repo: string,
   installationId: number,
+  defaultBranch: string = 'main',
 ): Promise<void> {
   const { error } = await supabase
     .from('proyecto_github_config')
     .upsert(
-      { id_proyecto: projectId, github_org: org, github_repo: repo, installation_id: installationId },
+      { id_proyecto: projectId, github_org: org, github_repo: repo, installation_id: installationId, default_branch: defaultBranch },
       { onConflict: 'id_proyecto' },
     );
+  if (error) throw new Error(error.message);
+}
+
+export async function updateGithubDefaultBranch(projectId: number, branch: string): Promise<void> {
+  const { error } = await supabase
+    .from('proyecto_github_config')
+    .update({ default_branch: branch })
+    .eq('id_proyecto', projectId);
   if (error) throw new Error(error.message);
 }
 

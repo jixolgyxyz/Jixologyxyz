@@ -11,7 +11,7 @@ import { useProjectEtiquetas } from '../hooks/useProjectEtiquetas';
 import { useProjectFte } from '../hooks/useProjectFte';
 import { useToast } from '../hooks/useToast';
 import { useUser } from '@/core/auth/userContext';
-import { deleteEtiquetaWithCascade, upsertProyectoFte, removeMemberFromProject, fetchGithubConfig, buildGithubInstallUrl, fetchGithubUserOrgs, fetchGithubInstallationRepos, saveGithubProjectConfig, disconnectGithubProject, GithubNotConnectedError, type GithubConfigRecord, type GithubOrg, type GithubRepo } from '../services/projectConfig.service';
+import { deleteEtiquetaWithCascade, upsertProyectoFte, removeMemberFromProject, fetchGithubConfig, buildGithubInstallUrl, fetchGithubUserOrgs, fetchGithubInstallationRepos, saveGithubProjectConfig, updateGithubDefaultBranch, disconnectGithubProject, GithubNotConnectedError, type GithubConfigRecord, type GithubOrg, type GithubRepo } from '../services/projectConfig.service';
 import InviteUserForm from '../components/InviteUserForm';
 import CreateEtiquetaForm from '../components/CreateEtiquetaForm';
 import EditEtiquetaForm from '../components/EditEtiquetaForm';
@@ -53,12 +53,22 @@ const ProjectConfigPage: React.FC = () => {
   const [repos, setRepos]               = useState<GithubRepo[]>([]);
   const [reposLoading, setReposLoading] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState('');
+  const [defaultBranch, setDefaultBranch] = useState('main');
   const [githubSaving, setGithubSaving] = useState(false);
   const [confirmDisconnectGithub, setConfirmDisconnectGithub] = useState(false);
 
+  const [editingBranch, setEditingBranch] = useState(false);
+  const [branchDraft, setBranchDraft] = useState('');
+  const [branchSaving, setBranchSaving] = useState(false);
+
   useEffect(() => {
     fetchGithubConfig(PROJECT_ID)
-      .then(setGithubConfig)
+      .then(config => {
+        setGithubConfig(config);
+        if (config?.default_branch != null){
+          setDefaultBranch(config.default_branch);
+        }
+      })
       .catch(() => setGithubConfig(null))
       .finally(() => setGithubLoading(false));
   }, [PROJECT_ID]);
@@ -124,13 +134,27 @@ const ProjectConfigPage: React.FC = () => {
     if (!selectedOrg || !selectedRepo) return;
     setGithubSaving(true);
     try {
-      await saveGithubProjectConfig(PROJECT_ID, selectedOrg.login, selectedRepo, selectedOrg.installation_id);
+      await saveGithubProjectConfig(PROJECT_ID, selectedOrg.login, selectedRepo, selectedOrg.installation_id, defaultBranch || 'main');
       const config = await fetchGithubConfig(PROJECT_ID);
       setGithubConfig(config);
     } catch (err: unknown) {
       showError(err instanceof Error ? err.message : String(err));
     } finally {
       setGithubSaving(false);
+    }
+  };
+
+  const handleSaveBranch = async () => {
+    const branch = branchDraft.trim() || 'main';
+    setBranchSaving(true);
+    try {
+      await updateGithubDefaultBranch(PROJECT_ID, branch);
+      setGithubConfig(prev => prev ? { ...prev, default_branch: branch } : prev);
+      setEditingBranch(false);
+    } catch (err: unknown) {
+      showError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBranchSaving(false);
     }
   };
 
@@ -432,7 +456,47 @@ const ProjectConfigPage: React.FC = () => {
               </svg>
               <div className={styles.githubConnectedInfo}>
                 <span className={styles.githubRepo}>{githubConfig.github_org}/{githubConfig.github_repo}</span>
-                <span className={styles.githubInstall}>Installation ID: {githubConfig.installation_id}</span>
+                <div className={styles.githubBranchRow}>
+                  {editingBranch ? (
+                    <>
+                    <label className={styles.githubLabel}>
+                      <span className={styles.githubBranchLabel}>Rama base:</span>
+                    </label>
+                    <select 
+                      className={styles.githubInput}
+                      value={defaultBranch}
+                      onChange={(e) => setDefaultBranch()}
+                      <input
+                        className={styles.githubBranchInput}
+                        value={branchDraft}
+                        onChange={e => setBranchDraft(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') void handleSaveBranch(); if (e.key === 'Escape') setEditingBranch(false); }}
+                        autoFocus
+                        disabled={branchSaving}
+                      />
+                      <button type="button" className={styles.githubBranchIconBtn} onClick={() => void handleSaveBranch()} disabled={branchSaving} aria-label="Guardar rama">
+                        <PencilIcon width={12} height={12} />
+                      </button>
+                      <button type="button" className={styles.githubBranchIconBtn} onClick={() => setEditingBranch(false)} aria-label="Cancelar">
+                        <TrashIcon width={12} height={12} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={styles.githubBranchValue}>{githubConfig.default_branch}</span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className={styles.githubBranchIconBtn}
+                          onClick={() => { setBranchDraft(githubConfig.default_branch); setEditingBranch(true); }}
+                          aria-label="Editar rama base"
+                        >
+                          <PencilIcon width={12} height={12} />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               </div>
               {canEdit && (
@@ -485,6 +549,15 @@ const ProjectConfigPage: React.FC = () => {
                     <option key={r.name} value={r.name}>{r.name}{r.private ? ' 🔒' : ''}</option>
                   ))}
                 </select>
+              </div>
+              <div className={styles.githubInputGroup}>
+                <label className={styles.githubLabel}>Rama base para PRs</label>
+                <input
+                  className={styles.githubInput}
+                  value={defaultBranch}
+                  onChange={e => setDefaultBranch(e.target.value)}
+                  placeholder="main"
+                />
               </div>
               <button
                 type="button"
