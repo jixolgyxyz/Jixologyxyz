@@ -451,6 +451,21 @@ export function buildGithubInstallUrl(projectId: number, org: string, repo: stri
   return `https://github.com/apps/${appSlug}/installations/new?state=${state}`;
 }
 
+export interface BranchData {
+  branchName: string;
+  branchSha: string;
+}
+
+export async function fetchProjectBranches(projectId: number): Promise<BranchData[]> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github_get_branches`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId }),
+  });
+  if (!res.ok) throw new Error('Failed to fetch branches');
+  return res.json() as Promise<BranchData[]>;
+}
 export interface GithubOrg {
   installation_id: number;
   login: string;

@@ -11,7 +11,7 @@ import { useProjectEtiquetas } from '../hooks/useProjectEtiquetas';
 import { useProjectFte } from '../hooks/useProjectFte';
 import { useToast } from '../hooks/useToast';
 import { useUser } from '@/core/auth/userContext';
-import { deleteEtiquetaWithCascade, upsertProyectoFte, removeMemberFromProject, fetchGithubConfig, buildGithubInstallUrl, fetchGithubUserOrgs, fetchGithubInstallationRepos, saveGithubProjectConfig, updateGithubDefaultBranch, disconnectGithubProject, GithubNotConnectedError, type GithubConfigRecord, type GithubOrg, type GithubRepo } from '../services/projectConfig.service';
+import { deleteEtiquetaWithCascade, upsertProyectoFte, removeMemberFromProject, fetchGithubConfig, fetchProjectBranches, fetchGithubUserOrgs, fetchGithubInstallationRepos, saveGithubProjectConfig, updateGithubDefaultBranch, disconnectGithubProject, GithubNotConnectedError, type GithubConfigRecord, type GithubOrg, type GithubRepo, type BranchData } from '../services/projectConfig.service';
 import InviteUserForm from '../components/InviteUserForm';
 import CreateEtiquetaForm from '../components/CreateEtiquetaForm';
 import EditEtiquetaForm from '../components/EditEtiquetaForm';
@@ -59,6 +59,8 @@ const ProjectConfigPage: React.FC = () => {
 
   const [editingBranch, setEditingBranch] = useState(false);
   const [branchDraft, setBranchDraft] = useState('');
+  const [branchLoading, setBranchLoading] = useState(true);
+  const [branchData, setBranchData] = useState<BranchData[]>([]);
   const [branchSaving, setBranchSaving] = useState(false);
 
   useEffect(() => {
@@ -105,7 +107,17 @@ const ProjectConfigPage: React.FC = () => {
         setOrgs([]);
       })
       .finally(() => setOrgsLoading(false));
-  }, [githubConfig, githubLoading]);
+  }, [githubConfig, githubLoading, PROJECT_ID]);
+
+  // Load branches whenever the project has a GitHub config (powers the default-branch dropdown)
+  useEffect(() => {
+    if (!githubConfig) return;
+    setBranchLoading(true);
+    fetchProjectBranches(PROJECT_ID)
+      .then(setBranchData)
+      .catch(() => setBranchData([]))
+      .finally(() => setBranchLoading(false));
+  }, [githubConfig, PROJECT_ID]);
 
   // Load repos whenever the selected org changes
   useEffect(() => {
@@ -145,7 +157,7 @@ const ProjectConfigPage: React.FC = () => {
   };
 
   const handleSaveBranch = async () => {
-    const branch = branchDraft.trim() || 'main';
+    const branch = defaultBranch || 'main';
     setBranchSaving(true);
     try {
       await updateGithubDefaultBranch(PROJECT_ID, branch);
@@ -459,22 +471,22 @@ const ProjectConfigPage: React.FC = () => {
                 <div className={styles.githubBranchRow}>
                   {editingBranch ? (
                     <>
-                    <label className={styles.githubLabel}>
                       <span className={styles.githubBranchLabel}>Rama base:</span>
-                    </label>
-                    <select 
-                      className={styles.githubInput}
-                      value={defaultBranch}
-                      onChange={(e) => setDefaultBranch()}
-                      <input
+                      <select
                         className={styles.githubBranchInput}
-                        value={branchDraft}
-                        onChange={e => setBranchDraft(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') void handleSaveBranch(); if (e.key === 'Escape') setEditingBranch(false); }}
+                        value={defaultBranch}
+                        onChange={e => setDefaultBranch(e.target.value)}
+                        disabled={branchSaving || branchLoading}
                         autoFocus
-                        disabled={branchSaving}
-                      />
-                      <button type="button" className={styles.githubBranchIconBtn} onClick={() => void handleSaveBranch()} disabled={branchSaving} aria-label="Guardar rama">
+                      >
+                        {branchLoading
+                          ? <option value="">Cargando ramas…</option>
+                          : branchData.map(b => (
+                              <option key={b.branchName} value={b.branchName}>{b.branchName}</option>
+                            ))
+                        }
+                      </select>
+                      <button type="button" className={styles.githubBranchIconBtn} onClick={() => void handleSaveBranch()} disabled={branchSaving || branchLoading} aria-label="Guardar rama">
                         <PencilIcon width={12} height={12} />
                       </button>
                       <button type="button" className={styles.githubBranchIconBtn} onClick={() => setEditingBranch(false)} aria-label="Cancelar">
