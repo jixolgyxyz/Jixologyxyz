@@ -456,6 +456,41 @@ export interface BranchData {
   branchSha: string;
 }
 
+export interface BacklogItemGithubRecord {
+  branch_name: string | null;
+  pr_number: number | null;
+  pr_url: string | null;
+  pr_status: string | null;
+}
+
+export async function fetchBacklogItemGithub(itemId: number): Promise<BacklogItemGithubRecord | null> {
+  const { data } = await supabase
+    .from('backlog_item_github')
+    .select('branch_name, pr_number, pr_url, pr_status')
+    .eq('id_backlog_item', itemId)
+    .maybeSingle();
+  return data;
+}
+
+export async function createGithubPR(
+  projectId: number,
+  itemId: number,
+  title: string,
+  baseBranch?: string,
+): Promise<{ prNumber: number; prUrl: string }> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-create-pr`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, itemId, title, baseBranch }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? 'Failed to create PR');
+  }
+  return res.json() as Promise<{ prNumber: number; prUrl: string }>;
+}
+
 export async function fetchProjectBranches(projectId: number): Promise<BranchData[]> {
   const authHeader = await getAuthHeader();
   const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github_get_branches`, {

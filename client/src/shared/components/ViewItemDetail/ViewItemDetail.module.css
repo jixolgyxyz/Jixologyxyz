@@ -799,3 +799,81 @@
   color: #fff;
 }
 
+/* ── GitHub section ──────────────────────────────────────────────── */
+.githubSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  width: 100%;
+}
+
+.branchChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--color-clarity-gray-1);
+  border: 1px solid var(--color-clarity-gray-2);
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-blueprint-navy);
+  word-break: break-all;
+}
+
+.createPrBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: none;
+  background: #24292f;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: opacity 0.15s ease;
+}
+
+.createPrBtn:hover:not(:disabled) { opacity: 0.82; }
+.createPrBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.prRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.prStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.prStatus_open   { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.prStatus_merged { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
+.prStatus_closed { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+.prLink {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  text-decoration: none;
+}
+
+.prLink:hover { text-decoration: underline; }
+
+.githubDisclaimer {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--color-anchor-gray-1);
+  font-style: italic;
+}
+

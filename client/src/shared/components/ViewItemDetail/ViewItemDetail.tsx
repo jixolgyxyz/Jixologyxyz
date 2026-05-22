@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
 import { updateBacklogItem } from '@/features/project/Backlog/services/backlog.service';
+import { fetchBacklogItemGithub, fetchGithubConfig, createGithubPR, type BacklogItemGithubRecord, type GithubConfigRecord } from '@/features/project/projectConfig/services/projectConfig.service';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import type {
   BacklogItemRecord,
@@ -31,7 +32,8 @@ const STATUS_COLORS: Record<number, { color: string; textColor: string }> = {
   1: { color: '#F3F4F6', textColor: '#6B7280' },
   2: { color: '#DBEAFE', textColor: '#1D4ED8' },
   3: { color: '#FEF3C7', textColor: '#D97706' },
-  4: { color: '#D1FAE5', textColor: '#065F46' },
+  4: { color: '#FDE68A', textColor: '#92400E' }, // Pendiente
+  5: { color: '#D1FAE5', textColor: '#065F46' }, // Completado
 };
 
 const TYPE_PREFIX: Record<string, string> = {
@@ -92,7 +94,8 @@ function StatusPillSelect({ statuses, value, onChange }: {
     1: { bg: '#F3F4F6', text: '#6B7280' },
     2: { bg: '#DBEAFE', text: '#1D4ED8' },
     3: { bg: '#FEF3C7', text: '#D97706' },
-    4: { bg: '#D1FAE5', text: '#065F46' },
+    4: { bg: '#FDE68A', text: '#92400E' },
+    5: { bg: '#D1FAE5', text: '#065F46' },
   };
   const selected = statuses.find(s => String(s.id) === value);
   const { bg, text } = selected ? (STATUS_COLORS_BG[selected.orden] ?? { bg: '#F3F4F6', text: '#6B7280' }) : { bg: 'var(--color-clarity-gray-1)', text: 'var(--color-anchor-gray-1)' };
@@ -262,7 +265,8 @@ const STATUS_COLORS_BG: Record<number, { color: string; textColor: string }> = {
   1: { color: '#F3F4F6', textColor: '#6B7280' },
   2: { color: '#DBEAFE', textColor: '#1D4ED8' },
   3: { color: '#FEF3C7', textColor: '#D97706' },
-  4: { color: '#D1FAE5', textColor: '#065F46' },
+  4: { color: '#FDE68A', textColor: '#92400E' },
+  5: { color: '#D1FAE5', textColor: '#065F46' },
 };
 
 interface SubtaskNodeProps {
@@ -363,7 +367,24 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
   const [error, setError]                         = useState<string | null>(null);
   const [showTimePopup, setShowTimePopup]         = useState(false);
 
+  const [githubRecord, setGithubRecord]           = useState<BacklogItemGithubRecord | null>(null);
+  const [githubConfig, setGithubConfig]           = useState<GithubConfigRecord | null>(null);
+  const [githubLoading, setGithubLoading]         = useState(true);
+  const [prCreating, setPrCreating]               = useState(false);
+  const [prError, setPrError]                     = useState<string | null>(null);
+
   useEffect(() => { setForm(itemToForm(item)); setIsEditing(initialEditing); }, [item, initialEditing]);
+
+  useEffect(() => {
+    setGithubLoading(true);
+    Promise.all([
+      fetchBacklogItemGithub(item.id),
+      fetchGithubConfig(item.id_proyecto),
+    ])
+      .then(([record, config]) => { setGithubRecord(record); setGithubConfig(config); })
+      .catch(() => {})
+      .finally(() => setGithubLoading(false));
+  }, [item.id, item.id_proyecto]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -397,6 +418,27 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
     if (!onAcceptSuggestion) return;
     setAccepting(true);
     try { await onAcceptSuggestion(); } finally { setAccepting(false); }
+  };
+
+  const handleCreatePR = async () => {
+    setPrCreating(true);
+    setPrError(null);
+    try {
+      const result = await createGithubPR(
+        item.id_proyecto,
+        item.id,
+        item.nombre,
+        githubConfig?.default_branch,
+      );
+      setGithubRecord(prev => prev
+        ? { ...prev, pr_number: result.prNumber, pr_url: result.prUrl, pr_status: 'open' }
+        : prev,
+      );
+    } catch (err) {
+      setPrError(err instanceof Error ? err.message : 'Error al crear PR');
+    } finally {
+      setPrCreating(false);
+    }
   };
 
   const handleSave = async () => {
@@ -713,6 +755,42 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
                   <input name="fecha_vencimiento" type="date" className={styles.editInput} value={form.fecha_vencimiento} onChange={handleChange} />
                 </div>
               </>
+            )}
+
+            {!githubLoading && githubConfig && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>GitHub</span>
+                {!githubRecord?.branch_name ? (
+                  <span className={styles.detailEmpty}>Sin branch</span>
+                ) : (
+                  <div className={styles.githubSection}>
+                    <span className={styles.branchChip}>{githubRecord.branch_name}</span>
+                    {!githubRecord.pr_number ? (
+                      <>
+                        <button
+                          type="button"
+                          className={styles.createPrBtn}
+                          onClick={() => void handleCreatePR()}
+                          disabled={prCreating}
+                        >
+                          {prCreating ? 'Creando PR…' : 'Crear PR'}
+                        </button>
+                        {prError && <span className={styles.inlineError}>{prError}</span>}
+                      </>
+                    ) : (
+                      <div className={styles.prRow}>
+                        <span className={`${styles.prStatusBadge} ${styles[`prStatus_${githubRecord.pr_status ?? 'open'}`]}`}>
+                          {githubRecord.pr_status}
+                        </span>
+                        <a href={githubRecord.pr_url!} target="_blank" rel="noreferrer" className={styles.prLink}>
+                          PR #{githubRecord.pr_number}
+                        </a>
+                      </div>
+                    )}
+                    <p className={styles.githubDisclaimer}>Los PRs se aceptan/rechazan desde GitHub</p>
+                  </div>
+                )}
+              </div>
             )}
 
             <div className={styles.detailRow}>

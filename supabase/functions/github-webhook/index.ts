@@ -97,20 +97,18 @@ Deno.serve(async (req: Request) => {
     })
     .eq('id_backlog_item', itemId);
 
-  // --- If merged, move backlog item to terminal status ---
+  // --- If merged, move backlog item to "Pendiente" status (awaits manual acceptance) ---
   if (pull_request.merged) {
-    const { data: terminalStatus } = await supabase
+    const { data: pendingStatus } = await supabase
       .from('estatus_backlog_item')
       .select('id')
-      .eq('es_terminal', true)
-      .order('orden', { ascending: false })
-      .limit(1)
+      .eq('nombre', 'Pendiente')
       .single();
 
-    if (terminalStatus) {
+    if (pendingStatus) {
       await supabase
         .from('backlog_item')
-        .update({ id_estatus: terminalStatus.id })
+        .update({ id_estatus: pendingStatus.id })
         .eq('id', itemId);
     }
   }
