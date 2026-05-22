@@ -627,6 +627,9 @@
   justify-content: center;
   z-index: 400;
   border-radius: inherit;
+  /* .overlay sets pointer-events:none; the popup lives outside .panel,
+     so it must re-enable clicks for itself. */
+  pointer-events: auto;
 }
 
 .timePopup {
