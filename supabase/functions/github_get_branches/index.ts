@@ -4,10 +4,9 @@ import { createSign } from 'node:crypto';
 
 // --- Types ---
 
-interface CreateBranchPayload {
-  projectId: number;
-  itemId: number;
-  itemTitle: string;
+interface BranchData {
+  branchName: string;
+  branchSha: string;
 }
 
 interface GithubConfig {
@@ -17,15 +16,6 @@ interface GithubConfig {
 }
 
 // --- Helpers ---
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .slice(0, 50);
-}
 
 function createGitHubJWT(appId: string, privateKey: string): string {
   const now = Math.floor(Date.now() / 1000);
@@ -66,12 +56,12 @@ async function getInstallationToken(installationId: number, jwt: string): Promis
   return data.token as string;
 }
 
-async function getDefaultBranchSha(
+async function getBranches(
   org: string,
   repo: string,
   token: string,
-): Promise<{ sha: string; defaultBranch: string }> {
-  const repoRes = await fetch(`https://api.github.com/repos/${org}/${repo}`, {
+): Promise<BranchData[]> {
+  const repoRes = await fetch(`https://api.github.com/repos/${org}/${repo}/branches`, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
@@ -81,46 +71,10 @@ async function getDefaultBranchSha(
 
   if (!repoRes.ok) throw new Error('Failed to fetch repo info');
   const repoData = await repoRes.json();
-  const defaultBranch = repoData.default_branch as string;
-
-  const refRes = await fetch(
-    `https://api.github.com/repos/${org}/${repo}/git/ref/heads/${defaultBranch}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    },
-  );
-
-  if (!refRes.ok) throw new Error('Failed to fetch default branch ref');
-  const refData = await refRes.json();
-  return { sha: refData.object.sha as string, defaultBranch };
-}
-
-async function createBranch(
-  org: string,
-  repo: string,
-  branchName: string,
-  sha: string,
-  token: string,
-): Promise<void> {
-  const res = await fetch(`https://api.github.com/repos/${org}/${repo}/git/refs`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`Failed to create branch: ${err.message}`);
-  }
+  return repoData.map((r: {name: string; commit: {sha: string}}) => ({
+    branchName: r.name,
+    branchSha: r.commit.sha,
+  }));
 }
 
 // --- Handler ---
@@ -130,16 +84,16 @@ Deno.serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  let body: CreateBranchPayload;
+  let body: { projectId: number };
   try {
-    body = await req.json() as CreateBranchPayload;
+    body = await req.json() as { projectId: number };
   } catch {
     return new Response('Invalid JSON body', { status: 400 });
   }
 
-  const { projectId, itemId, itemTitle } = body;
-  if (!projectId || !itemId || !itemTitle) {
-    return new Response('Missing required fields: projectId, itemId, itemTitle', { status: 400 });
+  const { projectId } = body;
+  if (!projectId) {
+    return new Response('Missing required field: projectId', { status: 400 });
   }
 
   const supabase = createClient(
@@ -157,21 +111,6 @@ Deno.serve(async (req: Request) => {
     return new Response('GitHub not configured for this project', { status: 404 });
   }
 
-  const PREFIX_MAP: Record<string, string> = {
-    'Historia de Usuario':  'feat',
-    'Tarea':                'task',
-    'Bug':                  'fix',
-    'Épica':                'epic',
-    'Subtarea':             'subtask',
-  };
-  const { data: item} = await supabase
-    .from('backlog_item')
-    .select('tipo_backlog_item(nombre)')
-    .eq('id', itemId)
-    .single(); 
-
-  const typeName = item?.tipo_backlog_item?.nombre ?? '';
-  const prefix = PREFIX_MAP[typeName] ?? 'task';
   const appId      = Deno.env.get('GITHUB_APP_ID');
   const privateKey = Deno.env.get('GITHUB_APP_PRIVATE_KEY');
 
@@ -180,25 +119,12 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const jwt   = createGitHubJWT(appId, privateKey);
-    const token = await getInstallationToken(config.installation_id, jwt);
-
-    const { sha } = await getDefaultBranchSha(config.github_org, config.github_repo, token);
-
-    const branchName = `${prefix}/JIX-${itemId}-${slugify(itemTitle)}`;
-    await createBranch(config.github_org, config.github_repo, branchName, sha, token);
-
-    const { error: dbErr } = await supabase
-      .from('backlog_item_github')
-      .upsert(
-        { id_backlog_item: itemId, branch_name: branchName },
-        { onConflict: 'id_backlog_item' },
-      );
-
-    if (dbErr) throw new Error(`DB error: ${dbErr.message}`);
+    const jwt    = createGitHubJWT(appId, privateKey);
+    const token  = await getInstallationToken(config.installation_id, jwt);
+    const branches = await getBranches(config.github_org, config.github_repo, token);
 
     return new Response(
-      JSON.stringify({ branchName }),
+      JSON.stringify(branches),
       { headers: { 'Content-Type': 'application/json' } },
     );
   } catch (err: unknown) {
