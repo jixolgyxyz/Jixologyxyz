@@ -38,40 +38,6 @@ async function openCreateUserForm(page: Page) {
 const submitBtn = (page: Page) =>
   page.locator('.register-user-card__button--primary');
 
-/**
- * Fill every required field with valid data so the form is ready to submit.
- * Optionally overrides any field through the `overrides` map.
- */
-async function fillRequiredFields(
-  page: Page,
-  overrides: {
-    email?: string;
-    password?: string;
-    zona_horaria?: 'skip' | number;
-    rol?: 'skip' | number;
-  } = {},
-) {
-  const email    = overrides.email    ?? `e2e.${Date.now()}@example.com`;
-  const password = overrides.password ?? 'Test1234!';
-
-  await page.locator('#email').fill(email);
-  await page.locator('#password').fill(password);
-
-  if (overrides.zona_horaria !== 'skip') {
-    await page.locator('#id_zona_horaria').selectOption({
-      index: overrides.zona_horaria ?? 1,
-    });
-  }
-
-  if (overrides.rol !== 'skip') {
-    await page.locator('#id_rol_global').selectOption({
-      index: overrides.rol ?? 1,
-    });
-  }
-
-  return email;
-}
-
 // ---------------------------------------------------------------------------
 // Test suite — Registrarse en el sistema (Administrador)
 // ---------------------------------------------------------------------------

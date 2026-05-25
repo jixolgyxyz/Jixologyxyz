@@ -206,25 +206,24 @@ test.describe('Dashboard — Usuario (/dashboard-usuario)', () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // TC-07 | Alta | Entrar al modo de reorganización (drag handles visibles)
-  // Validar que al hacer click en "Reorganizar gráficas" el panel se cierre
-  // y aparezcan los controladores de arrastre en la grilla.
+  // Validar que al hacer click en "Reorganizar gráficas" (botón en el header)
+  // aparezcan los controladores de arrastre en la grilla.
   // ─────────────────────────────────────────────────────────────────────────
-  test('TC-07 — "Reorganizar gráficas" cierra el panel y activa los drag handles', async ({ page }) => {
-    // Steps 1-2 – Navigate and open the panel.
+  test('TC-07 — "Reorganizar gráficas" activa los drag handles desde el header', async ({ page }) => {
+    // Step 1 – Navigate.
     await goToDashboard(page, URLS.user);
-    await openCustomizePanel(page);
 
-    // Step 3 – Click "Reorganizar gráficas".
+    // Step 2 – Click "Reorganizar gráficas" directly from the header.
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
-
-    // Expected: the panel closes.
-    await expect(panel(page)).not.toBeVisible({ timeout: 5_000 });
 
     // Expected: drag handles appear on each grid card.
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
     // Expected: the grid wrapper has the "reorganizing" class.
     await expect(page.locator('[class*="reorganizing"]')).toBeVisible();
+
+    // Cleanup – exit reorganize mode.
+    await page.getByRole('button', { name: 'Salir de reorganización' }).click();
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -233,9 +232,8 @@ test.describe('Dashboard — Usuario (/dashboard-usuario)', () => {
   // a una nueva posición en la grilla.
   // ─────────────────────────────────────────────────────────────────────────
   test('TC-08 — arrastra una gráfica a una nueva posición en la grilla', async ({ page }) => {
-    // Steps 1-2 – Navigate and enter reorganize mode.
+    // Steps 1-2 – Navigate and enter reorganize mode via the header button.
     await goToDashboard(page, URLS.user);
-    await openCustomizePanel(page);
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
@@ -263,9 +261,8 @@ test.describe('Dashboard — Usuario (/dashboard-usuario)', () => {
   // usando el control de resize de react-grid-layout.
   // ─────────────────────────────────────────────────────────────────────────
   test('TC-09 — redimensiona una gráfica usando el controlador de resize', async ({ page }) => {
-    // Steps 1-2 – Navigate and enter reorganize mode.
+    // Steps 1-2 – Navigate and enter reorganize mode via the header button.
     await goToDashboard(page, URLS.user);
-    await openCustomizePanel(page);
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
@@ -295,22 +292,18 @@ test.describe('Dashboard — Usuario (/dashboard-usuario)', () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // TC-10 | Alta | Salir del modo de reorganización
-  // Validar que al re-abrir el panel y hacer click en "Salir de reorganización"
+  // Validar que al hacer click en "Salir de reorganización" (botón en el header)
   // los drag handles desaparezcan y la grilla vuelva a su estado normal.
   // ─────────────────────────────────────────────────────────────────────────
   test('TC-10 — sale del modo reorganización y los drag handles desaparecen', async ({ page }) => {
-    // Step 1 – Enter reorganize mode.
+    // Step 1 – Navigate and enter reorganize mode via the header button.
     await goToDashboard(page, URLS.user);
-    await openCustomizePanel(page);
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
-    // Step 2 – Re-open the panel; the button now reads "Salir de reorganización".
-    await openCustomizePanel(page);
+    // Step 2 – The header button now reads "Salir de reorganización"; click it.
     const exitBtn = page.getByRole('button', { name: 'Salir de reorganización' });
     await expect(exitBtn).toBeVisible({ timeout: 5_000 });
-
-    // Step 3 – Click it.
     await exitBtn.click();
 
     // Expected: drag handles are gone.
@@ -368,8 +361,7 @@ test.describe('Dashboard — Usuario (/dashboard-usuario)', () => {
     await expect(page.locator('h3').filter({ hasText: /^Ítems vencidos$/ })).toBeVisible({ timeout: 8_000 });
 
     // Step 3 – Check whether any overdue items are listed.
-    const overdueLink = page.locator('h3:text("Ítems vencidos") ~ * a[class*="overdueItemName"], h3:text("Ítems vencidos") + * a').first();
-    const anyVisible  = await page.locator('[class*="overdueList"] a').first().isVisible().catch(() => false);
+    const anyVisible = await page.locator('[class*="overdueList"] a').first().isVisible().catch(() => false);
 
     if (!anyVisible) {
       // Expected (empty state): positive message is shown instead.
@@ -504,13 +496,11 @@ test.describe('Dashboard — Proyectos (/dashboard-proyectos)', () => {
     const isPM = await page.getByRole('button', { name: 'Personalizar' }).isVisible({ timeout: 15_000 }).catch(() => false);
     if (!isPM) { test.skip(); return; }
 
-    // Enter reorganize mode
-    await openCustomizePanel(page);
+    // Enter reorganize mode via header button.
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
-    // Exit
-    await openCustomizePanel(page);
+    // Exit via header button.
     await page.getByRole('button', { name: 'Salir de reorganización' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).not.toBeVisible({ timeout: 5_000 });
   });
@@ -524,7 +514,7 @@ test.describe('Dashboard — Proyectos (/dashboard-proyectos)', () => {
     const isPM = await page.getByRole('button', { name: 'Personalizar' }).isVisible({ timeout: 15_000 }).catch(() => false);
     if (!isPM) { test.skip(); return; }
 
-    await openCustomizePanel(page);
+    // Enter reorganize mode via header button.
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
@@ -577,6 +567,7 @@ test.describe('Dashboard — Admin (/dashboard-admin)', () => {
     await expect(statsRow.getByText('Ítems vencidos',    { exact: true })).toBeVisible();
 
     // Expected: action buttons.
+    await expect(page.getByRole('button', { name: 'Reorganizar gráficas' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Personalizar' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Generar reporte', exact: true })).toBeVisible();
   });
@@ -641,20 +632,18 @@ test.describe('Dashboard — Admin (/dashboard-admin)', () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // TC-24 | Alta | Entrar y salir del modo reorganización (admin)
-  // Validar que "Reorganizar gráficas" active los drag handles y
-  // "Salir de reorganización" los desactive.
+  // Validar que "Reorganizar gráficas" (botón en el header) active los drag
+  // handles y "Salir de reorganización" los desactive.
   // ─────────────────────────────────────────────────────────────────────────
   test('TC-24 — entra y sale del modo reorganización en el dashboard admin', async ({ page }) => {
     // Step 1 – Navigate.
     await goToDashboard(page, URLS.admin);
 
-    // Step 2 – Enter reorganize mode.
-    await openCustomizePanel(page);
+    // Step 2 – Enter reorganize mode via the header button.
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
-    // Step 3 – Exit reorganize mode.
-    await openCustomizePanel(page);
+    // Step 3 – Exit reorganize mode via the header button.
     await page.getByRole('button', { name: 'Salir de reorganización' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).not.toBeVisible({ timeout: 5_000 });
   });
@@ -665,9 +654,8 @@ test.describe('Dashboard — Admin (/dashboard-admin)', () => {
   // a una posición diferente en la grilla.
   // ─────────────────────────────────────────────────────────────────────────
   test('TC-25 — arrastra una gráfica a una nueva posición en el admin', async ({ page }) => {
-    // Step 1 – Navigate and enter reorganize mode.
+    // Step 1 – Navigate and enter reorganize mode via the header button.
     await goToDashboard(page, URLS.admin);
-    await openCustomizePanel(page);
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
@@ -693,9 +681,8 @@ test.describe('Dashboard — Admin (/dashboard-admin)', () => {
   // usando el controlador de resize de la esquina inferior-derecha.
   // ─────────────────────────────────────────────────────────────────────────
   test('TC-26 — redimensiona una gráfica en el dashboard admin', async ({ page }) => {
-    // Step 1 – Navigate and enter reorganize mode.
+    // Step 1 – Navigate and enter reorganize mode via the header button.
     await goToDashboard(page, URLS.admin);
-    await openCustomizePanel(page);
     await page.getByRole('button', { name: 'Reorganizar gráficas' }).click();
     await expect(page.locator('[class*="dragHandle"]').first()).toBeVisible({ timeout: 8_000 });
 
