@@ -240,7 +240,7 @@ export default function RegisterUserPage() {
   const { users, loading: usersLoading, error: usersError, refreshUsers } =
     useAdminUsers(search, statusFilter);
 
-  const { values, loading, error, success, handleChange, submit } = useRegisterUser();
+  const { values, loading, error, success, handleChange, submit, resetForm } = useRegisterUser();
 
   const {
     roles,
@@ -437,7 +437,7 @@ export default function RegisterUserPage() {
 
       <FormPopUp
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => { setIsCreateModalOpen(false); resetForm(); }}
         eyebrow="Usuarios"
         title="Crear usuario"
         subtitle="Captura primero los datos obligatorios y completa el resto solo si lo necesitas."

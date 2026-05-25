@@ -466,7 +466,11 @@ export async function generateAndDownloadWeeklyReport(
   const baseName  = config.nombre?.trim() || (config.type === 'custom' ? 'Reporte_Personalizado' : 'Reporte_Semanal');
   const nombre    = `${baseName}_${dateStamp}`;
 
-  const reportText = await callGemini(buildPrompt(filteredData, dateLabel, metrics));
+  const prompt = buildPrompt(filteredData, dateLabel, metrics);
+  // TODO: remove before production — logs the full prompt so it can be reviewed
+  console.log('%c=== GEMINI PROMPT ===\n', 'font-weight:bold;color:#0a0838', prompt);
+
+  const reportText = await callGemini(prompt);
 
   const visibilidad = config.type === 'custom' ? (config.visibilidad ?? 'privado') : 'publico';
   const reportId = await saveReport(reportText, monday, userId, nombre, visibilidad);
