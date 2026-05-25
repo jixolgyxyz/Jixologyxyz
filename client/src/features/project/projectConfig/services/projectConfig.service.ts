@@ -547,7 +547,7 @@ export async function fetchGithubInstallationRepos(installationId: number): Prom
 export async function disconnectGithubProject(projectId: number): Promise<void> {
   const authHeader = await getAuthHeader();
   const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-project-disconnect`, {
-    method: 'DELETE',
+    method: 'POST',
     headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
     body: JSON.stringify({ projectId }),
   });
@@ -576,6 +576,17 @@ export async function updateGithubDefaultBranch(projectId: number, branch: strin
     .update({ default_branch: branch })
     .eq('id_proyecto', projectId);
   if (error) throw new Error(error.message);
+}
+
+export async function deleteGithubBranch(projectId: number, itemId: number): Promise<void>{
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-delete-branch`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify ({projectId, itemId}), 
+  });
+
+  if (!res.ok) throw new Error('Failed to delete branch')
 }
 
 export function buildFteData(

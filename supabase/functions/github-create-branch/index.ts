@@ -189,7 +189,7 @@ Deno.serve(async (req: Request) => {
     await createBranch(config.github_org, config.github_repo, branchName, sha, token);
 
     const { error: dbErr } = await supabase
-      .from('backlog_item_github')
+      .from('github_backlog_item')
       .upsert(
         { id_backlog_item: itemId, branch_name: branchName },
         { onConflict: 'id_backlog_item' },

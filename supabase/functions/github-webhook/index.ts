@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
 
   // --- Find backlog item by branch name ---
   const { data: githubRecord, error: findErr } = await supabase
-    .from('backlog_item_github')
+    .from('github_backlog_item')
     .select('id_backlog_item')
     .eq('branch_name', branchName)
     .single();
@@ -89,7 +89,7 @@ Deno.serve(async (req: Request) => {
   const prStatus = pull_request.merged ? 'merged' : 'closed';
 
   await supabase
-    .from('backlog_item_github')
+    .from('github_backlog_item')
     .update({
       pr_number: pull_request.number,
       pr_url:    pull_request.html_url,
