@@ -242,6 +242,27 @@
 
 .bubbleClearBtn:hover { color: var(--color-blueprint-navy); }
 
+.clearFiltersBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-clarity-gray-2);
+  background: transparent;
+  color: var(--color-mahindra-red);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.clearFiltersBtn:hover {
+  background: rgba(221, 0, 49, 0.06);
+  border-color: var(--color-mahindra-red);
+}
+
 .reportList {
   display: flex;
   flex-direction: column;

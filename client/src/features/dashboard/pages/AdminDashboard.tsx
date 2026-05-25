@@ -19,7 +19,7 @@ const AdminDashboard: FC = () => {
   const { open: showCustomizePanel, openPanel: openCustomizePanel, closePanel: closeCustomizePanel } = useDashboardPanel('admin');
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[] | null>(null);
   const [reorganizeMode, setReorganizeMode] = useState(false);
-  const { visible, available, toggle, isVisible, getLayoutItems, saveLayout, error: graphsError } = useVisibleGraphs('admin');
+  const { visible, available, toggle, isVisible, getLayoutItems, saveLayout, loading: graphsLoading, error: graphsError } = useVisibleGraphs('admin');
 
   const projectFilter = useMemo<Set<number> | undefined>(
     () => selectedProjectIds && selectedProjectIds.length > 0 ? new Set(selectedProjectIds) : undefined,
@@ -31,7 +31,7 @@ const AdminDashboard: FC = () => {
     [data, projectFilter],
   );
 
-  if (loading) {
+  if (loading || graphsLoading) {
     return (
       <div className={styles.page}>
         <div className={styles.center}>Cargando dashboard…</div>
@@ -60,6 +60,16 @@ const AdminDashboard: FC = () => {
             <p className={styles.subtitle}>Salud global de todos los proyectos</p>
           </div>
           <div className={styles.reportActions}>
+            <button
+              className={`${styles.reorganizeBtn} ${reorganizeMode ? styles.reorganizeBtnActive : ''}`}
+              onClick={() => setReorganizeMode(m => !m)}
+              aria-pressed={reorganizeMode}
+            >
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 3v14M3 10h14M7 6l3-3 3 3M7 14l3 3 3-3M6 7l-3 3 3 3M14 7l3 3-3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {reorganizeMode ? 'Salir de reorganización' : 'Reorganizar gráficas'}
+            </button>
             <button
               className={styles.customizeBtn}
               onClick={openCustomizePanel}
@@ -130,8 +140,6 @@ const AdminDashboard: FC = () => {
       <CustomizePanel
         open={showCustomizePanel}
         onClose={closeCustomizePanel}
-        reorganizeMode={reorganizeMode}
-        onToggleReorganize={() => { setReorganizeMode(m => !m); closeCustomizePanel(); }}
         available={available}
         isVisible={isVisible}
         toggle={toggle}

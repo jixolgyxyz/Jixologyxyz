@@ -69,6 +69,16 @@ const ProjectDashboard: FC = () => {
           </div>
           <div className={styles.headerActions}>
             <button
+              className={`${styles.reorganizeBtn} ${reorganizeMode ? styles.reorganizeBtnActive : ''}`}
+              onClick={() => setReorganizeMode(m => !m)}
+              aria-pressed={reorganizeMode}
+            >
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 3v14M3 10h14M7 6l3-3 3 3M7 14l3 3 3-3M6 7l-3 3 3 3M14 7l3 3-3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {reorganizeMode ? 'Salir de reorganización' : 'Reorganizar gráficas'}
+            </button>
+            <button
               className={styles.customizeBtn}
               onClick={openCustomizePanel}
               aria-label="Personalizar dashboard"
@@ -93,8 +103,6 @@ const ProjectDashboard: FC = () => {
       <CustomizePanel
         open={showCustomizePanel}
         onClose={closeCustomizePanel}
-        reorganizeMode={reorganizeMode}
-        onToggleReorganize={() => { setReorganizeMode(m => !m); closeCustomizePanel(); }}
         available={available}
         isVisible={isVisible}
         toggle={toggle}
