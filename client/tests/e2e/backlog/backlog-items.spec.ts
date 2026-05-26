@@ -28,10 +28,19 @@ async function openCreateForm(page: Page) {
 /** Fill the minimum required fields: name, status, and type. */
 async function fillRequiredFields(page: Page, nombre: string) {
   await page.locator('#nombre').fill(nombre);
+
+  // Status — StatusPillSelect (custom pill dropdown)
   await page.locator('[class*="pillTrigger"]').first().click();
   await page.locator('[class*="pillOption"]').first().waitFor({ timeout: 5_000 });
   await page.locator('[class*="pillOption"]').first().click();
-  await page.locator('select[name="id_tipo"]').selectOption({ index: 1 });
+
+  // Tipo — scroll into view BEFORE opening so Playwright doesn't auto-scroll
+  // after the popup is open (that scroll fires the Select's window capture listener
+  // and closes the popup before any option can be clicked).
+  const tipoTrigger = page.locator('button[aria-haspopup="listbox"]').filter({ hasText: /Seleccionar tipo/ });
+  await tipoTrigger.scrollIntoViewIfNeeded();
+  await tipoTrigger.click();
+  await page.locator('[role="listbox"] button[role="option"]').first().click({ timeout: 10_000 });
 }
 
 /**
@@ -151,15 +160,31 @@ test.describe('Backlog — Crear ítem', () => {
     // Step 5 – Add an optional description.
     await page.locator('textarea[name="descripcion"]').fill('Descripción de prueba automatizada.');
 
-    // Step 6 – Select a sprint (first non-empty option if available).
-    const sprintSelect = page.locator('select[name="id_sprint"]');
-    const sprintCount  = await sprintSelect.locator('option').count();
-    if (sprintCount > 1) await sprintSelect.selectOption({ index: 1 });
+    // Step 6 – Select a sprint — scroll into view first to prevent scroll-close.
+    const sprintTrigger = page.locator('button[aria-haspopup="listbox"]').filter({ hasText: /Sin sprint/ });
+    await sprintTrigger.scrollIntoViewIfNeeded();
+    await sprintTrigger.click();
+    const sprintPopup = page.locator('[role="listbox"]');
+    await sprintPopup.waitFor({ timeout: 5_000 });
+    const sprintOptions = sprintPopup.locator('button[role="option"]');
+    const sprintCount = await sprintOptions.count();
+    if (sprintCount > 0) await sprintOptions.first().click();
+    else await page.keyboard.press('Escape');
 
-    // Step 7 – Select a responsible user (first non-empty option if available).
-    const respSelect = page.locator('select[name="id_usuario_responsable"]');
-    const respCount  = await respSelect.locator('option').count();
-    if (respCount > 1) await respSelect.selectOption({ index: 1 });
+    // Step 7 – Select a responsible user — UserAvatarSelect also has a scroll-close
+    // handler, so scroll into view before opening.
+    // Use `button[class*="avatarTrigger"]` to avoid matching the inner span
+    // whose class contains "avatarTriggerPlaceholder" (also matches "avatarTrigger").
+    const respTrigger = page.locator('button[class*="avatarTrigger"]');
+    await respTrigger.scrollIntoViewIfNeeded();
+    await respTrigger.click();
+    const respDropdown = page.locator('[class*="avatarDropdown"]');
+    await respDropdown.waitFor({ timeout: 5_000 });
+    const respOptions = respDropdown.locator('[class*="avatarOption"]');
+    const respCount = await respOptions.count();
+    // Index 0 is "Sin responsable"; pick index 1 if a real user exists
+    if (respCount > 1) await respOptions.nth(1).click();
+    else await respOptions.first().click();
 
     // Step 8 – Set complexity to 3.
     const complexityBtns = page.locator('[class*="complexityBtn"]');
@@ -396,10 +421,18 @@ test.describe('Backlog — Editar ítem', () => {
     // Step 4 – Enter edit mode.
     await page.getByRole('button', { name: 'Editar', exact: true }).click();
 
-    // Step 5 – Open the priority dropdown (iconTrigger) and pick the first option.
-    await page.locator('[class*="iconTrigger"]').first().click();
-    await page.locator('[class*="iconOption"]').first().waitFor({ timeout: 5_000 });
-    await page.locator('[class*="iconOption"]').first().click();
+    // Step 5 – Open the priority Select and pick the first option.
+    // Target by label proximity instead of displayed value — the item opened by
+    // openFirstItemDetail may already have a priority, so "Sin prioridad" text
+    // isn't guaranteed. Find the detailRow whose label is "Prioridad" and get
+    // its Select trigger, which works regardless of the current priority value.
+    const prioRow = page.locator('[class*="detailRow"]').filter({
+      has: page.locator('span', { hasText: 'Prioridad' }),
+    });
+    const prioTrigger = prioRow.locator('button[aria-haspopup="listbox"]');
+    await prioTrigger.scrollIntoViewIfNeeded();
+    await prioTrigger.click();
+    await page.locator('[role="listbox"] button[role="option"]').first().click({ timeout: 5_000 });
 
     // Step 6 – Click "Guardar".
     await page.getByRole('button', { name: 'Guardar' }).click();
