@@ -21,7 +21,6 @@ export function useCalendarData(
   useEffect(() => {
     if (globalRole == null || userId == null) return;
 
-    setLoading(true);
     fetchCalendarData(globalRole, userId)
       .then(({ sprints: s, projects: p }) => {
         setSprints(s);

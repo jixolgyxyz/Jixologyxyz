@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import styles from './CalendarioPage.module.css';
 import { useUser } from '@/core/auth/userContext';
@@ -36,12 +36,13 @@ const CalendarioPage: React.FC = () => {
   const today = useMemo(() => new Date(), []);
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [visibleProjectIds, setVisibleProjectIds] = useState<Set<number>>(new Set());
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<number>>(new Set());
 
-  // Show all projects by default once they load
-  useEffect(() => {
-    setVisibleProjectIds(new Set(projects.map(p => p.id)));
-  }, [projects]);
+  // Derived: all projects are visible unless explicitly hidden
+  const visibleProjectIds = useMemo(
+    () => new Set(projects.filter(p => !hiddenProjectIds.has(p.id)).map(p => p.id)),
+    [projects, hiddenProjectIds],
+  );
 
   const projectColors = useMemo(() => {
     const map = new Map<number, string>();
@@ -58,23 +59,17 @@ const CalendarioPage: React.FC = () => {
   );
 
   const handleToggle = (projectId: number) => {
-    setVisibleProjectIds(prev => {
+    setHiddenProjectIds(prev => {
       const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
       return next;
     });
   };
 
   const handleToggleAll = (visible: boolean) => {
-    if (visible) {
-      setVisibleProjectIds(new Set(projects.map(p => p.id)));
-    } else {
-      setVisibleProjectIds(new Set());
-    }
+    if (visible) setHiddenProjectIds(new Set());
+    else setHiddenProjectIds(new Set(projects.map(p => p.id)));
   };
 
   const goToPrevMonth = () => {
@@ -126,7 +121,7 @@ const CalendarioPage: React.FC = () => {
               onClick={goToPrevMonth}
               aria-label="Mes anterior"
             >
-              <ChevronLeftIcon style={{ width: 18, height: 18, fill: '#ffffff' }} />
+              <ChevronLeftIcon width={18} height={18} />
             </button>
             <button
               type="button"
@@ -134,7 +129,7 @@ const CalendarioPage: React.FC = () => {
               onClick={goToNextMonth}
               aria-label="Mes siguiente"
             >
-              <ChevronRightIcon style={{ width: 18, height: 18, fill: '#ffffff' }} />
+              <ChevronRightIcon width={18} height={18} />
             </button>
             <h2 className={styles.monthTitle}>
               {MONTH_NAMES[currentMonth]} {currentYear}
