@@ -294,6 +294,27 @@ const ProjectBacklog: React.FC = () => {
             priority={toPriority(priorityRecord)}
             itemType={typeRecord?.nombre as BacklogItemType | undefined}
             responsibleUserId={item.id_usuario_responsable ?? undefined}
+            users={meta.users}
+            onAssigneeChange={async (userId) => {
+              try {
+                await updateBacklogItem(item.id, {
+                  nombre:                 item.nombre,
+                  descripcion:            item.descripcion,
+                  id_tipo:                item.id_tipo,
+                  id_estatus:             item.id_estatus,
+                  id_prioridad:           item.id_prioridad,
+                  id_sprint:              item.id_sprint,
+                  fecha_inicio:           item.fecha_inicio,
+                  fecha_vencimiento:      item.fecha_vencimiento,
+                  id_backlog_item_padre:  item.id_backlog_item_padre,
+                  id_usuario_responsable: userId,
+                  complejidad:            item.complejidad,
+                });
+                refreshAll();
+              } catch (err) {
+                console.error('Error actualizando responsable:', err);
+              }
+            }}
             isSuggestion={isSuggestion && isPM}
             hasChildren={filterType !== null && children.length > 0}
             isExpanded={isExpanded}
