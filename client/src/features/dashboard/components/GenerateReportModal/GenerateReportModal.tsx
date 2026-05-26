@@ -361,6 +361,15 @@ const GenerateReportModal: FC<Props> = ({ data, state, errorMsg, onGenerate, onC
                 onFromChange={setDateFrom}
                 onToChange={setDateTo}
               />
+              {(reportTypeVis !== null || reportVisFilter !== null || filterDateFrom || filterDateTo) && (
+                <button
+                  type="button"
+                  className={styles.clearFiltersBtn}
+                  onClick={() => { setTypeVis(null); setVisFilter(null); setDateFrom(''); setDateTo(''); }}
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
 
             {reportsLoading ? (

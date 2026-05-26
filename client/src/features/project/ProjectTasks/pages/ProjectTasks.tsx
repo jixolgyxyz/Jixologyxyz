@@ -30,6 +30,7 @@ const STATUS_COLORS: Record<number, { color: string; textColor: string }> = {
   2: { color: '#DBEAFE', textColor: '#1D4ED8' },
   3: { color: '#FEF3C7', textColor: '#D97706' },
   4: { color: '#D1FAE5', textColor: '#065F46' },
+  5: { color: '#FDE68A', textColor: '#92400E' }, // Pendiente
 };
 
 function UserAvatar({ userId, className }: { userId: number; className?: string }) {

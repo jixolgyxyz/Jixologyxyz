@@ -88,7 +88,23 @@ function UserAvatar({ userId }: { userId: number }) {
   );
 }
 
-type OpenDropdown = 'status' | 'priority' | 'menu' | null;
+// ── UserPickerOption — one row inside the assignee picker ─────────
+function UserPickerOption({ user, displayName }: { user: { id: number }; displayName: string }) {
+  const { avatarSvg } = useUserAvatarSvg(user.id);
+  return (
+    <>
+      <div className={styles.avatarCircle}>
+        {avatarSvg
+          ? <div className={styles.avatarSvg} dangerouslySetInnerHTML={{ __html: avatarSvg }} />
+          : <UserIcon width={14} height={14} />
+        }
+      </div>
+      <span className={styles.assigneePickerName}>{displayName}</span>
+    </>
+  );
+}
+
+type OpenDropdown = 'status' | 'priority' | 'menu' | 'assignee' | null;
 
 interface BacklogListItemProps {
   code: string;
@@ -98,6 +114,8 @@ interface BacklogListItemProps {
   priority?: Priority;
   itemType?: BacklogItemType;
   responsibleUserId?: number;
+  users?: { id: number; nombre: string | null; apellido: string | null; email: string }[];
+  onAssigneeChange?: (userId: number | null) => void;
   isSuggestion?: boolean;
   hasChildren?: boolean;
   isExpanded?: boolean;
@@ -119,13 +137,14 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
   priority = 'medium',
   itemType = 'Tarea',
   responsibleUserId,
+  users = [],
+  onAssigneeChange,
   isSuggestion = false,
   hasChildren = false,
   isExpanded = false,
   onToggle,
   onStatusChange,
   onPriorityChange,
-  onAssign,
   onViewDetails,
   onEdit,
   onDelete,
@@ -257,13 +276,59 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
         )}
       </div>
 
-      {/* Assignee */}
-      {responsibleUserId != null
-        ? <UserAvatar userId={responsibleUserId} />
-        : <button className={styles.iconBtn} onClick={onAssign} type="button" aria-label="Asignar">
-            <UserIcon width={16} height={16} />
-          </button>
-      }
+      {/* Assignee — click avatar (or empty icon) to open user picker */}
+      <div className={styles.assigneeWrapper}>
+        {responsibleUserId != null
+          ? <button
+              type="button"
+              className={`${styles.avatarBtn} ${open === 'assignee' ? styles.avatarBtnActive : ''}`}
+              onClick={() => setOpen(o => o === 'assignee' ? null : 'assignee')}
+              aria-label="Cambiar responsable"
+              aria-expanded={open === 'assignee'}
+            >
+              <UserAvatar userId={responsibleUserId} />
+            </button>
+          : <button
+              type="button"
+              className={`${styles.iconBtn} ${open === 'assignee' ? styles.iconBtnActive : ''}`}
+              onClick={() => setOpen(o => o === 'assignee' ? null : 'assignee')}
+              aria-label="Asignar responsable"
+              aria-expanded={open === 'assignee'}
+            >
+              <UserIcon width={16} height={16} />
+            </button>
+        }
+
+        {open === 'assignee' && (
+          <div className={styles.assigneePickerMenu} role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              className={`${styles.assigneePickerItem} ${responsibleUserId == null ? styles.assigneePickerItemActive : ''}`}
+              onClick={() => { onAssigneeChange?.(null); setOpen(null); }}
+            >
+              <div className={styles.avatarCircle} style={{ background: 'var(--color-clarity-gray-2)', color: 'var(--color-anchor-gray-1)' }}>
+                <UserIcon width={14} height={14} />
+              </div>
+              <span className={styles.assigneePickerName}>Sin responsable</span>
+            </button>
+            {users.map(u => {
+              const displayName = [u.nombre, u.apellido].filter(Boolean).join(' ') || u.email;
+              return (
+                <button
+                  key={u.id}
+                  type="button"
+                  role="menuitem"
+                  className={`${styles.assigneePickerItem} ${u.id === responsibleUserId ? styles.assigneePickerItemActive : ''}`}
+                  onClick={() => { onAssigneeChange?.(u.id); setOpen(null); }}
+                >
+                  <UserPickerOption user={u} displayName={displayName} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* More options — context menu */}
       <div className={styles.menuWrapper}>

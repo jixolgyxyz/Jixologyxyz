@@ -1,5 +1,7 @@
 import { supabase } from '@/core/supabase/supabase.client';
 
+// --- Zona Horaria ---
+
 export interface ZonaHorariaOption {
   id: number;
   nombre: string;
@@ -15,7 +17,7 @@ export async function fetchZonaHorarias(): Promise<ZonaHorariaOption[]> {
   return data ?? [];
 }
 
-// ── GitHub connection ─────────────────────────────────────────────
+// --- GitHub connection ---
 
 export interface GithubUsuarioRecord {
   github_username: string;
@@ -71,6 +73,8 @@ export async function buildGithubConnectUrl(): Promise<string> {
   const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID as string;
   return `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=read:user,read:org&state=${state}`;
 }
+
+// --- Profile edit ---
 
 export interface OwnProfileEditData {
   sobre_mi: string | null;

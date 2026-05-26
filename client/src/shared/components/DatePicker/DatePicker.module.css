@@ -1,0 +1,202 @@
+/* ── Wrapper ──────────────────────────────────────────────────────── */
+.wrapper {
+  position: relative;
+  width: 100%;
+  min-width: 0;       /* prevents flex collapse in sidebar/grid parents */
+  display: block;
+}
+
+/* ── Trigger button ───────────────────────────────────────────────── */
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  background: var(--color-white);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+  text-align: left;
+}
+
+.trigger:hover {
+  border-color: var(--color-anchor-gray-1);
+}
+
+.triggerOpen {
+  border-color: var(--color-blueprint-navy);
+}
+
+.calIcon {
+  color: var(--color-anchor-gray-1);
+  flex-shrink: 0;
+}
+
+/* flex: 1 + min-width: 0 ensures the label fills available space and
+   never collapses in flex/scroll container parents */
+.triggerValue,
+.triggerPlaceholder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.triggerValue {
+  color: var(--color-blueprint-navy);
+}
+
+.triggerPlaceholder {
+  color: var(--color-anchor-gray-1);
+  font-weight: 400;
+}
+
+/* ── Calendar popup ───────────────────────────────────────────────── */
+/* position + coords are set inline (fixed) so the popup escapes
+   any overflow:hidden/auto ancestor (modals, sidebars, scroll panes) */
+.popup {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(10, 8, 56, 0.14), 0 2px 8px rgba(10, 8, 56, 0.07);
+  padding: 0.75rem;
+  box-sizing: border-box;
+}
+
+/* ── Month / year header ──────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.navBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-anchor-gray-1);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.navBtn:hover {
+  background: var(--color-clarity-gray-1);
+  color: var(--color-blueprint-navy);
+}
+
+.monthLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  flex: 1;
+  text-align: center;
+}
+
+/* ── Weekday row ──────────────────────────────────────────────────── */
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 0.3rem;
+}
+
+.weekday {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-anchor-gray-1);
+  text-align: center;
+  padding: 2px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ── Day grid ─────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+  padding: 0;
+}
+
+.day:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+/* Today — ring only (not selected) */
+.dayToday {
+  border-color: var(--color-blueprint-navy);
+  font-weight: 600;
+}
+
+/* Selected — filled navy */
+.daySelected {
+  background: var(--color-blueprint-navy) !important;
+  color: var(--color-white) !important;
+  border-color: var(--color-blueprint-navy) !important;
+  font-weight: 600;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────── */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--color-clarity-gray-1);
+}
+
+.footerBtn {
+  flex: 1;
+  padding: 0.4rem 0;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-anchor-gray-1);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.footerBtn:hover {
+  background: var(--color-clarity-gray-1);
+  border-color: var(--color-anchor-gray-1);
+  color: var(--color-blueprint-navy);
+}

@@ -68,14 +68,27 @@ export async function fetchSprintsByProject(projectId: number): Promise<SprintRe
   return data ?? [];
 }
 
-export async function fetchProjectMembers(): Promise<UserRecord[]> {
-  const { data, error } = await supabase
+export async function fetchProjectMembers(projectId: number): Promise<UserRecord[]> {
+  // Step 1 — get the user IDs that belong to this project
+  const { data: memberships, error: membershipError } = await supabase
+    .from('usuario_proyecto')
+    .select('id_usuario')
+    .eq('id_proyecto', projectId);
+
+  if (membershipError) throw new Error(membershipError.message);
+
+  const memberIds = (memberships ?? []).map(r => r.id_usuario as number);
+  if (memberIds.length === 0) return [];
+
+  // Step 2 — fetch user details for those IDs
+  const { data: users, error: usersError } = await supabase
     .from('usuario')
     .select('id, nombre, apellido, email')
+    .in('id', memberIds)
     .order('nombre', { ascending: true });
 
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  if (usersError) throw new Error(usersError.message);
+  return users ?? [];
 }
 
 export async function createBacklogItem(payload: CreateBacklogItemPayload): Promise<BacklogItemRecord> {

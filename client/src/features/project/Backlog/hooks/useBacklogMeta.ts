@@ -30,7 +30,7 @@ export function useBacklogMeta(projectId: number | null | undefined) {
       fetchBacklogTypes(),
       fetchSprintsByProject(projectId),
       fetchBacklogItems(projectId),
-      fetchProjectMembers(),
+      fetchProjectMembers(projectId),
       fetchSugerencias(projectId),
       fetchProjectEtiquetas(projectId),
     ])

@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
 
   // --- Get branch name for the backlog item ---
   const { data: githubRecord, error: branchErr } = await supabase
-    .from('backlog_item_github')
+    .from('github_backlog_item')
     .select('branch_name')
     .eq('id_backlog_item', itemId)
     .single();
@@ -163,7 +163,7 @@ Deno.serve(async (req: Request) => {
 
     // --- Save PR info to DB ---
     const { error: dbErr } = await supabase
-      .from('backlog_item_github')
+      .from('github_backlog_item')
       .update({
         pr_number: pr.number,
         pr_url:    pr.html_url,

@@ -15,19 +15,34 @@ Deno.serve(async (req: Request) => {
   // code is received here for future user-level token exchange
   const _code = url.searchParams.get('code');
 
-  if (!installationId || !rawState) {
-    return new Response('Missing installation_id or state', { status: 400 });
+  const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:5173';
+
+  if (!installationId) {
+    return new Response('Missing installation_id', { status: 400 });
   }
 
-  let state: GithubCallbackState;
+  if (!rawState) {
+    return Response.redirect(`${appUrl}?github=installed`, 302);
+  }
+
+  let state: Partial<GithubCallbackState>;
   try {
-    state = JSON.parse(atob(rawState)) as GithubCallbackState;
+    state = JSON.parse(atob(rawState)) as Partial<GithubCallbackState>;
   } catch {
     return new Response('Invalid state parameter', { status: 400 });
   }
 
-  if (!state.projectId || !state.org || !state.repo) {
+  if (!state.projectId) {
     return new Response('Incomplete state', { status: 400 });
+  }
+
+  // Install-only flow (no org/repo yet) — close the tab and notify the opener
+  if (!state.org || !state.repo) {
+    const html = `<!DOCTYPE html><html><body><script>
+      if (window.opener) window.opener.postMessage({ type: 'github-installed' }, '*');
+      window.close();
+    </script></body></html>`;
+    return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
   const supabase = createClient(
@@ -51,7 +66,6 @@ Deno.serve(async (req: Request) => {
     return new Response(`DB error: ${error.message}`, { status: 500 });
   }
 
-  const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:5173';
   return Response.redirect(
     `${appUrl}/projects/${state.projectId}/config?github=connected`,
     302,

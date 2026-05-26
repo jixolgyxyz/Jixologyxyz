@@ -1,0 +1,232 @@
+/* ── Wrapper ──────────────────────────────────────────────────────── */
+.wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* ── Trigger ──────────────────────────────────────────────────────── */
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  background: var(--color-white);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+  text-align: left;
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: var(--color-anchor-gray-1);
+}
+
+.triggerOpen {
+  border-color: var(--color-blueprint-navy);
+}
+
+.triggerError {
+  border-color: var(--color-mahindra-red) !important;
+}
+
+.triggerDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Small variant — tighter padding, smaller text */
+.triggerSmall {
+  font-size: 0.78rem;
+  padding: 0.4rem 0.65rem;
+}
+
+/* ── Trigger internals ────────────────────────────────────────────── */
+.triggerIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.triggerLabel {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.triggerPlaceholder {
+  color: var(--color-anchor-gray-1);
+  font-weight: 400;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-anchor-gray-1);
+  margin-left: auto;
+  transition: transform 0.18s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ── Popup ────────────────────────────────────────────────────────── */
+/* position + width are set inline (fixed) to escape overflow ancestors */
+.popup {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(10, 8, 56, 0.12), 0 2px 8px rgba(10, 8, 56, 0.06);
+  box-sizing: border-box;
+  overflow: hidden; /* clip children; scroll is on .optionList */
+}
+
+.popupSmall { min-width: 240px; }
+
+/* ── Search row (searchable mode) ────────────────────────────────── */
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 6px;
+  border-bottom: 1px solid var(--color-clarity-gray-1);
+  flex-shrink: 0;
+}
+
+.searchBox {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1.5px solid var(--color-blueprint-navy);
+  border-radius: 999px;
+  background: var(--color-white);
+  min-width: 0;
+}
+
+.searchIcon {
+  color: var(--color-blueprint-navy);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: var(--color-blueprint-navy);
+  min-width: 0;
+}
+
+.searchInput::placeholder {
+  color: var(--color-anchor-gray-1);
+}
+
+.ningunoBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-anchor-gray-1);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease;
+}
+
+.ningunoBtn:hover {
+  color: var(--color-blueprint-navy);
+}
+
+/* ── Option list (scrollable area) ───────────────────────────────── */
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-clarity-gray-2) transparent;
+}
+
+.optionList::-webkit-scrollbar        { width: 4px; }
+.optionList::-webkit-scrollbar-track  { background: transparent; }
+.optionList::-webkit-scrollbar-thumb  { background: var(--color-clarity-gray-2); border-radius: 4px; }
+
+/* ── Option ───────────────────────────────────────────────────────── */
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.option:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.optionActive {
+  background: var(--color-clarity-gray-2);
+}
+
+.optionIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.optionLabelEmpty {
+  color: var(--color-anchor-gray-1);
+  font-weight: 400;
+}
+
+/* Truncate long label text in small mode */
+.optionLabelSmall {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Small variant option */
+.optionSmall {
+  font-size: 0.78rem;
+  padding: 5px 8px;
+}
+
+/* ── No results ───────────────────────────────────────────────────── */
+.noResults {
+  padding: 10px;
+  font-size: 0.82rem;
+  color: var(--color-anchor-gray-1);
+  text-align: center;
+}
