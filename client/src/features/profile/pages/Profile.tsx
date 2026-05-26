@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import './Profile.css';
+import { CircleStackIcon } from '@heroicons/react/24/outline';
 
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import UserCard from '../components/UserCard';
@@ -588,15 +589,20 @@ function ProfileContent({
           )}
   
           <div className="upperBar">
-            <ButtonComponent
-              label="Inventario"
-              onClick={() => setRightPanelMode('inventory')}
-            />
-  
-            <ButtonComponent
-              label="Tienda"
-              onClick={() => setRightPanelMode('shop')}
-            />
+            <div className="upperBarButtons">
+              <ButtonComponent
+                label="Tienda"
+                onClick={() => setRightPanelMode('shop')}
+              />
+
+              <ButtonComponent
+                label="Inventario"
+                onClick={() => setRightPanelMode('inventory')}
+              />
+            </div>
+            <div className="upperBarCoins">
+              <label>Monedas: 20 <CircleStackIcon style={{ width: '20px', height: '20px', transform: 'translateY(4px)' }} /></label>
+            </div>
           </div>
   
           {rightPanelMode === 'inventory' ? (

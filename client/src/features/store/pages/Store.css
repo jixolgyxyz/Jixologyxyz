@@ -161,6 +161,7 @@
   padding-bottom: 1rem;
 
   scroll-behavior: smooth;
+  scrollbar-width: 500px;
 }
 
 .shop-horizontal-scroll::-webkit-scrollbar {
@@ -175,4 +176,22 @@
 .shop-item {
   min-width: 320px;
   flex-shrink: 0;
+}
+
+.shopButtonLabel {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shopButtonPrice {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shopButtonPrice svg {
+  width: 16px;
+  height: 16px;
 }
