@@ -55,6 +55,12 @@ export function Select({
   const triggerRef  = useRef<HTMLButtonElement>(null);
   const searchRef   = useRef<HTMLInputElement>(null);
 
+  // Close helper — resets query so it's never set inside an effect
+  function close() {
+    setOpen(false);
+    setQuery('');
+  }
+
   // Close on outside click
   useEffect(() => {
     if (!open) return;
@@ -64,7 +70,6 @@ export function Select({
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Close when a scroll happens OUTSIDE this component (e.g. page or modal body)
@@ -81,7 +86,6 @@ export function Select({
       window.removeEventListener('scroll', handler, true);
       window.removeEventListener('resize', handler);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Focus search input when popup opens — no setState here
@@ -90,12 +94,6 @@ export function Select({
       setTimeout(() => searchRef.current?.focus(), 30);
     }
   }, [open, searchable]);
-
-  // Close helper — resets query so it's never set inside an effect
-  function close() {
-    setOpen(false);
-    setQuery('');
-  }
 
   function toggle() {
     if (disabled) return;

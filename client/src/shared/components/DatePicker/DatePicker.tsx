@@ -58,12 +58,6 @@ export function DatePicker({
   const ref        = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // Sync calendar view when external value changes
-  useEffect(() => {
-    const d = parseDate(value);
-    if (d) { setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); }
-  }, [value]);
-
   // Close on outside click
   useEffect(() => {
     if (!open) return;
@@ -92,6 +86,10 @@ export function DatePicker({
   // Compute fixed position at open time
   function toggleOpen() {
     if (open) { setOpen(false); return; }
+
+    // Sync calendar view to the selected date each time the picker opens
+    const d = parseDate(value);
+    if (d) { setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); }
 
     const POPUP_H = 320;
     const POPUP_W = 268;
