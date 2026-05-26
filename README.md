@@ -86,13 +86,51 @@ Supabase configuration, database migrations, and project resources.
 
 
 ## #######################################################################################################################################
-## What to run after db reset --local
+## Supabase — Local Database
 
--- cd supabase
+### Full reset (runs all migrations from scratch)
 
--- npm run begin-project
+Stops Supabase, wipes the DB, re-runs every migration, and seeds users + data.
+Run this after a fresh clone or when you need a completely clean state.
 
-(properly stop the DB Supabase before)
+```bash
+cd supabase
+npm run begin-project
+```
+
+> Stop Supabase before running if it is already up.
+
+---
+
+### Apply only new (pending) migrations
+
+Runs migrations that have **not yet been applied** — no data loss, no reset.
+Use this after pulling changes that include new migration files.
+
+```bash
+cd supabase
+npx supabase migration up --local
+```
+
+---
+
+### Re-run a specific migration that already ran
+
+Remove its tracking record so the CLI treats it as pending, then apply it.
+
+```bash
+# 1. Connect to the local DB
+psql postgresql://postgres:postgres@localhost:54322/postgres
+
+# 2. Delete the migration record (use the timestamp prefix of the file, without .sql)
+DELETE FROM supabase_migrations.schema_migrations
+WHERE version = '20260522191821';
+\q
+
+# 3. Re-apply
+cd supabase
+npx supabase migration up --local
+```
 
 
 
