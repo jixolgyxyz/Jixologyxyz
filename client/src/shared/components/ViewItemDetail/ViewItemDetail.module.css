@@ -487,6 +487,108 @@
 .editSelect:focus,
 .editInput:focus { border-color: var(--color-blueprint-navy); }
 
+/* ── UserSelect custom dropdown ──────────────────────────────────── */
+.userSelect {
+  position: relative;
+  width: 100%;
+}
+
+.userSelectTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 6px;
+  background: var(--color-white);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.userSelectTrigger:focus,
+.userSelectTrigger:hover {
+  border-color: var(--color-blueprint-navy);
+  outline: none;
+}
+
+.userSelectValue {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.userSelectPlaceholder {
+  color: var(--color-anchor-gray-1);
+  font-size: 0.8rem;
+}
+
+.userSelectChevron {
+  flex-shrink: 0;
+  color: var(--color-anchor-gray-1);
+  transition: transform 0.15s ease;
+}
+
+.userSelectChevronOpen {
+  flex-shrink: 0;
+  color: var(--color-anchor-gray-1);
+  transform: rotate(180deg);
+  transition: transform 0.15s ease;
+}
+
+.userSelectMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(10, 8, 56, 0.1);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.userSelectItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.userSelectItem:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.userSelectItemActive {
+  background: color-mix(in srgb, var(--color-blueprint-navy) 8%, transparent);
+  font-weight: 600;
+}
+
 /* ── Inline select dropdowns ─────────────────────────────────────── */
 .inlineSelect {
   position: relative;
