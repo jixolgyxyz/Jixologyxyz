@@ -131,13 +131,7 @@ function ProfileContent({
     addingItem,
   } = useUserAvatar(userId, catalog, allElements, atributos);
 
-  const {
-    features,
-    mainAvatarSvg,
-    handleSelectVariant,
-    handleSelectColor,
-    handleSelectType,
-  } = useAvatarFeatures(
+  const avatarFeatures = useAvatarFeatures(
     filteredCatalog ?? {
       styleId: 1,
       styleName: '',
@@ -146,6 +140,18 @@ function ProfileContent({
     },
     initialFeatures,
   );
+  
+  const {
+    features,
+    mainAvatarSvg,
+    handleSelectVariant,
+    handleSelectColor,
+    handleSelectType,
+  } = avatarFeatures;
+
+  useEffect(() => {
+    console.log('filteredCatalog updated', filteredCatalog);
+  }, [filteredCatalog]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [githubData, setGithubData]       = useState<GithubUsuarioRecord | null>(null);
@@ -199,6 +205,9 @@ function ProfileContent({
   const isSelfEdit = editScope === 'self';
   const isFullEdit = editScope === 'full';
   const canUseFormEdit = isSelfEdit || isFullEdit;
+
+  //AvatarKey (Refresh)
+  const [shopKey, setShopKey] = useState(0);
 
   const {
     values: adminValues,
@@ -428,14 +437,17 @@ function ProfileContent({
           }}
         >
           <div className="lootbox-modal">
-            <AvatarLootBox
-              unownedItems={unownedItems}
-              atributos={atributos}
-              baseFeatures={features}
-              onOpen={addRandomItem}
-              onClose={() => setShowLootbox(false)}
-              disabled={addingItem}
-            />
+          <AvatarLootBox
+            unownedItems={unownedItems}
+            atributos={atributos}
+            baseFeatures={features}
+            onOpen={async (item) => {
+              await addRandomItem(item);
+              setShopKey(prev => prev + 1);
+            }}
+            onClose={() => setShowLootbox(false)}
+            disabled={addingItem}
+          />
           </div>
         </div>
       )}
@@ -589,6 +601,7 @@ function ProfileContent({
   
           {rightPanelMode === 'inventory' ? (
             <AvatarInventorySection
+              key={shopKey}
               showInventory={showInventory}
               filteredCatalog={filteredCatalog}
               features={features}
@@ -601,7 +614,7 @@ function ProfileContent({
               addingItem={addingItem}
             />
           ) : (
-            <AvatarShop />
+            <AvatarShop key={shopKey}/>
           )}
         </div>
       </div>
