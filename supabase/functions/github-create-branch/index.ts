@@ -8,6 +8,7 @@ interface CreateBranchPayload {
   projectId: number;
   itemId: number;
   itemTitle: string;
+  branchName?: string;
 }
 
 interface GithubConfig {
@@ -119,6 +120,9 @@ async function createBranch(
 
   if (!res.ok) {
     const err = await res.json();
+    if (res.status === 422 && (err.message as string)?.includes('Reference already exists')) {
+      return;
+    }
     throw new Error(`Failed to create branch: ${err.message}`);
   }
 }
@@ -137,7 +141,7 @@ Deno.serve(async (req: Request) => {
     return new Response('Invalid JSON body', { status: 400 });
   }
 
-  const { projectId, itemId, itemTitle } = body;
+  const { projectId, itemId, itemTitle, branchName: customBranchName } = body;
   if (!projectId || !itemId || !itemTitle) {
     return new Response('Missing required fields: projectId, itemId, itemTitle', { status: 400 });
   }
@@ -157,6 +161,27 @@ Deno.serve(async (req: Request) => {
     return new Response('GitHub not configured for this project', { status: 404 });
   }
 
+  let resolvedBranchName: string;
+  if (customBranchName) {
+    resolvedBranchName = customBranchName;
+  } else {
+    const PREFIX_MAP: Record<string, string> = {
+      'Historia de Usuario': 'feat',
+      'Tarea':               'task',
+      'Bug':                 'fix',
+      'Épica':               'epic',
+      'Subtarea':            'subtask',
+    };
+    const { data: item } = await supabase
+      .from('backlog_item')
+      .select('tipo_backlog_item(nombre)')
+      .eq('id', itemId)
+      .single();
+    const typeName = item?.tipo_backlog_item?.nombre ?? '';
+    const prefix   = PREFIX_MAP[typeName] ?? 'task';
+    resolvedBranchName = `${prefix}/JIX-${itemId}-${slugify(itemTitle)}`;
+  }
+
   const appId      = Deno.env.get('GITHUB_APP_ID');
   const privateKey = Deno.env.get('GITHUB_APP_PRIVATE_KEY');
 
@@ -170,20 +195,19 @@ Deno.serve(async (req: Request) => {
 
     const { sha } = await getDefaultBranchSha(config.github_org, config.github_repo, token);
 
-    const branchName = `feature/JIX-${itemId}-${slugify(itemTitle)}`;
-    await createBranch(config.github_org, config.github_repo, branchName, sha, token);
+    await createBranch(config.github_org, config.github_repo, resolvedBranchName, sha, token);
 
     const { error: dbErr } = await supabase
-      .from('backlog_item_github')
+      .from('github_backlog_item')
       .upsert(
-        { id_backlog_item: itemId, branch_name: branchName },
+        { id_backlog_item: itemId, branch_name: resolvedBranchName },
         { onConflict: 'id_backlog_item' },
       );
 
     if (dbErr) throw new Error(`DB error: ${dbErr.message}`);
 
     return new Response(
-      JSON.stringify({ branchName }),
+      JSON.stringify({ branchName: resolvedBranchName }),
       { headers: { 'Content-Type': 'application/json' } },
     );
   } catch (err: unknown) {
