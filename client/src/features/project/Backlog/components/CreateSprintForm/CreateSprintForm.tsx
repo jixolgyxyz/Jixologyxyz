@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import FormPopUp from '@/shared/components/FormPopUp';
 import styles from './CreateSprintForm.module.css';
 import { useCreateSprint } from '../../hooks/useCreateSprint';
@@ -32,17 +32,14 @@ interface SprintFormState {
   fecha_final: string;
 }
 
-const SPRINT_DEFAULT_STATUS = 1;
+const EMPTY_FORM: SprintFormState = {
+  nombre: '',
+  objetivo: '',
+  fecha_inicio: '',
+  fecha_final: '',
+};
 
-function initialForm(sprint: SprintRecord | undefined): SprintFormState {
-  if (!sprint) return { nombre: '', objetivo: '', fecha_inicio: '', fecha_final: '' };
-  return {
-    nombre:       sprint.nombre,
-    objetivo:     sprint.objetivo ?? '',
-    fecha_inicio: toFormDate(sprint.fecha_inicio),
-    fecha_final:  toFormDate(sprint.fecha_final),
-  };
-}
+const SPRINT_DEFAULT_STATUS = 1;
 
 const CreateSprintForm: React.FC<CreateSprintFormProps> = ({
   projectId, userId, isOpen, onClose, onCreated, sprintToEdit, existingSprints = [],
@@ -53,16 +50,36 @@ const CreateSprintForm: React.FC<CreateSprintFormProps> = ({
   const submitting = creating || updating;
   const hookError  = createError ?? updateError;
 
-  const [form, setForm] = useState<SprintFormState>(() => initialForm(sprintToEdit));
+  const [form, setForm] = useState<SprintFormState>(EMPTY_FORM);
   const [nombreTouched, setNombreTouched] = useState(false);
+  const [nombreError,   setNombreError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && sprintToEdit) {
+        setForm({
+          nombre:       sprintToEdit.nombre,
+          objetivo:     sprintToEdit.objetivo ?? '',
+          fecha_inicio: toFormDate(sprintToEdit.fecha_inicio),
+          fecha_final:  toFormDate(sprintToEdit.fecha_final),
+        });
+      } else {
+        setForm(EMPTY_FORM);
+      }
+      setNombreTouched(false);
+      setNombreError(null);
+    }
+  }, [isOpen, isEditMode, sprintToEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
+    if (name === 'nombre') setNombreError(null);
   };
 
   const handleClose = () => {
     setNombreTouched(false);
+    setNombreError(null);
     onClose();
   };
 
@@ -80,7 +97,8 @@ const CreateSprintForm: React.FC<CreateSprintFormProps> = ({
     e.preventDefault();
     setNombreTouched(true);
 
-    if (validateNombre(form.nombre) !== null) return;
+    const nameErr = validateNombre(form.nombre);
+    if (nameErr) { setNombreError(nameErr); return; }
     if (!form.fecha_inicio || !form.fecha_final) return;
 
     try {

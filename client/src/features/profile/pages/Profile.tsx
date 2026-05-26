@@ -15,7 +15,16 @@ import { useAvatarCatalog } from '../hooks/useAvatarCatalog';
 import { useAvatarFeatures } from '../hooks/useAvatarFeatures';
 import { useUserAvatar } from '../hooks/useUserAvatar';
 import { useUserProfile } from '@/features/user/services/user.service';
-import { getOwnProfileEditService, updateOwnProfileService, fetchZonaHorarias, type ZonaHorariaOption, fetchOwnGithubConnection, buildGithubConnectUrl, disconnectGithub, type GithubUsuarioRecord } from '@/features/profile/services/profileEdit.service';
+import {
+  getOwnProfileEditService,
+  updateOwnProfileService,
+  fetchZonaHorarias,
+  fetchOwnGithubConnection,
+  buildGithubConnectUrl,
+  disconnectGithub,
+  type ZonaHorariaOption,
+  type GithubUsuarioRecord,
+} from '@/features/profile/services/profileEdit.service';
 import { useUser } from '@/core/auth/userContext';
 import { useAdminUserEdit } from '@/features/admin/hooks/useAdminUserEdit';
 
