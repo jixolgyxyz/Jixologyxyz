@@ -1,0 +1,58 @@
+.wrapper {
+  height: 20px;
+  margin: 2px 0;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  overflow: hidden;
+  cursor: default;
+  transition: filter 0.15s;
+}
+
+.wrapper:hover {
+  filter: brightness(0.9);
+}
+
+/* ── Rounded / flat ends ─────────────────────────────────── */
+
+.roundedLeft {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+  margin-left: 3px;
+}
+
+.flatLeft {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+  margin-left: 0;
+}
+
+.roundedRight {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+  margin-right: 3px;
+}
+
+.flatRight {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+  margin-right: 0;
+}
+
+/* ── Label ───────────────────────────────────────────────── */
+
+.label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.projectLabel {
+  font-weight: 400;
+  opacity: 0.85;
+}

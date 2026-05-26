@@ -4,7 +4,7 @@
     --border: #e0e0e0;
     --accent: #d32f2f;
   }
-  
+
   /* HEADER BASE */
   .header {
     position: fixed;
@@ -18,20 +18,20 @@
     align-items: center;
     z-index: 100;
   }
-  
+
   /* CONTENIDO */
   .left {
     display: flex;
     align-items: center;
     padding-left: 16px;
   }
-  
+
   /* LOGO */
   .logo {
     height: 32px;
     object-fit: contain;
   }
-  
+
   /* TEXTO */
   .title {
     margin-left: 24px;

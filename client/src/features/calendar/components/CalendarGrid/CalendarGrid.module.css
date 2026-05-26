@@ -1,0 +1,97 @@
+.grid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-clarity-gray-2, #e0e0e0);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-white, #ffffff);
+}
+
+/* ── Day-of-week header row ─────────────────────────────── */
+
+.dayHeaders {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--color-blueprint-navy, #0A0838);
+  border-bottom: none;
+}
+
+.dayHeader {
+  padding: 9px 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ── Week section ──────────────────────────────────────────── */
+
+.weekSection {
+  flex: 1;
+  border-bottom: 1px solid var(--color-clarity-gray-2, #e0e0e0);
+}
+
+.weekSection:last-child {
+  border-bottom: none;
+}
+
+/* ── Day cells row ─────────────────────────────────────────── */
+
+.dayCellsRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.dayCell {
+  position: relative;
+  border-right: 1px solid var(--color-clarity-gray-2, #e0e0e0);
+  padding: 6px 8px 4px;
+  min-height: 36px;
+}
+
+.dayCell:last-child {
+  border-right: none;
+}
+
+.dayNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-blueprint-navy, #1a1a2e);
+  border-radius: 50%;
+}
+
+.today {
+  background-color: #d32f2f;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.otherMonth .dayNumber {
+  color: var(--color-anchor-gray-1, #c0c0c0);
+}
+
+.overflow {
+  position: absolute;
+  bottom: 4px;
+  left: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-anchor-gray-2, #686a76);
+  cursor: default;
+}
+
+/* ── Sprint bars area ──────────────────────────────────────── */
+
+.barsArea {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 2px 0 4px;
+}
