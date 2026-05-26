@@ -19,6 +19,7 @@
     var(--color-clarity-gray-2) 50%,
     var(--color-clarity-gray-1) 100%
   );
+  align-items: flex-start;
 }
 
 /* ── Right column ───────────────────────────────────────────────── */

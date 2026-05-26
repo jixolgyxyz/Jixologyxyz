@@ -142,15 +142,18 @@ const AvatarLootBox: React.FC<Props> = ({
 
     const randomIndex = Math.floor(Math.random() * unownedItems.length);
     const wonItem = unownedItems[randomIndex];
+  
+    const items = buildStrip(unownedItems, wonItem);
+    
+    setStrip(items.map(elem => ({ elem, svg: elemToSvg(elem) })));
+    setWinner(wonItem);
+    
     await onOpen(wonItem);
+    
     if (!wonItem) {
       setPhase('idle');
       return;
     }
-
-    const items = buildStrip(unownedItems, wonItem);
-    setStrip(items.map(elem => ({ elem, svg: elemToSvg(elem) })));
-    setWinner(wonItem);
 
     // Animate currentIndex from IDLE_IDX → WIN_IDX using rAF
     const startIdx = IDLE_IDX;

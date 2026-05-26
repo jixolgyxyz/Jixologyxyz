@@ -248,77 +248,44 @@ const ShopPage: React.FC = () => {
         </div>
 
         <div className="shop-content">
-          <div className="shop-category">
-            <h2 className="shop-subtitle">
-              Estilos de Avatar
-            </h2>
-
-            <div className="shop-grid">
-              {styleItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="shop-item"
-                >
-                  <div className="shop-item-image">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      style={{
-                        height: item.imageHeight,
-                        transform: 'translateY(-0.7rem)',
-                      }}
-                    />
-                  </div>
-
-                  <div className="shop-item-info">
-                    <h3>{item.title}</h3>
-
-                    <p>{item.description}</p>
-
-                    <ButtonComponent
-                      label="Comprar" //COFRES DE ESTILOS, NO FILTRAR
-                      onClick={() => { setShowLootbox(true); setPopup(null); }}
-                      />
-                  </div>
+          <div className="shop-horizontal-scroll">
+            {[...styleItems, ...typeItems].map((item) => (
+              <div
+                key={item.id}
+                className="shop-item"
+              >
+                <div className="shop-item-image">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    style={{
+                      height: item.imageHeight,
+                      transform: 'translateY(-0.7rem)',
+                    }}
+                  />
                 </div>
-              ))}
-            </div>
-          </div>
-          <div className="shop-category">
-            <h2 className="shop-subtitle">
-              Elementos Específicos
-            </h2>
 
-            <div className="shop-grid-below">
-              {typeItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="shop-item"
-                >
-                  <div className="shop-item-image">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      style={{
-                        height: item.imageHeight,
-                        transform: 'translateY(-0.7rem)',
-                      }}
-                    />
-                  </div>
+                <div className="shop-item-info">
+                  <h3>{item.title}</h3>
 
-                  <div className="shop-item-info">
-                    <h3>{item.title}</h3>
+                  <p>{item.description}</p>
 
-                    <p>{item.description}</p>
+                  <ButtonComponent
+                    label="Comprar"
+                    onClick={() => {
+                      if (item.category === 'types') {
+                        setLootboxCategory(item.subcategory ?? null);
+                      } else {
+                        setLootboxCategory(null);
+                      }
 
-                    <ButtonComponent
-                      label="Comprar"
-                      onClick={() => { setLootboxCategory(item.subcategory ?? null); setShowLootbox(true); setPopup(null); }}
-                      />
-                  </div>
+                      setShowLootbox(true);
+                      setPopup(null);
+                    }}
+                  />
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

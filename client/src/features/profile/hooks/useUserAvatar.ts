@@ -78,26 +78,33 @@ export function useUserAvatar(
     try {
       await addElementToInventory(userId, item.id);
   
-      const newOwnedIds = new Set([...ownedIds, item.id]);
+      const updated = new Set([...ownedIds, item.id]);
   
-      setOwnedIds(newOwnedIds);
+      setOwnedIds(updated);
   
       if (catalog) {
-        setFilteredCatalog(
-          filterCatalogByInventory(
-            catalog,
-            newOwnedIds,
-            allElements,
-            atributos
-          )
+        const updatedCatalog = filterCatalogByInventory(
+          catalog,
+          updated,
+          allElements,
+          atributos
         );
+  
+        console.log(
+          'UPDATED FEATURES LENGTH:',
+          updatedCatalog.features.length
+        );
+  
+        setFilteredCatalog(updatedCatalog);
       }
+  
+      console.log('updated owned ids:', [...updated]);
   
     } finally {
       setAddingItem(false);
     }
   
-  }, [userId, ownedIds, catalog, allElements, atributos]);
+  }, [userId, catalog, allElements, atributos, ownedIds]);
 
   const unownedItems = useMemo(
     () => allElements.filter(e => !ownedIds.has(e.id)),

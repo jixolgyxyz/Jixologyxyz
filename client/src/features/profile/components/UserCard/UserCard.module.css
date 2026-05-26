@@ -13,7 +13,9 @@
     0 2px 8px rgba(10, 8, 56, 0.04),
     0 12px 40px rgba(10, 8, 56, 0.06);
   position: relative;
+
   overflow: hidden;
+  min-height: 35rem;
 }
 
 .profileCard::before {
