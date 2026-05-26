@@ -58,7 +58,6 @@ const ProjectConfigPage: React.FC = () => {
   const [confirmDisconnectGithub, setConfirmDisconnectGithub] = useState(false);
 
   const [editingBranch, setEditingBranch] = useState(false);
-  const [branchDraft, setBranchDraft] = useState('');
   const [branchLoading, setBranchLoading] = useState(true);
   const [branchData, setBranchData] = useState<BranchData[]>([]);
   const [branchSaving, setBranchSaving] = useState(false);
@@ -500,7 +499,7 @@ const ProjectConfigPage: React.FC = () => {
                         <button
                           type="button"
                           className={styles.githubBranchIconBtn}
-                          onClick={() => { setBranchDraft(githubConfig.default_branch); setEditingBranch(true); }}
+                          onClick={() => setEditingBranch(true)}
                           aria-label="Editar rama base"
                         >
                           <PencilIcon width={12} height={12} />

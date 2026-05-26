@@ -13,10 +13,11 @@ import {
   MinusIcon,
   PencilIcon,
   CheckIcon,
+  ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
 import { updateBacklogItem } from '@/features/project/Backlog/services/backlog.service';
-import { fetchBacklogItemGithub, fetchGithubConfig, createGithubPR, type BacklogItemGithubRecord, type GithubConfigRecord } from '@/features/project/projectConfig/services/projectConfig.service';
+import { fetchBacklogItemGithub, fetchGithubConfig, createGithubBranch, createGithubPR, deleteGithubBranch, type BacklogItemGithubRecord, type GithubConfigRecord } from '@/features/project/projectConfig/services/projectConfig.service';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import type {
   BacklogItemRecord,
@@ -74,6 +75,24 @@ const PRIORITY_OPTIONS: Record<string, { icon: React.ReactNode; color: string }>
   'Baja':    { icon: <ChevronDownIcon       width={14} height={14} />, color: '#3b82f6' },
   'Mínima':  { icon: <ChevronDoubleDownIcon width={14} height={14} />, color: '#1d4ed8' },
 };
+
+// ── GitHub branch helpers ─────────────────────────────────────────────
+const PREFIX_MAP_CLIENT: Record<string, string> = {
+  'Historia de Usuario': 'feat',
+  'Tarea':               'task',
+  'Bug':                 'fix',
+  'Épica':               'epic',
+  'Subtarea':            'subtask',
+};
+
+function slugifyClient(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 50);
+}
 
 // ── Inline select sub-components ─────────────────────────────────────
 function StatusPillSelect({ statuses, value, onChange }: {
@@ -372,8 +391,16 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
   const [githubLoading, setGithubLoading]         = useState(true);
   const [prCreating, setPrCreating]               = useState(false);
   const [prError, setPrError]                     = useState<string | null>(null);
+  const [branchCreating, setBranchCreating]               = useState(false);
+  const [branchError, setBranchError]                     = useState<string | null>(null);
+  const [showDeleteBranchModal, setShowDeleteBranchModal] = useState(false);
+  const [deletingBranch, setDeletingBranch]               = useState(false);
+  const [deleteBranchError, setDeleteBranchError]         = useState<string | null>(null);
+  const [branchSuffix, setBranchSuffix]                   = useState(() => slugifyClient(item.nombre));
+  const [prBody, setPrBody]                               = useState('');
+  const [copyFeedback, setCopyFeedback]                   = useState<string | null>(null);
 
-  useEffect(() => { setForm(itemToForm(item)); setIsEditing(initialEditing); }, [item, initialEditing]);
+  useEffect(() => { setForm(itemToForm(item)); setIsEditing(initialEditing); setBranchSuffix(slugifyClient(item.nombre)); }, [item, initialEditing]);
 
   useEffect(() => {
     setGithubLoading(true);
@@ -420,6 +447,13 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
     try { await onAcceptSuggestion(); } finally { setAccepting(false); }
   };
 
+  const handleCopy = (text: string, key: string) => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopyFeedback(key);
+      setTimeout(() => setCopyFeedback(null), 2000);
+    });
+  };
+
   const handleCreatePR = async () => {
     setPrCreating(true);
     setPrError(null);
@@ -428,6 +462,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
         item.id_proyecto,
         item.id,
         item.nombre,
+        prBody || undefined,
         githubConfig?.default_branch,
       );
       setGithubRecord(prev => prev
@@ -441,10 +476,74 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
     }
   };
 
+  const handleCreateBranch = async () => {
+    const branchPrefix = PREFIX_MAP_CLIENT[typeName] ?? 'task';
+    const fullBranchName = `${branchPrefix}/JIX-${item.id}-${branchSuffix}`;
+    setBranchCreating(true);
+    setBranchError(null);
+    try {
+      const result = await createGithubBranch(item.id_proyecto, item.id, item.nombre, fullBranchName);
+      setGithubRecord(prev => prev
+        ? { ...prev, branch_name: result.branchName }
+        : { branch_name: result.branchName, pr_number: null, pr_url: null, pr_status: null },
+      );
+    } catch (err) {
+      setBranchError(err instanceof Error ? err.message : 'Error al crear rama');
+    } finally {
+      setBranchCreating(false);
+    }
+  };
+
+  const handleDeleteBranch = async () => {
+    setDeletingBranch(true);
+    setDeleteBranchError(null);
+    try {
+      await deleteGithubBranch(item.id_proyecto, item.id);
+      setGithubRecord(prev => prev ? { ...prev, branch_name: null } : prev);
+      setShowDeleteBranchModal(false);
+    } catch (err) {
+      setDeleteBranchError(err instanceof Error ? err.message : 'Error al eliminar rama');
+    } finally {
+      setDeletingBranch(false);
+    }
+  };
+
+  const handleCompleteFromMerge = async () => {
+    const terminalStatus = meta.statuses.find(s => s.es_terminal);
+    if (!terminalStatus) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updateBacklogItem(item.id, {
+        nombre:                 item.nombre,
+        descripcion:            item.descripcion,
+        id_tipo:                item.id_tipo,
+        id_estatus:             terminalStatus.id,
+        id_prioridad:           item.id_prioridad,
+        id_sprint:              item.id_sprint,
+        fecha_inicio:           item.fecha_inicio,
+        fecha_vencimiento:      item.fecha_vencimiento,
+        id_backlog_item_padre:  item.id_backlog_item_padre,
+        id_usuario_responsable: item.id_usuario_responsable,
+        complejidad:            item.complejidad,
+      });
+      onUpdated?.();
+      if (githubRecord?.branch_name) {
+        setShowDeleteBranchModal(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al completar');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.nombre.trim() || !form.id_estatus) return;
     setSubmitting(true);
     setError(null);
+    const newStatusRecord  = meta.statuses.find(s => s.id === Number(form.id_estatus));
+    const becomingTerminal = (newStatusRecord?.es_terminal ?? false) && !item.es_terminal;
     const payload: UpdateBacklogItemPayload = {
       nombre:                 form.nombre.trim(),
       descripcion:            form.descripcion || null,
@@ -462,6 +561,9 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
       await updateBacklogItem(item.id, payload);
       onUpdated?.();
       setIsEditing(false);
+      if (becomingTerminal && githubRecord?.branch_name) {
+        setShowDeleteBranchModal(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -566,6 +668,24 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
               }
             </div>
 
+            {/* PR merged banner */}
+            {githubRecord?.pr_status === 'merged' && !item.es_terminal && (
+              <div className={styles.mergedBanner}>
+                <div className={styles.mergedBannerLeft}>
+                  <span className={styles.mergedBannerTitle}>PR mergeado</span>
+                  <span className={styles.mergedBannerText}>¿Deseas marcar este ítem como completado?</span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.mergedBannerConfirmBtn}
+                  onClick={() => void handleCompleteFromMerge()}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Guardando...' : 'Sí, completar'}
+                </button>
+              </div>
+            )}
+
             {/* Description */}
             <div className={styles.section}>
               <span className={styles.sectionTitle}>Descripción</span>
@@ -590,6 +710,129 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
                   </div>
                 )
               }
+            </div>
+
+            {/* GitHub */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>GitHub</span>
+              {githubLoading ? (
+                <div className={styles.githubCardSkeleton} />
+              ) : !githubConfig ? (
+                <div className={styles.githubNotConfigured}>
+                  GitHub no está conectado a este proyecto. Conéctalo en Configuración del proyecto.
+                </div>
+              ) : !githubRecord?.branch_name ? (
+                <div className={styles.githubCard}>
+                  <p className={styles.githubNoBranchText}>Sin rama asociada. Personaliza el nombre y crea una.</p>
+                  <div className={styles.branchNameBuilder}>
+                    <span className={styles.branchPrefixBadge}>
+                      {PREFIX_MAP_CLIENT[typeName] ?? 'task'}/JIX-{item.id}-
+                    </span>
+                    <input
+                      type="text"
+                      className={styles.branchSuffixInput}
+                      value={branchSuffix}
+                      onChange={e => setBranchSuffix(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50))}
+                      placeholder="nombre-rama"
+                      disabled={branchCreating}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.createBranchBtn}
+                    onClick={() => void handleCreateBranch()}
+                    disabled={branchCreating || !branchSuffix.trim()}
+                  >
+                    {branchCreating ? 'Creando rama…' : 'Crear rama'}
+                  </button>
+                  {branchError && <span className={styles.inlineError}>{branchError}</span>}
+                </div>
+              ) : (
+                <div className={styles.githubCard}>
+                  <div className={styles.githubBranchLine}>
+                    <span className={styles.githubMetaLabel}>Rama</span>
+                    <span className={styles.branchChip}>{githubRecord.branch_name}</span>
+                    <button
+                      type="button"
+                      className={styles.deleteBranchBtn}
+                      onClick={() => setShowDeleteBranchModal(true)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+
+                  {/* Terminal code blocks */}
+                  <div className={styles.codeBlockSection}>
+                    <div>
+                      <span className={styles.codeBlockLabel}>Trabajar en la rama</span>
+                      <div className={styles.codeBlock}>
+                        <span className={styles.codeText}>{`git fetch && git checkout ${githubRecord.branch_name}`}</span>
+                        <button
+                          type="button"
+                          className={`${styles.copyBtn} ${copyFeedback === 'checkout' ? styles.copyBtnSuccess : ''}`}
+                          onClick={() => handleCopy(`git fetch && git checkout ${githubRecord.branch_name}`, 'checkout')}
+                          aria-label="Copiar"
+                        >
+                          <ClipboardDocumentIcon className={styles.copyIcon} />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <span className={styles.codeBlockLabel}>Clonar repositorio</span>
+                      <div className={styles.codeBlock}>
+                        <span className={styles.codeText}>{`git clone https://github.com/${githubConfig.github_org}/${githubConfig.github_repo}.git`}</span>
+                        <button
+                          type="button"
+                          className={`${styles.copyBtn} ${copyFeedback === 'clone' ? styles.copyBtnSuccess : ''}`}
+                          onClick={() => handleCopy(`git clone https://github.com/${githubConfig.github_org}/${githubConfig.github_repo}.git`, 'clone')}
+                          aria-label="Copiar"
+                        >
+                          <ClipboardDocumentIcon className={styles.copyIcon} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PR section */}
+                  <div className={styles.githubPrLine}>
+                    <span className={styles.githubMetaLabel}>PR</span>
+                    {!githubRecord.pr_number ? (
+                      <div className={styles.githubPrCreate}>
+                        <textarea
+                          className={styles.prBodyInput}
+                          placeholder="Descripción del PR (opcional)…"
+                          value={prBody}
+                          onChange={e => setPrBody(e.target.value)}
+                          rows={2}
+                          disabled={prCreating}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className={styles.createPrBtn}
+                            onClick={() => void handleCreatePR()}
+                            disabled={prCreating}
+                          >
+                            {prCreating ? 'Creando PR…' : 'Crear PR'}
+                          </button>
+                          {prError && <span className={styles.inlineError}>{prError}</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <span className={`${styles.prStatusBadge} ${styles[`prStatus_${githubRecord.pr_status ?? 'open'}`]}`}>
+                          {githubRecord.pr_status}
+                        </span>
+                        <a href={githubRecord.pr_url!} target="_blank" rel="noreferrer" className={styles.prLink}>
+                          PR #{githubRecord.pr_number} ↗
+                        </a>
+                      </>
+                    )}
+                  </div>
+
+                  <p className={styles.githubDisclaimer}>Los PRs se aceptan/rechazan desde GitHub.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -757,42 +1000,6 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
               </>
             )}
 
-            {!githubLoading && githubConfig && (
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>GitHub</span>
-                {!githubRecord?.branch_name ? (
-                  <span className={styles.detailEmpty}>Sin branch</span>
-                ) : (
-                  <div className={styles.githubSection}>
-                    <span className={styles.branchChip}>{githubRecord.branch_name}</span>
-                    {!githubRecord.pr_number ? (
-                      <>
-                        <button
-                          type="button"
-                          className={styles.createPrBtn}
-                          onClick={() => void handleCreatePR()}
-                          disabled={prCreating}
-                        >
-                          {prCreating ? 'Creando PR…' : 'Crear PR'}
-                        </button>
-                        {prError && <span className={styles.inlineError}>{prError}</span>}
-                      </>
-                    ) : (
-                      <div className={styles.prRow}>
-                        <span className={`${styles.prStatusBadge} ${styles[`prStatus_${githubRecord.pr_status ?? 'open'}`]}`}>
-                          {githubRecord.pr_status}
-                        </span>
-                        <a href={githubRecord.pr_url!} target="_blank" rel="noreferrer" className={styles.prLink}>
-                          PR #{githubRecord.pr_number}
-                        </a>
-                      </div>
-                    )}
-                    <p className={styles.githubDisclaimer}>Los PRs se aceptan/rechazan desde GitHub</p>
-                  </div>
-                )}
-              </div>
-            )}
-
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Creado por</span>
               {creator
@@ -849,6 +1056,51 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
           onSave={handleTimeSave}
           onClose={() => setShowTimePopup(false)}
         />
+      )}
+
+      {showDeleteBranchModal && (
+        <div className={styles.timePopupOverlay} onClick={() => { if (!deletingBranch) { setShowDeleteBranchModal(false); setDeleteBranchError(null); } }}>
+          <div className={styles.timePopup} onClick={e => e.stopPropagation()}>
+            <div className={styles.timePopupHeader}>
+              <span className={styles.timePopupTitle}>¿Eliminar la rama?</span>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={() => { setShowDeleteBranchModal(false); setDeleteBranchError(null); }}
+                disabled={deletingBranch}
+                aria-label="Cerrar"
+              >
+                <XMarkIcon width={16} height={16} />
+              </button>
+            </div>
+            <div className={styles.timePopupBody}>
+              <p className={styles.deleteModalText}>
+                ¿Deseas eliminar la rama{' '}
+                <code className={styles.deleteModalCode}>{githubRecord?.branch_name}</code>{' '}
+                de GitHub? Esta acción no se puede deshacer.
+              </p>
+              {deleteBranchError && <span className={styles.timePopupError}>{deleteBranchError}</span>}
+            </div>
+            <div className={styles.timePopupActions}>
+              <button
+                type="button"
+                className={styles.cancelEditBtn}
+                onClick={() => { setShowDeleteBranchModal(false); setDeleteBranchError(null); }}
+                disabled={deletingBranch}
+              >
+                No, mantener
+              </button>
+              <button
+                type="button"
+                className={styles.deleteBranchConfirmBtn}
+                onClick={() => void handleDeleteBranch()}
+                disabled={deletingBranch}
+              >
+                {deletingBranch ? 'Eliminando...' : 'Sí, eliminar rama'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

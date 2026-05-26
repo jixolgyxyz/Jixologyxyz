@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const { data: itemGithub, error: itemErr } = await supabase
-    .from('backlog_item_github')
+    .from('github_backlog_item')
     .select('branch_name')
     .eq('id_backlog_item', itemId)
     .single();

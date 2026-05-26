@@ -465,24 +465,44 @@ export interface BacklogItemGithubRecord {
 
 export async function fetchBacklogItemGithub(itemId: number): Promise<BacklogItemGithubRecord | null> {
   const { data } = await supabase
-    .from('backlog_item_github')
+    .from('github_backlog_item')
     .select('branch_name, pr_number, pr_url, pr_status')
     .eq('id_backlog_item', itemId)
     .maybeSingle();
   return data;
 }
 
+export async function createGithubBranch(
+  projectId: number,
+  itemId: number,
+  itemTitle: string,
+  branchName?: string,
+): Promise<{ branchName: string }> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-create-branch`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, itemId, itemTitle, branchName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? 'Failed to create branch');
+  }
+  return res.json() as Promise<{ branchName: string }>;
+}
+
 export async function createGithubPR(
   projectId: number,
   itemId: number,
   title: string,
+  body?: string,
   baseBranch?: string,
 ): Promise<{ prNumber: number; prUrl: string }> {
   const authHeader = await getAuthHeader();
   const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-create-pr`, {
     method: 'POST',
     headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId, itemId, title, baseBranch }),
+    body: JSON.stringify({ projectId, itemId, title, body, baseBranch }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
