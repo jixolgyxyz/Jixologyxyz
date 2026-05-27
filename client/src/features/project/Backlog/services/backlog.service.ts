@@ -12,6 +12,7 @@ import type {
   CreateSprintPayload,
   UpdateSprintPayload,
   UpdateBacklogItemPayload,
+  BacklogItemBloqueoRecord,
 } from '../types/backlog.types';
 
 export async function fetchBacklogItems(projectId?: number): Promise<BacklogItemRecord[]> {
@@ -205,6 +206,48 @@ export async function deleteBacklogItem(id: number): Promise<void> {
     .delete()
     .eq('id', id);
 
+  if (error) throw new Error(error.message);
+}
+
+// ── Block relationships ───────────────────────────────────────────
+
+/** Returns all records where THIS item is blocked (i.e. items that block it). */
+export async function fetchItemBlockers(itemId: number): Promise<BacklogItemBloqueoRecord[]> {
+  const { data, error } = await supabase
+    .from('backlog_item_bloqueo')
+    .select('id_bloqueado, id_bloqueador, fecha_creacion, id_usuario_creador')
+    .eq('id_bloqueado', itemId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Returns all records where THIS item is the blocker (i.e. items it is blocking). */
+export async function fetchItemBlocking(itemId: number): Promise<BacklogItemBloqueoRecord[]> {
+  const { data, error } = await supabase
+    .from('backlog_item_bloqueo')
+    .select('id_bloqueado, id_bloqueador, fecha_creacion, id_usuario_creador')
+    .eq('id_bloqueador', itemId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function addBacklogItemBlock(
+  idBloqueado: number,
+  idBloqueador: number,
+  idUsuarioCreador: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from('backlog_item_bloqueo')
+    .insert({ id_bloqueado: idBloqueado, id_bloqueador: idBloqueador, id_usuario_creador: idUsuarioCreador });
+  if (error) throw new Error(error.message);
+}
+
+export async function removeBacklogItemBlock(idBloqueado: number, idBloqueador: number): Promise<void> {
+  const { error } = await supabase
+    .from('backlog_item_bloqueo')
+    .delete()
+    .eq('id_bloqueado', idBloqueado)
+    .eq('id_bloqueador', idBloqueador);
   if (error) throw new Error(error.message);
 }
 

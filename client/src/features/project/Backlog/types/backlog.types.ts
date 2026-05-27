@@ -127,3 +127,10 @@ export interface BacklogMeta {
   sugerencias: SugerenciaRecord[];
   etiquetas:   ProjectEtiquetaRecord[];
 }
+
+export interface BacklogItemBloqueoRecord {
+  id_bloqueado:       number;
+  id_bloqueador:      number;
+  fecha_creacion:     string;
+  id_usuario_creador: number;
+}

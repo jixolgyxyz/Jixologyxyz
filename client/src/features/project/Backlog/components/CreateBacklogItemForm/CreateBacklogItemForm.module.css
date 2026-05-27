@@ -434,3 +434,176 @@
   color: var(--color-white);
 }
 
+/* ── Bloqueado por multi-select ──────────────────────────────────── */
+.blockerWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.blockerTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  background: var(--color-white);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.blockerTags:focus-within {
+  border-color: var(--color-blueprint-navy);
+}
+
+.blockerTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 8px;
+  border-radius: 999px;
+  background: var(--color-clarity-gray-1);
+  border: 1px solid var(--color-clarity-gray-2);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  max-width: 220px;
+}
+
+.blockerTagText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blockerTagRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-anchor-gray-1);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.blockerTagRemove:hover {
+  background: #fee2e2;
+  color: var(--color-mahindra-red);
+}
+
+.blockerAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1.5px dashed var(--color-clarity-gray-2);
+  border-radius: 999px;
+  background: transparent;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-anchor-gray-1);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.blockerAddBtn:hover {
+  border-color: var(--color-blueprint-navy);
+  color: var(--color-blueprint-navy);
+}
+
+.blockerDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 400;
+  width: 100%;
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(10, 8, 56, 0.14);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.blockerSearch {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-bottom: 1px solid var(--color-clarity-gray-2);
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-blueprint-navy);
+  outline: none;
+  box-sizing: border-box;
+  background: var(--color-white);
+}
+
+.blockerList {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  gap: 1px;
+}
+
+.blockerOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.blockerOption:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.blockerOptionCode {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-anchor-gray-1);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+.blockerOptionName {
+  font-size: 0.83rem;
+  color: var(--color-blueprint-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  font-family: 'Poppins', sans-serif;
+}
+
+.blockerEmpty {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-1);
+  font-style: italic;
+  padding: 0.5rem 0.75rem;
+  font-family: 'Poppins', sans-serif;
+}
+
