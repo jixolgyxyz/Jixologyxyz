@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PaintBrushIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 
@@ -27,10 +27,6 @@ const InventoryCard: React.FC<InventoryCardProps> = ({
     catalog.features.find(f => f.key === 'hair')?.key ?? catalog.features[0]?.key ?? ''
   );
   const [showingColor, setShowingColor] = useState(false);
-
-  useEffect(() => {
-    setActiveKey(catalog.features[0]?.key ?? '');
-  }, [JSON.stringify(catalog)]);
 
   // May be undefined when catalog.features is empty
   const activeTab = useMemo(
