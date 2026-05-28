@@ -16,6 +16,7 @@ import ProjectConfigPage from '@/features/project/projectConfig/pages/ProjectCon
 import AdminUserProfilePage from '@/features/admin/pages/adminUserProfilePage/AdminUserProfilePage';
 import NotificationsPage from '@/features/notifications/pages/NotificationsPage';
 import NotificationDetailPage from '@/features/notifications/pages/NotificationDetailPage';
+import CalendarioPage from '@/features/calendar/pages';
 
 // --- Layout ---
 import AppLayoutHs from '@/shared/layout/AppLayoutHs';
@@ -44,6 +45,9 @@ export function AppRouter() {
           <Route path="/dashboard-proyectos" element={<ProjectDashboardPage />} />
           <Route path="/notificaciones"      element={<NotificationsPage />} />
           <Route path="/notificaciones/:id"  element={<NotificationDetailPage />} />
+        </Route>
+        <Route element={<AppLayoutHs title="Calendario"/>}>
+          <Route path="/calendario"          element={<CalendarioPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={ADMIN_VIEWS} />}>
           <Route element={<AppLayoutHs title="Dashboard Admin"/>}>

@@ -14,6 +14,7 @@ import {
   MinusCircleIcon,
   PresentationChartBarIcon,
   ChevronDownIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/solid';
 import { signOutService } from '@/features/auth/services/auth.service';
 
@@ -109,6 +110,13 @@ const Sidebar: React.FC<ISidebarProps> = () => {
               <NavLink to="/proyectos">
                 <BookOpenIcon className={styles.icon} />
                 <span><b>Proyectos</b></span>
+              </NavLink>
+            </li>
+
+            <li className={styles.menuItem}>
+              <NavLink to="/calendario">
+                <CalendarDaysIcon className={styles.icon} />
+                <span><b>Calendario</b></span>
               </NavLink>
             </li>
 

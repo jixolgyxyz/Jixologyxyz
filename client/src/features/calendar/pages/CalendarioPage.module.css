@@ -1,0 +1,91 @@
+.page {
+  display: flex;
+  width: 100%;
+  min-height: calc(100vh - 55px);
+  background: var(--color-clarity-gray-1, #f8f8f8);
+  overflow: hidden;
+}
+
+/* ── Left sidebar (project filter) ────────────────────────── */
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--color-white, #ffffff);
+  border-right: 1px solid var(--color-clarity-gray-2, #e0e0e0);
+  overflow-y: auto;
+}
+
+/* ── Main calendar area ─────────────────────────────────────── */
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1.5rem 1.5rem;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* ── Calendar header (nav + title) ─────────────────────────── */
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-blueprint-navy, #0A0838);
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #ffffff;
+  transition: background 0.15s;
+}
+
+.navBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.monthTitle {
+  margin: 0 8px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.todayBtn {
+  padding: 5px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.todayBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.6);
+}
