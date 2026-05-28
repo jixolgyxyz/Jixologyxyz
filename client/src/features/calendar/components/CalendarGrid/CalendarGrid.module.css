@@ -31,6 +31,7 @@
 
 .weekSection {
   flex: 1;
+  position: relative;
   border-bottom: 1px solid var(--color-clarity-gray-2, #e0e0e0);
 }
 
@@ -38,11 +39,25 @@
   border-bottom: none;
 }
 
+/* Full-height gray block behind prev-month columns */
+.prevMonthOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 0;
+  background: #e8e3d8;
+  pointer-events: none;
+  border-right: 1px solid #d4cfc4;
+}
+
 /* ── Day cells row ─────────────────────────────────────────── */
 
 .dayCellsRow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  position: relative;
+  z-index: 1;
 }
 
 .dayCell {
@@ -50,10 +65,19 @@
   border-right: 1px solid var(--color-clarity-gray-2, #e0e0e0);
   padding: 6px 8px 4px;
   min-height: 36px;
+  background: #ffffff;
 }
 
 .dayCell:last-child {
   border-right: none;
+}
+
+.prevMonth {
+  background: transparent;
+}
+
+.prevMonth .dayNumber {
+  color: #b0aa9e;
 }
 
 .dayNumber {
@@ -93,5 +117,7 @@
 .barsArea {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  padding: 2px 0 4px;
+  padding: 1px 0 2px;
+  position: relative;
+  z-index: 1;
 }

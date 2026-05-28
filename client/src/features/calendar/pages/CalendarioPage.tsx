@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import styles from './CalendarioPage.module.css';
 import { useUser } from '@/core/auth/userContext';
@@ -34,9 +34,32 @@ const CalendarioPage: React.FC = () => {
   );
 
   const today = useMemo(() => new Date(), []);
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<number>>(new Set());
+
+  const [currentYear, setCurrentYear] = useState(() => {
+    const v = parseInt(localStorage.getItem('jix_cal_year') ?? '', 10);
+    return isNaN(v) ? new Date().getFullYear() : v;
+  });
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const v = parseInt(localStorage.getItem('jix_cal_month') ?? '', 10);
+    return isNaN(v) || v < 0 || v > 11 ? new Date().getMonth() : v;
+  });
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<number>>(() => {
+    try {
+      const raw = localStorage.getItem('jix_cal_hidden');
+      return raw ? new Set(JSON.parse(raw) as number[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('jix_cal_year', String(currentYear));
+    localStorage.setItem('jix_cal_month', String(currentMonth));
+  }, [currentYear, currentMonth]);
+
+  useEffect(() => {
+    localStorage.setItem('jix_cal_hidden', JSON.stringify([...hiddenProjectIds]));
+  }, [hiddenProjectIds]);
 
   // Derived: all projects are visible unless explicitly hidden
   const visibleProjectIds = useMemo(
