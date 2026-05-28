@@ -18,9 +18,10 @@ import {
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
 import { Select } from '@/shared/components/Select/Select';
 import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
-import { updateBacklogItem } from '@/features/project/Backlog/services/backlog.service';
+import { updateBacklogItem, fetchItemBlockers, fetchItemBlocking, addBacklogItemBlock, removeBacklogItemBlock } from '@/features/project/Backlog/services/backlog.service';
 import { fetchBacklogItemGithub, fetchGithubConfig, createGithubBranch, createGithubPR, deleteGithubBranch, type BacklogItemGithubRecord, type GithubConfigRecord } from '@/features/project/projectConfig/services/projectConfig.service';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
+import { useUser } from '@/core/auth/userContext';
 import type {
   BacklogItemRecord,
   BacklogMeta,
@@ -44,6 +45,22 @@ const TYPE_PREFIX: Record<string, string> = {
   'Bug':                 'BG',
   'Épica':               'EP',
   'Subtarea':            'ST',
+};
+
+/** Which type must be the PARENT of a given type */
+const VALID_PARENT_TYPE: Record<string, string> = {
+  'Historia de Usuario': 'Épica',
+  'Tarea':               'Historia de Usuario',
+  'Subtarea':            'Tarea',
+  'Bug':                 'Subtarea',
+};
+
+/** Which type must be the CHILD of a given type */
+const VALID_CHILD_TYPE: Record<string, string> = {
+  'Épica':               'Historia de Usuario',
+  'Historia de Usuario': 'Tarea',
+  'Tarea':               'Subtarea',
+  'Subtarea':            'Bug',
 };
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -327,9 +344,10 @@ interface SubtaskNodeProps {
   meta: BacklogMeta;
   depth: number;
   onSelect: (item: BacklogItemRecord) => void;
+  onRemove?: (itemId: number) => void;
 }
 
-function SubtaskNode({ item, allItems, meta, depth, onSelect }: SubtaskNodeProps) {
+function SubtaskNode({ item, allItems, meta, depth, onSelect, onRemove }: SubtaskNodeProps) {
   const [expanded, setExpanded] = useState(false);
   const children  = allItems.filter(i => i.id_backlog_item_padre === item.id);
   const typeRec   = meta.types.find(t => t.id === item.id_tipo);
@@ -342,14 +360,16 @@ function SubtaskNode({ item, allItems, meta, depth, onSelect }: SubtaskNodeProps
     <>
       <div style={{ marginLeft: `${depth * 16}px` }}>
       <div className={styles.subtaskRow}>
-        {children.length > 0
-          ? (
-            <button type="button" className={styles.subtaskToggle} onClick={() => setExpanded(e => !e)} aria-label={expanded ? 'Contraer' : 'Expandir'}>
-              <ChevronDownIcon width={11} height={11} className={`${styles.subtaskToggleIcon} ${expanded ? styles.subtaskToggleOpen : ''}`} />
-            </button>
-          )
-          : <span className={styles.subtaskToggleSpacer} />
-        }
+        {children.length > 0 && (
+          <button type="button" className={styles.subtaskToggle} onClick={() => setExpanded(e => !e)} aria-label={expanded ? 'Contraer' : 'Expandir'}>
+            <ChevronDownIcon width={11} height={11} className={`${styles.subtaskToggleIcon} ${expanded ? styles.subtaskToggleOpen : ''}`} />
+          </button>
+        )}
+        {typeRec && (
+          <span className={styles.blockTypeIcon} aria-label={typeRec.nombre}>
+            {TYPE_ICONS[typeRec.nombre]}
+          </span>
+        )}
         <span className={styles.subtaskCode}>{code}</span>
         <span className={styles.subtaskName} onClick={() => onSelect(item)} style={{ cursor: 'pointer' }}
           onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
@@ -358,12 +378,155 @@ function SubtaskNode({ item, allItems, meta, depth, onSelect }: SubtaskNodeProps
         <span className={styles.subtaskStatus} style={{ backgroundColor: colors.color, color: colors.textColor }}>
           {statusRec?.nombre ?? '—'}
         </span>
+        {onRemove && (
+          <button
+            type="button"
+            className={styles.blockRemoveBtn}
+            onClick={() => onRemove(item.id)}
+            aria-label={`Quitar ${code}`}
+          >
+            ×
+          </button>
+        )}
       </div>
       </div>
       {expanded && children.map(child => (
-        <SubtaskNode key={child.id} item={child} allItems={allItems} meta={meta} depth={depth + 1} onSelect={onSelect} />
+        <SubtaskNode key={child.id} item={child} allItems={allItems} meta={meta} depth={depth + 1} onSelect={onSelect} onRemove={onRemove} />
       ))}
     </>
+  );
+}
+
+// ── BlocksSection ─────────────────────────────────────────────────────
+interface BlocksSectionProps {
+  linkedItems:    BacklogItemRecord[];
+  meta:           BacklogMeta;
+  emptyText:      string;
+  excludeIds:     Set<number>;
+  isEditing:      boolean;
+  onSelect:       (item: BacklogItemRecord) => void;
+  onRemove:       (itemId: number) => void;
+  onAdd:          (itemId: number) => void;
+}
+
+function BlocksSection({ linkedItems, meta, emptyText, excludeIds, isEditing, onSelect, onRemove, onAdd }: BlocksSectionProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [search,     setSearch]     = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [pickerOpen]);
+
+  const available = meta.items.filter(i => !excludeIds.has(i.id));
+  const filtered  = search.trim()
+    ? available.filter(i => {
+        const type   = meta.types.find(t => t.id === i.id_tipo);
+        const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+        const code   = `${prefix}-${String(i.id).padStart(2, '0')}`;
+        return i.nombre.toLowerCase().includes(search.toLowerCase())
+            || code.toLowerCase().includes(search.toLowerCase());
+      })
+    : available;
+
+  return (
+    <div ref={wrapperRef}>
+      {linkedItems.length === 0 && (
+        <span className={styles.noSubtasks}>{emptyText}</span>
+      )}
+      {linkedItems.length > 0 && (
+        <div className={styles.subtaskList}>
+          {linkedItems.map(item => {
+            const typeRec   = meta.types.find(t => t.id === item.id_tipo);
+            const statusRec = meta.statuses.find(s => s.id === item.id_estatus);
+            const colors    = statusRec ? (STATUS_COLORS_BG[statusRec.orden] ?? STATUS_COLORS_BG[1]) : STATUS_COLORS_BG[1];
+            const prefix    = TYPE_PREFIX[typeRec?.nombre ?? ''] ?? 'IT';
+            const code      = `${prefix}-${String(item.id).padStart(2, '0')}`;
+            return (
+              <div key={item.id} className={styles.subtaskRow}>
+                {typeRec && (
+                  <span className={styles.blockTypeIcon} aria-label={typeRec.nombre}>
+                    {TYPE_ICONS[typeRec.nombre]}
+                  </span>
+                )}
+                <span className={styles.subtaskCode}>{code}</span>
+                <span
+                  className={styles.subtaskName}
+                  onClick={() => onSelect(item)}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  {item.nombre}
+                </span>
+                <span className={styles.subtaskStatus} style={{ backgroundColor: colors.color, color: colors.textColor }}>
+                  {statusRec?.nombre ?? '—'}
+                </span>
+                {isEditing && (
+                  <button
+                    type="button"
+                    className={styles.blockRemoveBtn}
+                    onClick={() => onRemove(item.id)}
+                    aria-label={`Quitar ${code}`}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {isEditing && <div className={styles.blockAddWrapper}>
+        <button type="button" className={styles.blockAddBtn} onClick={() => setPickerOpen(o => !o)}>
+          + Añadir
+        </button>
+
+        {pickerOpen && (
+          <div className={styles.blockPickerDropdown}>
+            <input
+              autoFocus
+              type="text"
+              className={styles.blockPickerSearch}
+              placeholder="Buscar ítem..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <div className={styles.blockPickerList}>
+              {filtered.length === 0
+                ? <span className={styles.blockPickerEmpty}>Sin resultados.</span>
+                : filtered.slice(0, 20).map(i => {
+                    const type   = meta.types.find(t => t.id === i.id_tipo);
+                    const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+                    const code   = `${prefix}-${String(i.id).padStart(2, '0')}`;
+                    return (
+                      <button
+                        key={i.id}
+                        type="button"
+                        className={styles.blockPickerOption}
+                        onClick={() => { onAdd(i.id); setPickerOpen(false); setSearch(''); }}
+                      >
+                        {type && <span className={styles.blockTypeIcon}>{TYPE_ICONS[type.nombre]}</span>}
+                        <span className={styles.blockPickerCode}>{code}</span>
+                        <span className={styles.blockPickerName}>{i.nombre}</span>
+                      </button>
+                    );
+                  })
+              }
+            </div>
+          </div>
+        )}
+      </div>}
+    </div>
   );
 }
 
@@ -408,16 +571,23 @@ interface ViewItemDetailProps {
   onNavigate?: (item: BacklogItemRecord) => void;
   onAcceptSuggestion?: () => Promise<void>;
   initialEditing?: boolean;
+  /** When true the panel renders inline (no fixed overlay) — parent controls sizing */
+  inline?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────────
-const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestion = false, onClose, onUpdated, onNavigate, onAcceptSuggestion, initialEditing = false }) => {
+const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestion = false, onClose, onUpdated, onNavigate, onAcceptSuggestion, initialEditing = false, inline = false }) => {
+  const { user } = useUser();
   const [isEditing, setIsEditing]                 = useState(initialEditing);
   const [form, setForm]                           = useState<FormState>(() => itemToForm(item));
   const [submitting, setSubmitting]               = useState(false);
   const [accepting, setAccepting]                 = useState(false);
   const [error, setError]                         = useState<string | null>(null);
   const [showTimePopup, setShowTimePopup]         = useState(false);
+
+  // ── Block relationships ──
+  const [blockerIds,  setBlockerIds]  = useState<Set<number>>(new Set());
+  const [blockingIds, setBlockingIds] = useState<Set<number>>(new Set());
 
   const [githubRecord, setGithubRecord]           = useState<BacklogItemGithubRecord | null>(null);
   const [githubConfig, setGithubConfig]           = useState<GithubConfigRecord | null>(null);
@@ -445,6 +615,105 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
       .catch(() => {})
       .finally(() => setGithubLoading(false));
   }, [item.id, item.id_proyecto]);
+
+  useEffect(() => {
+    setBlockerIds(new Set());
+    setBlockingIds(new Set());
+    Promise.all([fetchItemBlockers(item.id), fetchItemBlocking(item.id)])
+      .then(([blockers, blocking]) => {
+        setBlockerIds(new Set(blockers.map(b => b.id_bloqueador)));
+        setBlockingIds(new Set(blocking.map(b => b.id_bloqueado)));
+      })
+      .catch(() => {});
+  }, [item.id]);
+
+  // ── Block handlers ──
+  const handleAddBlocker = async (blockerItemId: number) => {
+    try {
+      await addBacklogItemBlock(item.id, blockerItemId, user!.id);
+      setBlockerIds(prev => new Set([...prev, blockerItemId]));
+    } catch (err) { console.error('Error añadiendo bloqueador:', err); }
+  };
+
+  const handleRemoveBlocker = async (blockerItemId: number) => {
+    try {
+      await removeBacklogItemBlock(item.id, blockerItemId);
+      setBlockerIds(prev => { const n = new Set(prev); n.delete(blockerItemId); return n; });
+    } catch (err) { console.error('Error quitando bloqueador:', err); }
+  };
+
+  const handleAddBlocking = async (blockedItemId: number) => {
+    try {
+      await addBacklogItemBlock(blockedItemId, item.id, user!.id);
+      setBlockingIds(prev => new Set([...prev, blockedItemId]));
+    } catch (err) { console.error('Error añadiendo bloqueado:', err); }
+  };
+
+  const handleRemoveBlocking = async (blockedItemId: number) => {
+    try {
+      await removeBacklogItemBlock(blockedItemId, item.id);
+      setBlockingIds(prev => { const n = new Set(prev); n.delete(blockedItemId); return n; });
+    } catch (err) { console.error('Error quitando bloqueado:', err); }
+  };
+
+  // ── Subtask picker ──
+  const [subtaskPickerOpen, setSubtaskPickerOpen] = useState(false);
+  const [subtaskSearch,     setSubtaskSearch]     = useState('');
+  const subtaskPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!subtaskPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (subtaskPickerRef.current && !subtaskPickerRef.current.contains(e.target as Node)) {
+        setSubtaskPickerOpen(false);
+        setSubtaskSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [subtaskPickerOpen]);
+
+  const handleAddSubtask = async (childItemId: number) => {
+    const childItem = meta.items.find(i => i.id === childItemId);
+    if (!childItem) return;
+    try {
+      await updateBacklogItem(childItemId, {
+        nombre:                 childItem.nombre,
+        descripcion:            childItem.descripcion,
+        id_tipo:                childItem.id_tipo,
+        id_estatus:             childItem.id_estatus,
+        id_prioridad:           childItem.id_prioridad,
+        id_sprint:              childItem.id_sprint,
+        fecha_inicio:           childItem.fecha_inicio,
+        fecha_vencimiento:      childItem.fecha_vencimiento,
+        id_backlog_item_padre:  item.id,
+        id_usuario_responsable: childItem.id_usuario_responsable,
+        complejidad:            childItem.complejidad,
+      });
+      onUpdated?.();
+    } catch (err) { console.error('Error añadiendo subtarea:', err); }
+  };
+
+  const handleRemoveSubtask = async (childItemId: number) => {
+    const childItem = meta.items.find(i => i.id === childItemId);
+    if (!childItem) return;
+    try {
+      await updateBacklogItem(childItemId, {
+        nombre:                 childItem.nombre,
+        descripcion:            childItem.descripcion,
+        id_tipo:                childItem.id_tipo,
+        id_estatus:             childItem.id_estatus,
+        id_prioridad:           childItem.id_prioridad,
+        id_sprint:              childItem.id_sprint,
+        fecha_inicio:           childItem.fecha_inicio,
+        fecha_vencimiento:      childItem.fecha_vencimiento,
+        id_backlog_item_padre:  null,
+        id_usuario_responsable: childItem.id_usuario_responsable,
+        complejidad:            childItem.complejidad,
+      });
+      onUpdated?.();
+    } catch (err) { console.error('Error quitando subtarea:', err); }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -613,10 +882,31 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
   const creator        = meta.users.find(u => u.id === item.id_usuario_creador);
   const subtasks       = meta.items.filter(i => i.id_backlog_item_padre === item.id);
   const parentItem     = item.id_backlog_item_padre != null ? meta.items.find(i => i.id === item.id_backlog_item_padre) : null;
+  const blockerItems   = meta.items.filter(i => blockerIds.has(i.id));
+  const blockingItems  = meta.items.filter(i => blockingIds.has(i.id));
 
   const typeName     = typeRecord?.nombre ?? '';
   const prefix       = TYPE_PREFIX[typeName] ?? 'IT';
   const code         = `${prefix}-${String(item.id).padStart(2, '0')}`;
+
+  // Items eligible to become a subtask:
+  //   - must be of the valid child type for this item's type
+  //   - exclude self and all descendants (prevents cycles)
+  const subtaskDescendantIds   = new Set(collectDescendants(item.id, meta.items).map(d => d.item.id));
+  const validChildTypeName     = VALID_CHILD_TYPE[typeName];
+  const validChildTypeId       = validChildTypeName ? meta.types.find(t => t.nombre === validChildTypeName)?.id : undefined;
+  const subtaskPickerAvailable = validChildTypeId != null
+    ? meta.items.filter(i => i.id !== item.id && !subtaskDescendantIds.has(i.id) && i.id_tipo === validChildTypeId)
+    : [];
+  const subtaskPickerFiltered  = subtaskSearch.trim()
+    ? subtaskPickerAvailable.filter(i => {
+        const type   = meta.types.find(t => t.id === i.id_tipo);
+        const pfx    = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+        const cd     = `${pfx}-${String(i.id).padStart(2, '0')}`;
+        return i.nombre.toLowerCase().includes(subtaskSearch.toLowerCase())
+            || cd.toLowerCase().includes(subtaskSearch.toLowerCase());
+      })
+    : subtaskPickerAvailable;
   const statusColors = statusRecord ? (STATUS_COLORS[statusRecord.orden] ?? STATUS_COLORS[1]) : STATUS_COLORS[1];
   const priority     = priorityRecord ? PRIORITY_OPTIONS[priorityRecord.nombre] : null;
 
@@ -638,9 +928,8 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
   const fullName = (u: { nombre: string | null; apellido: string | null; email: string } | undefined) =>
     u ? ([u.nombre, u.apellido].filter(Boolean).join(' ') || u.email) : null;
 
-  return (
-    <div className={styles.overlay}>
-      <div className={styles.panel} data-detail-panel onClick={e => e.stopPropagation()}>
+  const panelContent = (
+      <div className={`${styles.panel} ${inline ? styles.panelInline : ''}`} data-detail-panel onClick={e => e.stopPropagation()}>
 
         {/* ── Top bar ── */}
         <div className={styles.topBar}>
@@ -730,19 +1019,94 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
               }
             </div>
 
-            {/* Subtasks — always read-only, recursive tree */}
+            {/* Subtasks */}
             <div className={styles.section}>
               <span className={styles.sectionTitle}>Subtareas</span>
-              {subtasks.length === 0
-                ? <span className={styles.noSubtasks}>Sin subtareas.</span>
-                : (
+              <div ref={subtaskPickerRef}>
+                {subtasks.length === 0 && (
+                  <span className={styles.noSubtasks}>Sin subtareas.</span>
+                )}
+                {subtasks.length > 0 && (
                   <div className={styles.subtaskList}>
                     {subtasks.map(sub => (
-                      <SubtaskNode key={sub.id} item={sub} allItems={meta.items} meta={meta} depth={0} onSelect={i => onNavigate?.(i)} />
+                      <SubtaskNode key={sub.id} item={sub} allItems={meta.items} meta={meta} depth={0} onSelect={i => onNavigate?.(i)} onRemove={isEditing ? id => void handleRemoveSubtask(id) : undefined} />
                     ))}
                   </div>
-                )
-              }
+                )}
+
+                {isEditing && (
+                  <div className={styles.blockAddWrapper}>
+                    <button type="button" className={styles.blockAddBtn} onClick={() => setSubtaskPickerOpen(o => !o)}>
+                      + Añadir
+                    </button>
+
+                    {subtaskPickerOpen && (
+                      <div className={styles.blockPickerDropdown}>
+                        <input
+                          autoFocus
+                          type="text"
+                          className={styles.blockPickerSearch}
+                          placeholder="Buscar ítem..."
+                          value={subtaskSearch}
+                          onChange={e => setSubtaskSearch(e.target.value)}
+                        />
+                        <div className={styles.blockPickerList}>
+                          {subtaskPickerFiltered.length === 0
+                            ? <span className={styles.blockPickerEmpty}>Sin resultados.</span>
+                            : subtaskPickerFiltered.slice(0, 20).map(i => {
+                                const type   = meta.types.find(t => t.id === i.id_tipo);
+                                const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+                                const code   = `${prefix}-${String(i.id).padStart(2, '0')}`;
+                                return (
+                                  <button
+                                    key={i.id}
+                                    type="button"
+                                    className={styles.blockPickerOption}
+                                    onClick={() => { void handleAddSubtask(i.id); setSubtaskPickerOpen(false); setSubtaskSearch(''); }}
+                                  >
+                                    {type && <span className={styles.blockTypeIcon}>{TYPE_ICONS[type.nombre]}</span>}
+                                    <span className={styles.blockPickerCode}>{code}</span>
+                                    <span className={styles.blockPickerName}>{i.nombre}</span>
+                                  </button>
+                                );
+                              })
+                          }
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bloqueado por — items that block THIS item */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>Bloqueado por</span>
+              <BlocksSection
+                linkedItems={blockerItems}
+                meta={meta}
+                emptyText="Sin bloqueadores."
+                excludeIds={new Set([item.id, ...blockerIds])}
+                isEditing={isEditing}
+                onSelect={i => onNavigate?.(i)}
+                onRemove={id => void handleRemoveBlocker(id)}
+                onAdd={id => void handleAddBlocker(id)}
+              />
+            </div>
+
+            {/* Bloqueando a — items THIS item is blocking */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>Bloqueando a</span>
+              <BlocksSection
+                linkedItems={blockingItems}
+                meta={meta}
+                emptyText="No bloquea ningún ítem."
+                excludeIds={new Set([item.id, ...blockingIds])}
+                isEditing={isEditing}
+                onSelect={i => onNavigate?.(i)}
+                onRemove={id => void handleRemoveBlocking(id)}
+                onAdd={id => void handleAddBlocking(id)}
+              />
             </div>
 
             {/* GitHub */}
@@ -1023,23 +1387,34 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Ítem padre</span>
               {isEditing
-                ? <Select
-                    options={meta.items.filter(i => i.id !== item.id).map(i => {
-                      const iType   = meta.types.find(t => t.id === i.id_tipo);
-                      const iPrefix = TYPE_PREFIX[iType?.nombre ?? ''] ?? 'IT';
-                      return {
-                        value: String(i.id),
-                        label: `${iPrefix}-${String(i.id).padStart(2, '0')} — ${i.nombre}`,
-                        icon:  iType ? TYPE_ICONS[iType.nombre] : undefined,
-                      };
-                    })}
-                    value={form.id_backlog_item_padre}
-                    onChange={v => setForm(f => ({ ...f, id_backlog_item_padre: v }))}
-                    placeholder="Sin ítem padre"
-                    emptyLabel="Sin ítem padre"
-                    small
-                    searchable
-                  />
+                ? (() => {
+                    // Only show items of the valid parent type for the currently selected type
+                    const editTypeName      = meta.types.find(t => t.id === (form.id_tipo ? Number(form.id_tipo) : item.id_tipo))?.nombre ?? '';
+                    const validParentName   = VALID_PARENT_TYPE[editTypeName];
+                    const validParentTypeId = validParentName ? meta.types.find(t => t.nombre === validParentName)?.id : undefined;
+                    const parentOptions     = validParentTypeId != null
+                      ? meta.items.filter(i => i.id !== item.id && i.id_tipo === validParentTypeId)
+                      : [];
+                    return (
+                      <Select
+                        options={parentOptions.map(i => {
+                          const iType   = meta.types.find(t => t.id === i.id_tipo);
+                          const iPrefix = TYPE_PREFIX[iType?.nombre ?? ''] ?? 'IT';
+                          return {
+                            value: String(i.id),
+                            label: `${iPrefix}-${String(i.id).padStart(2, '0')} — ${i.nombre}`,
+                            icon:  iType ? TYPE_ICONS[iType.nombre] : undefined,
+                          };
+                        })}
+                        value={form.id_backlog_item_padre}
+                        onChange={v => setForm(f => ({ ...f, id_backlog_item_padre: v }))}
+                        placeholder="Sin ítem padre"
+                        emptyLabel="Sin ítem padre"
+                        small
+                        searchable
+                      />
+                    );
+                  })()
                 : parentItem
                   ? <span className={styles.detailValue}>
                       {TYPE_PREFIX[meta.types.find(t => t.id === parentItem.id_tipo)?.nombre ?? ''] ?? 'IT'}
@@ -1118,7 +1493,10 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
           </div>
         </div>
       </div>
+  );
 
+  const popups = (
+    <>
       {showTimePopup && (
         <TimeTrackingPopup
           title="Editar tiempo real"
@@ -1172,6 +1550,17 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (inline) {
+    return <>{panelContent}{popups}</>;
+  }
+
+  return (
+    <div className={styles.overlay}>
+      {panelContent}
+      {popups}
     </div>
   );
 };
