@@ -16,9 +16,18 @@ import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
 import { Select } from '@/shared/components/Select/Select';
 import styles from './CreateBacklogItemForm.module.css';
 import { useCreateBacklogItem } from '../../hooks/useCreateBacklogItem';
-import { createSugerencia } from '../../services/backlog.service';
+import { createSugerencia, addBacklogItemBlock } from '../../services/backlog.service';
 import { useUser } from '@/core/auth/userContext';
-import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload, BacklogMeta } from '../../types/backlog.types';
+import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload, BacklogMeta, BacklogItemRecord, BacklogTypeRecord } from '../../types/backlog.types';
+
+// ── Type prefix map ───────────────────────────────────────────────
+const TYPE_PREFIX: Record<string, string> = {
+  'Historia de Usuario': 'HU',
+  'Tarea':               'TA',
+  'Bug':                 'BG',
+  'Épica':               'EP',
+  'Subtarea':            'ST',
+};
 
 // ── Status colour map by orden ────────────────────────────────────
 const STATUS_COLORS: Record<number, { bg: string; text: string }> = {
@@ -288,6 +297,91 @@ function friendlyError(msg: string): string {
   return 'Ocurrió un error al crear el ítem. Intenta de nuevo.';
 }
 
+// ── BlockerMultiSelect — pick multiple blocking items ─────────────
+interface BlockerMultiSelectProps {
+  items: BacklogItemRecord[];
+  types: BacklogTypeRecord[];
+  selectedIds: number[];
+  onChange: (ids: number[]) => void;
+}
+
+function BlockerMultiSelect({ items, types, selectedIds, onChange }: BlockerMultiSelectProps) {
+  const [open,   setOpen]   = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const getCode = (item: BacklogItemRecord) => {
+    const type = types.find(t => t.id === item.id_tipo);
+    const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+    return `${prefix}-${String(item.id).padStart(2, '0')}`;
+  };
+
+  const available = items.filter(i => !selectedIds.includes(i.id));
+  const filtered  = search.trim()
+    ? available.filter(i =>
+        i.nombre.toLowerCase().includes(search.toLowerCase()) ||
+        getCode(i).toLowerCase().includes(search.toLowerCase())
+      )
+    : available;
+
+  const selected = items.filter(i => selectedIds.includes(i.id));
+
+  const remove = (id: number) => onChange(selectedIds.filter(x => x !== id));
+  const add    = (id: number) => { onChange([...selectedIds, id]); setSearch(''); setOpen(false); };
+
+  return (
+    <div className={styles.blockerWrapper} ref={wrapperRef}>
+      <div className={styles.blockerTags}>
+        {selected.map(item => (
+          <span key={item.id} className={styles.blockerTag}>
+            <span className={styles.blockerTagText}>{getCode(item)} — {item.nombre}</span>
+            <button type="button" className={styles.blockerTagRemove} onClick={() => remove(item.id)} aria-label={`Quitar ${getCode(item)}`}>×</button>
+          </span>
+        ))}
+        <button type="button" className={styles.blockerAddBtn} onClick={() => setOpen(o => !o)}>
+          + Añadir
+        </button>
+      </div>
+
+      {open && (
+        <div className={styles.blockerDropdown}>
+          <input
+            autoFocus
+            type="text"
+            className={styles.blockerSearch}
+            placeholder="Buscar ítem..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <div className={styles.blockerList}>
+            {filtered.length === 0
+              ? <span className={styles.blockerEmpty}>Sin resultados.</span>
+              : filtered.slice(0, 25).map(item => (
+                  <button key={item.id} type="button" className={styles.blockerOption} onClick={() => add(item.id)}>
+                    <span className={styles.blockerOptionCode}>{getCode(item)}</span>
+                    <span className={styles.blockerOptionName}>{item.nombre}</span>
+                  </button>
+                ))
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Hierarchy: which type can be parent of which ──────────────────
 const PARENT_TYPE_NAME: Record<string, string> = {
   'Historia de Usuario': 'Épica',
@@ -335,6 +429,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
   const { user } = useUser();
   const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [bloqueadores,   setBloqueadores]   = useState<number[]>([]);
   const [nombreTouched,  setNombreTouched]  = useState(false);
   const [estatusTouched, setEstatusTouched] = useState(false);
   const [tipoTouched,    setTipoTouched]    = useState(false);
@@ -374,9 +469,19 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
     };
     try {
       const newItem = await submit(payload);
-      if (!isAdmin && newItem?.id) {
-        await createSugerencia(newItem.id);
+      if (newItem?.id) {
+        if (!isAdmin) {
+          await createSugerencia(newItem.id);
+        }
+        if (bloqueadores.length > 0) {
+          await Promise.all(
+            bloqueadores.map(blockerItemId =>
+              addBacklogItemBlock(newItem.id, blockerItemId, userId)
+            )
+          );
+        }
       }
+      setBloqueadores([]);
       onCreated?.();
       onClose();
     } catch { /* shown via error state */ }
@@ -546,8 +651,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             const validParents = parentTypeId != null
               ? meta.items.filter(i => i.id_tipo === parentTypeId)
               : [];
-            const PREFIX: Record<string, string> = { 'Historia de Usuario': 'HU', 'Tarea': 'TA', 'Bug': 'BG', 'Épica': 'EP', 'Subtarea': 'ST' };
-            const parentPrefix = PREFIX[parentTypeName] ?? 'IT';
+            const parentPrefix = TYPE_PREFIX[parentTypeName] ?? 'IT';
             return (
               <div className={styles.field}>
                 <label className={styles.label}>Ítem padre <span className={styles.parentTypeHint}>({parentTypeName})</span></label>
@@ -582,6 +686,17 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Bloqueado por */}
+          <div className={styles.field}>
+            <label className={styles.label}>Bloqueado por</label>
+            <BlockerMultiSelect
+              items={meta.items}
+              types={meta.types}
+              selectedIds={bloqueadores}
+              onChange={setBloqueadores}
+            />
           </div>
 
           {error && <p className={styles.error}>{friendlyError(error)}</p>}

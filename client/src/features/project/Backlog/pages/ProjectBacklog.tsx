@@ -185,19 +185,6 @@ const ProjectBacklog: React.FC = () => {
   const setFilterUser   = (v: number | null)  => setParam('user',   v);
   const setFilterSprint = (v: number | null)  => setParam('sprint', v);
 
-  useEffect(() => {
-    if (viewingId === null) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Element;
-      if (target.closest('[data-detail-panel]')) return;
-      if (target.closest('[data-backlog-title]')) return;
-      setViewingItem(null);
-      setOpenInEditMode(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [viewingId, setViewingItem]);
-
   const loading = itemsLoading || metaLoading;
   const allStatuses = meta.statuses.map(toBacklogStatus);
 
@@ -364,98 +351,127 @@ const ProjectBacklog: React.FC = () => {
     );
   };
 
-  return (
-    <div className={styles.container}>
+  const detailPanel = viewingItem && (() => {
+    const sugerencia   = meta.sugerencias.find(s => s.id === viewingItem.id);
+    const isSuggestion = !!sugerencia && !sugerencia.aceptada;
+    return (
+      <ViewItemDetail
+        inline
+        item={viewingItem}
+        meta={meta}
+        isSuggestion={isSuggestion && isPM}
+        initialEditing={openInEditMode}
+        onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
+        onUpdated={() => refreshAll()}
+        onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}
+        onAcceptSuggestion={isPM && isSuggestion ? async () => {
+          await acceptSugerencia(viewingItem.id, user!.id);
+          refreshAll();
+        } : undefined}
+      />
+    );
+  })();
 
-      <div className={styles.toolbar}>
-        <FilterBar
-          searchPlaceholder="Buscar ítems..."
-          onSearchChange={setSearch}
-          filters={[]}
-          activeFilter={null}
-          onFilterChange={() => {}}
-        >
-          <div ref={newDropdownRef} className={styles.newDropdownWrapper}>
-            <button
-              type="button"
-              className={styles.newItemBtn}
-              onClick={() => setShowNewDropdown(o => !o)}
-            >
-              <PlusIcon width={16} height={16} />
-              Nuevo
-              <ChevronDownIcon width={12} height={12} />
-            </button>
-            {showNewDropdown && (
-              <div className={styles.newDropdownMenu}>
-                <button
-                  type="button"
-                  className={styles.newDropdownOption}
-                  onClick={() => { setShowNewDropdown(false); setShowCreateForm(true); }}
-                >
-                  Ítem
-                </button>
-                {canManageSprints && (
+  return (
+    <div className={`${styles.pageLayout} ${detailPanel ? styles.pageLayoutSplit : ''}`}>
+
+      {/* ── Left: list ── */}
+      <div className={styles.contentArea}>
+        <div className={styles.toolbar}>
+          <FilterBar
+            searchPlaceholder="Buscar ítems..."
+            onSearchChange={setSearch}
+            filters={[]}
+            activeFilter={null}
+            onFilterChange={() => {}}
+          >
+            <div ref={newDropdownRef} className={styles.newDropdownWrapper}>
+              <button
+                type="button"
+                className={styles.newItemBtn}
+                onClick={() => setShowNewDropdown(o => !o)}
+              >
+                <PlusIcon width={16} height={16} />
+                Nuevo
+                <ChevronDownIcon width={12} height={12} />
+              </button>
+              {showNewDropdown && (
+                <div className={styles.newDropdownMenu}>
                   <button
                     type="button"
                     className={styles.newDropdownOption}
-                    onClick={() => { setShowNewDropdown(false); setShowCreateSprintForm(true); }}
+                    onClick={() => { setShowNewDropdown(false); setShowCreateForm(true); }}
                   >
-                    Sprint
+                    Ítem
                   </button>
-                )}
-              </div>
-            )}
-          </div>
-        </FilterBar>
-      </div>
-
-      <div className={styles.bubbles}>
-        <FilterBubble label="Estatus"     selectedLabel={selectedStatusLabel} elements={statusOptions} />
-        <FilterBubble label="Tipo"        selectedLabel={selectedTypeLabel}   elements={typeOptions} />
-        <FilterBubble label="Responsable" selectedLabel={selectedUserLabel}   elements={userOptions} />
-        <FilterBubble label="Sprint"      selectedLabel={selectedSprintLabel} elements={sprintOptions} />
-      </div>
-
-      <div className={styles.groups}>
-        {loading ? (
-          <div className={styles.list}>
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonBacklogItem key={i} />)}
-          </div>
-        ) : sprintGroups.length === 0 ? (
-          <p className={styles.empty}>No hay ítems en el backlog.</p>
-        ) : (
-          sprintGroups.map(({ sprint, items: groupItems }) => (
-            <div key={sprint?.id ?? 'no-sprint'} className={styles.sprintGroup}>
-              <div className={styles.sprintHeader}>
-                <span className={styles.sprintName}>
-                  {sprint ? sprint.nombre : 'Sin sprint'}
-                </span>
-                <span className={styles.sprintCount}>
-                  {groupItems.length} {groupItems.length === 1 ? 'ítem' : 'ítems'}
-                </span>
-                {sprint && (
-                  <span className={styles.sprintDates}>
-                    {formatSprintDate(sprint.fecha_inicio)} — {formatSprintDate(sprint.fecha_final)}
-                  </span>
-                )}
-                {sprint && canManageSprints && (
-                  <button
-                    type="button"
-                    className={styles.sprintEditBtn}
-                    onClick={() => setEditingSprint(sprint)}
-                    title="Editar sprint"
-                  >
-                    <PencilSquareIcon width={14} height={14} />
-                  </button>
-                )}
-              </div>
-
-              <div className={styles.list}>
-                {groupItems.map(item => renderItem(item))}
-              </div>
+                  {canManageSprints && (
+                    <button
+                      type="button"
+                      className={styles.newDropdownOption}
+                      onClick={() => { setShowNewDropdown(false); setShowCreateSprintForm(true); }}
+                    >
+                      Sprint
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-          ))
-        )}
+          </FilterBar>
+        </div>
+
+        <div className={styles.bubbles}>
+          <FilterBubble label="Estatus"     selectedLabel={selectedStatusLabel} elements={statusOptions} />
+          <FilterBubble label="Tipo"        selectedLabel={selectedTypeLabel}   elements={typeOptions} />
+          <FilterBubble label="Responsable" selectedLabel={selectedUserLabel}   elements={userOptions} />
+          <FilterBubble label="Sprint"      selectedLabel={selectedSprintLabel} elements={sprintOptions} />
+        </div>
+
+        <div className={styles.groups}>
+          {loading ? (
+            <div className={styles.list}>
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonBacklogItem key={i} />)}
+            </div>
+          ) : sprintGroups.length === 0 ? (
+            <p className={styles.empty}>No hay ítems en el backlog.</p>
+          ) : (
+            sprintGroups.map(({ sprint, items: groupItems }) => (
+              <div key={sprint?.id ?? 'no-sprint'} className={styles.sprintGroup}>
+                <div className={styles.sprintHeader}>
+                  <span className={styles.sprintName}>
+                    {sprint ? sprint.nombre : 'Sin sprint'}
+                  </span>
+                  <span className={styles.sprintCount}>
+                    {groupItems.length} {groupItems.length === 1 ? 'ítem' : 'ítems'}
+                  </span>
+                  {sprint && (
+                    <span className={styles.sprintDates}>
+                      {formatSprintDate(sprint.fecha_inicio)} — {formatSprintDate(sprint.fecha_final)}
+                    </span>
+                  )}
+                  {sprint && canManageSprints && (
+                    <button
+                      type="button"
+                      className={styles.sprintEditBtn}
+                      onClick={() => setEditingSprint(sprint)}
+                      title="Editar sprint"
+                    >
+                      <PencilSquareIcon width={14} height={14} />
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.list}>
+                  {groupItems.map(item => renderItem(item))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ── Right: detail panel — always in DOM so width transition runs both ways ── */}
+      <div className={styles.detailArea}>
+        {detailPanel}
       </div>
 
       <CreateBacklogItemForm
@@ -476,26 +492,6 @@ const ProjectBacklog: React.FC = () => {
         onClose={() => { setShowCreateSprintForm(false); setEditingSprint(null); }}
         onCreated={() => { refreshAll(); setShowCreateSprintForm(false); setEditingSprint(null); }}
       />
-
-      {viewingItem && (() => {
-        const sugerencia = meta.sugerencias.find(s => s.id === viewingItem.id);
-        const isSuggestion = !!sugerencia && !sugerencia.aceptada;
-        return (
-          <ViewItemDetail
-            item={viewingItem}
-            meta={meta}
-            isSuggestion={isSuggestion && isPM}
-            initialEditing={openInEditMode}
-            onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
-            onUpdated={() => refreshAll()}
-            onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}
-            onAcceptSuggestion={isPM && isSuggestion ? async () => {
-              await acceptSugerencia(viewingItem.id, user!.id);
-              refreshAll();
-            } : undefined}
-          />
-        );
-      })()}
     </div>
   );
 };
