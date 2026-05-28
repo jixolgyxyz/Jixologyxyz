@@ -13,7 +13,6 @@ export function useAvatarFeatures(
     () => makeAvatarSvg(features),
     [features]
   );
-
   const handleSelectVariant = (
     meta: FeatureMeta,
     value: string | null
@@ -36,7 +35,6 @@ export function useAvatarFeatures(
     const probProp = meta.probProp;
   
     if (!colorProp) return;
-  
     setFeatures((prev) => {
       const isGradient =
         typeProp &&
@@ -49,7 +47,6 @@ export function useAvatarFeatures(
   
         if (current.includes(colorValue)) {
           next = current.filter(c => c !== colorValue);
-  
           if (next.length === 0) {
             next = [colorValue];
           }
