@@ -139,7 +139,7 @@ const SprintBar: React.FC<SprintBarProps> = ({
       .eq('id_usuario_responsable', user?.id ?? -1)
       .order('id_prioridad', { ascending: true, nullsFirst: false })
       .then(({ data }) => {
-        const all = (data as BacklogItem[]) ?? [];
+        const all = (data as unknown as BacklogItem[]) ?? [];
         setItems(all.filter(item => !item.estatus_backlog_item?.es_terminal));
         setLoading(false);
       });
