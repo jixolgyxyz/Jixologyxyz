@@ -19,6 +19,7 @@
     var(--color-clarity-gray-2) 50%,
     var(--color-clarity-gray-1) 100%
   );
+  align-items: flex-start;
 }
 
 /* ── Right column ───────────────────────────────────────────────── */
@@ -639,6 +640,27 @@
 
 .upperBar {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 10px;
+}
+
+.upperBarButtons {
+  display: flex;
   flex-direction: row;
   gap: 0.5rem;
+}
+
+.upperBarCoins {
+  background-color: #ffffff;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  box-shadow:
+    0 2px 8px rgba(10, 8, 56, 0.04),
+    0 12px 40px rgba(10, 8, 56, 0.06);
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  font-size: large;
+  font-weight: bold;
 }

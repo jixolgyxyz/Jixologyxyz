@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { useParams } from "react-router-dom";
+import { useCallback, useState } from 'react';
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { useBacklogItems } from '@/features/project/Backlog/hooks/useBacklogItems';
 import { useBacklogMeta } from '@/features/project/Backlog/hooks/useBacklogMeta';
@@ -8,6 +9,9 @@ import { updateBacklogItem } from '@/features/project/Backlog/services/backlog.s
 
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
 import { UserIcon } from '@heroicons/react/24/outline';
+
+//Item Preview
+import ViewItemDetail from '@/shared/components/ViewItemDetail/ViewItemDetail';
 
 import styles from './ProjectTasks.module.css';
 
@@ -51,7 +55,8 @@ function UserAvatar({ userId, className }: { userId: number; className?: string 
 
 const TaskCard: React.FC<{
   task: Task;
-}> = ({ task }) => {
+  onClick: () => void;
+}> = ({ task, onClick }) => {
   return (
     <div
       className={styles.TaskCard}
@@ -60,6 +65,7 @@ const TaskCard: React.FC<{
       onDragStart={(e) => {
         e.dataTransfer.setData("taskId", task.id);
       }}
+      onClick={onClick}
     >
       <label>{task.title}</label>
 
@@ -80,13 +86,17 @@ const TaskCard: React.FC<{
   );
 };
 
-const TaskColumn: React.FC<{column: Column;
+const TaskColumn: React.FC<{
+  column: Column;
   onDropTask: (taskId: string, newStatusId: number) => void;
-}> = ({ column, onDropTask }) => {
-  const statusId = Number(column.id);
-  const colors = STATUS_COLORS[statusId];
+  onViewTask: (taskId: string) => void;
+  }> = ({ column, onDropTask, onViewTask }) => {
+    const statusId = Number(column.id);
+    const colors = STATUS_COLORS[statusId];
+    
 
-  return (
+    return (
+
     <div
       className={styles.ProjectList}
       data-status-id={column.id}
@@ -108,7 +118,11 @@ const TaskColumn: React.FC<{column: Column;
       </div>
 
       {column.tasks.map(task => (
-        <TaskCard key={task.id} task={task} />
+        <TaskCard
+          key={task.id} 
+          task={task} 
+          onClick={() => onViewTask(task.id)}
+          />
       ))}
     </div>
   );
@@ -150,6 +164,38 @@ const ProjectTasks: React.FC<{ children?: ReactNode }> = ({ children }) => {
     refresh();
   };
 
+  const handleViewTask = (taskId: string) => {
+    const task = items.find(i => String(i.id) === taskId);
+    if (!task) return;
+  
+    setOpenInEditMode(false);
+    setViewingItem(task);
+  };
+
+  //Item Preview
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewingId = searchParams.get('item')
+    ? Number(searchParams.get('item'))
+    : null;
+
+  const [openInEditMode, setOpenInEditMode] = useState(false);
+
+  const viewingItem =
+    viewingId != null
+      ? items.find(i => i.id === viewingId) ?? null
+      : null;
+
+  const setViewingItem = useCallback((item: typeof viewingItem | null) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+
+      if (item) next.set('item', String(item.id));
+      else next.delete('item');
+
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   return (
     <div className={styles.container}>
       <div className={styles.mainLists}>
@@ -158,11 +204,28 @@ const ProjectTasks: React.FC<{ children?: ReactNode }> = ({ children }) => {
           key={col.id}
           column={col}
           onDropTask={handleDropTask}
+          onViewTask={handleViewTask}
         />
         ))}
       </div>
 
       {children}
+      {viewingItem && (
+      <ViewItemDetail
+        item={viewingItem}
+        meta={meta}
+        initialEditing={openInEditMode}
+        onClose={() => {
+          setViewingItem(null);
+          setOpenInEditMode(false);
+        }}
+        onUpdated={() => refresh()}
+        onNavigate={(i) => {
+          setOpenInEditMode(false);
+          setViewingItem(i);
+        }}
+      />
+    )}
     </div>
   );
 };

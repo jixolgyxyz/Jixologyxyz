@@ -7,6 +7,7 @@ import { AvatarLootBox } from '../../profile/components/AvatarLootBox';
 import { useUserAvatar } from '../../profile/hooks/useUserAvatar';
 import { useAvatarCatalog } from '../../profile/hooks/useAvatarCatalog';
 import { useAvatarFeatures } from '../../profile/hooks/useAvatarFeatures';
+import { CircleStackIcon } from '@heroicons/react/24/outline';
 
 //MESSAGE
 import type { MessagePopUpType } from '../../../shared/components/MessagePopUp';
@@ -39,6 +40,7 @@ const shopItems = [
     description: 'Elementos inspirados en un estilo visual retro y minimalista.',
     image: cofreEspecial,
     imageHeight: '190px',
+    costo: 30
   },
   {
     id: 2,
@@ -47,6 +49,7 @@ const shopItems = [
     description: 'Diseños expresivos y dinámicos con un acabado moderno y creativo.',
     image: cofreEspecial,
     imageHeight: '190px',
+    costo: 40
   },
   {
     id: 3,
@@ -55,6 +58,7 @@ const shopItems = [
     description: 'Una colección con un enfoque clásico, limpio y atemporal.',
     image: cofreEspecial,
     imageHeight: '190px',
+    costo: 40
   },
   {
     id: 4,
@@ -64,6 +68,7 @@ const shopItems = [
     description: 'Detalles adicionales para darle más personalidad a tu avatar.',
     image: cofreAccesorio,
     imageHeight: '190px',
+    costo: 10
   },
   {
     id: 5,
@@ -73,6 +78,7 @@ const shopItems = [
     description: 'Estilos de barba para complementar distintos tipos de apariencia.',
     image: cofreBarba,
     imageHeight: '190px',
+    costo: 10
   },
   {
     id: 6,
@@ -82,6 +88,7 @@ const shopItems = [
     description: 'Prendas y combinaciones para personalizar tu estilo visual.',
     image: cofreCamisa,
     imageHeight: '190px',
+    costo: 20
   },
   {
     id: 7,
@@ -91,6 +98,7 @@ const shopItems = [
     description: 'Variaciones de ojos y colores para expresar diferentes estilos.',
     image: cofreOjo,
     imageHeight: '190px',
+    costo: 10
   },
   {
     id: 8,
@@ -100,6 +108,7 @@ const shopItems = [
     description: 'Una selección de gafas con estilos modernos y clásicos.',
     image: cofreLentes,
     imageHeight: '190px',
+    costo: 10
   },
   {
     id: 9,
@@ -109,6 +118,7 @@ const shopItems = [
     description: 'Peinados y colores para crear una apariencia única.',
     image: cofrePelo,
     imageHeight: '190px',
+    costo: 20
   },
   {
     id: 10,
@@ -118,6 +128,7 @@ const shopItems = [
     description: 'Sombreros y accesorios de cabeza para destacar tu avatar.',
     image: cofreSombrero,
     imageHeight: '190px',
+    costo: 10
   },
   {
     id: 11,
@@ -127,6 +138,7 @@ const shopItems = [
     description: 'Expresiones y detalles faciales para darle más carácter al avatar.',
     image: cofreSonrisa,
     imageHeight: '190px',
+    costo: 10
   },
   {
     id: 12,
@@ -136,6 +148,7 @@ const shopItems = [
     description: 'Fondos decorativos para complementar la presentación visual.',
     image: cofreFondo,
     imageHeight: '190px',
+    costo: 20
   },
   {
     id: 18,
@@ -145,6 +158,7 @@ const shopItems = [
     description: 'Opciones de tonos y acabados para personalizar la apariencia base.',
     image: cofrePiel,
     imageHeight: '190px',
+    costo: 10
   },
 ];
 
@@ -248,77 +262,53 @@ const ShopPage: React.FC = () => {
         </div>
 
         <div className="shop-content">
-          <div className="shop-category">
-            <h2 className="shop-subtitle">
-              Estilos de Avatar
-            </h2>
-
-            <div className="shop-grid">
-              {styleItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="shop-item"
-                >
-                  <div className="shop-item-image">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      style={{
-                        height: item.imageHeight,
-                        transform: 'translateY(-0.7rem)',
-                      }}
-                    />
-                  </div>
-
-                  <div className="shop-item-info">
-                    <h3>{item.title}</h3>
-
-                    <p>{item.description}</p>
-
-                    <ButtonComponent
-                      label="Comprar" //COFRES DE ESTILOS, NO FILTRAR
-                      onClick={() => { setShowLootbox(true); setPopup(null); }}
-                      />
-                  </div>
+          <div className="shop-horizontal-scroll">
+            {[...styleItems, ...typeItems].map((item) => (
+              <div
+                key={item.id}
+                className="shop-item"
+              >
+                <div className="shop-item-image">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    style={{
+                      height: item.imageHeight,
+                      transform: 'translateY(-0.7rem)',
+                    }}
+                  />
                 </div>
-              ))}
-            </div>
-          </div>
-          <div className="shop-category">
-            <h2 className="shop-subtitle">
-              Elementos Específicos
-            </h2>
 
-            <div className="shop-grid-below">
-              {typeItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="shop-item"
-                >
-                  <div className="shop-item-image">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      style={{
-                        height: item.imageHeight,
-                        transform: 'translateY(-0.7rem)',
-                      }}
-                    />
-                  </div>
+                <div className="shop-item-info">
+                  <h3>{item.title}</h3>
 
-                  <div className="shop-item-info">
-                    <h3>{item.title}</h3>
+                  <p>{item.description}</p>
 
-                    <p>{item.description}</p>
+                  <ButtonComponent
+                    label={
+                      <div className="shopButtonLabel">
+                        <span>Comprar</span>
+                    
+                        <span className="shopButtonPrice">
+                          {item.costo}
+                          <CircleStackIcon />
+                        </span>
+                      </div>
+                    }
+                    onClick={() => {
+                      if (item.category === 'types') {
+                        setLootboxCategory(item.subcategory ?? null);
+                      } else {
+                        setLootboxCategory(null);
+                      }
 
-                    <ButtonComponent
-                      label="Comprar"
-                      onClick={() => { setLootboxCategory(item.subcategory ?? null); setShowLootbox(true); setPopup(null); }}
-                      />
-                  </div>
+                      setShowLootbox(true);
+                      setPopup(null);
+                    }}
+                  />
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
