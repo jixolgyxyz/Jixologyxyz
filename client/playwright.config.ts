@@ -17,6 +17,11 @@ export default defineConfig({
   globalSetup: './tests/e2e/global.setup.ts',
   fullyParallel: false,
   retries: 1,
+  // Windows ephemeral-port pool fills up fast when many browser contexts hit
+  // localhost (Vite + Supabase) in parallel, causing ERR_NO_BUFFER_SPACE on
+  // dashboard tests. One worker on Windows keeps socket pressure manageable;
+  // other platforms can scale freely.
+  workers: process.platform === 'win32' ? 1 : undefined,
   // Shown in the HTML report's "Metadata" panel — identifies who ran the suite.
   // Playwright only renders the `ci` / `gitCommit` metadata keys there by
   // default (any other key stays hidden unless the report URL carries the

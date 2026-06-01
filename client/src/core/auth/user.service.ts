@@ -13,14 +13,25 @@ export interface UserProfile {
   activo: boolean;
 }
 
-export async function fetchCurrentUser(authId: string): Promise<UserProfile | null> {
-  const { data, error } = await supabase
+async function fetchUserRow(authId: string) {
+  return supabase
     .from("usuario")
     .select("id, auth_id, nombre, apellido, email, id_zona_horaria, id_rol_global, activo, rol_global(nombre), zona_horaria(nombre)")
     .eq("auth_id", authId)
     .maybeSingle();
+}
 
-  if (error) throw new Error(`${error.message}, ${error.code}`);
+export async function fetchCurrentUser(authId: string): Promise<UserProfile | null> {
+  // Retry transient network failures (e.g. Windows ERR_NO_BUFFER_SPACE under
+  // heavy parallel test load, brief Wi-Fi drops, dev-server restarts).
+  let res = await fetchUserRow(authId).catch(err => ({ data: null, error: err }));
+  for (let attempt = 1; attempt < 3 && res.error; attempt++) {
+    await new Promise(r => setTimeout(r, 150 * attempt));
+    res = await fetchUserRow(authId).catch(err => ({ data: null, error: err }));
+  }
+
+  const { data, error } = res;
+  if (error) throw new Error(`${error.message ?? error}, ${error.code ?? 'unknown'}`);
   if (!data) return null;
 
   const rolGlobal   = data.rol_global   as unknown as { nombre: string } | null;
