@@ -1,319 +1,226 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import './Store.css';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 
-//PROFILE HOOKS & COMPONENTS
 import { AvatarLootBox } from '../../profile/components/AvatarLootBox';
 import { useUserAvatar } from '../../profile/hooks/useUserAvatar';
 import { useAvatarCatalog } from '../../profile/hooks/useAvatarCatalog';
-import { useAvatarFeatures } from '../../profile/hooks/useAvatarFeatures';
+import {
+  fetchCatalog,
+  fetchUserActiveAvatar,
+  makeDefaultVisibleFeatures,
+} from '../../profile/services/avatar.service';
+import type { DynamicFeatures, ElementoInventarioAvatar } from '../../profile/types/avatar.types';
 import { CircleStackIcon } from '@heroicons/react/24/outline';
-
-//MESSAGE
-import type { MessagePopUpType } from '../../../shared/components/MessagePopUp';
 
 import { useUser } from '@/core/auth/userContext';
 
 import cofreEspecial from '../resources/cofreEspecial.png';
-import cofreAccesorio from '../resources/CofreAccesorio.png';
-import cofreBarba from '../resources/CofreBarba.png';
-import cofreCamisa from '../resources/CofreCamisa.png';
-import cofreFondo from '../resources/CofreFondo.png';
-import cofreLentes from '../resources/CofreLentes.png';
-import cofreOjo from '../resources/CofreOjo.png';
-import cofrePelo from '../resources/CofrePelo.png';
-import cofrePiel from '../resources/CofrePiel.png';
-import cofreSombrero from '../resources/CofreSombrero.png';
-import cofreSonrisa from '../resources/CofreSonrisa.png';
 
-interface PopupState {
-  type: MessagePopUpType;
-  title: string;
-  message: string;
+// Snapshot handed to AvatarLootBox — built atomically in the click handler.
+interface LootboxSession {
+  styleId:      number;
+  styleName:    string;
+  baseFeatures: DynamicFeatures;
+  unownedItems: ElementoInventarioAvatar[];
 }
 
-const shopItems = [
-  {
-    id: 1,
-    category: 'styles',
-    title: 'Cofre Pixel',
-    description: 'Elementos inspirados en un estilo visual retro y minimalista.',
-    image: cofreEspecial,
-    imageHeight: '190px',
-    costo: 30
-  },
-  {
-    id: 2,
-    category: 'styles',
-    title: 'Cofre Animado',
-    description: 'Diseños expresivos y dinámicos con un acabado moderno y creativo.',
-    image: cofreEspecial,
-    imageHeight: '190px',
-    costo: 40
-  },
-  {
-    id: 3,
-    category: 'styles',
-    title: 'Cofre Tradicional',
-    description: 'Una colección con un enfoque clásico, limpio y atemporal.',
-    image: cofreEspecial,
-    imageHeight: '190px',
-    costo: 40
-  },
-  {
-    id: 4,
-    category: 'types',
-    title: 'Cofre de Accesorios',
-    subcategory: [1, 2],
-    description: 'Detalles adicionales para darle más personalidad a tu avatar.',
-    image: cofreAccesorio,
-    imageHeight: '190px',
-    costo: 10
-  },
-  {
-    id: 5,
-    category: 'types',
-    title: 'Cofre de Barbas',
-    subcategory: [3],
-    description: 'Estilos de barba para complementar distintos tipos de apariencia.',
-    image: cofreBarba,
-    imageHeight: '190px',
-    costo: 10
-  },
-  {
-    id: 6,
-    category: 'types',
-    title: 'Cofre de Ropa',
-    subcategory: [4, 5],
-    description: 'Prendas y combinaciones para personalizar tu estilo visual.',
-    image: cofreCamisa,
-    imageHeight: '190px',
-    costo: 20
-  },
-  {
-    id: 7,
-    category: 'types',
-    title: 'Cofre de Ojos',
-    subcategory: [6, 7],
-    description: 'Variaciones de ojos y colores para expresar diferentes estilos.',
-    image: cofreOjo,
-    imageHeight: '190px',
-    costo: 10
-  },
-  {
-    id: 8,
-    category: 'types',
-    title: 'Cofre de Gafas',
-    subcategory: [8, 9],
-    description: 'Una selección de gafas con estilos modernos y clásicos.',
-    image: cofreLentes,
-    imageHeight: '190px',
-    costo: 10
-  },
-  {
-    id: 9,
-    category: 'types',
-    title: 'Cofre de Cabello',
-    subcategory: [10, 11],
-    description: 'Peinados y colores para crear una apariencia única.',
-    image: cofrePelo,
-    imageHeight: '190px',
-    costo: 20
-  },
-  {
-    id: 10,
-    category: 'types',
-    title: 'Cofre de Sombrero',
-    subcategory: [12, 13],
-    description: 'Sombreros y accesorios de cabeza para destacar tu avatar.',
-    image: cofreSombrero,
-    imageHeight: '190px',
-    costo: 10
-  },
-  {
-    id: 11,
-    category: 'types',
-    title: 'Cofre de Boca',
-    subcategory: [14, 15],
-    description: 'Expresiones y detalles faciales para darle más carácter al avatar.',
-    image: cofreSonrisa,
-    imageHeight: '190px',
-    costo: 10
-  },
-  {
-    id: 12,
-    category: 'types',
-    title: 'Cofre de Fondo',
-    subcategory: [16],
-    description: 'Fondos decorativos para complementar la presentación visual.',
-    image: cofreFondo,
-    imageHeight: '190px',
-    costo: 20
-  },
-  {
-    id: 18,
-    category: 'types',
-    title: 'Cofre de Piel',
-    subcategory: [18],
-    description: 'Opciones de tonos y acabados para personalizar la apariencia base.',
-    image: cofrePiel,
-    imageHeight: '190px',
-    costo: 10
-  },
-];
+// A chest tile shown in the store grid.
+interface Chest {
+  id:           string;
+  title:        string;
+  description:  string;
+  costo:        number;
+  attributoIds: number[] | null; // null = all attributes of the style (general chest)
+}
 
-const ShopPage: React.FC = () => {
+interface ShopPageProps {
+  styleId?:        number;
+  onStyleChange?:  (styleId: number) => void;
+}
+
+const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
   const { user } = useUser();
+  const activeStyleId = styleId ?? 1;
 
-  //Lista de estilos y tipos en shopItems
-  const styleItems = shopItems.filter(
-    (item) => item.category === 'styles'
-  );
-
-  const typeItems = shopItems.filter(
-    (item) => item.category === 'types'
-  );
-
-  //Variables para manejo de Gachas
-  const [showLootbox, setShowLootbox] = useState(false);
-  const [, setPopup] = useState<PopupState | null>(null); //No tengo idea de porque esa coma la hace funcionar... pero lo hace
-  const [lootboxCategory, setLootboxCategory] = useState<number[] | null>(null); //Pool de Objetos
-
-  //Datos DEL gacha
-  const {
+  const { catalog, allElements, atributos, styles } = useAvatarCatalog(activeStyleId);
+  const { unownedItems, addRandomItem, addingItem } = useUserAvatar(
+    user?.id ?? 0,
     catalog,
     allElements,
     atributos,
-  } = useAvatarCatalog();
-
-  //Datos del usuario para el gacha
-  const {
-    unownedItems,
-    filteredCatalog,
-    initialFeatures,
-    addRandomItem,
-    addingItem,
-  } = useUserAvatar(user?.id ?? 0, catalog, allElements, atributos);
-
-  //Datos del Avatar
-  const {
-      features,
-    } = useAvatarFeatures(
-      filteredCatalog ?? {
-        styleId: 1,
-        styleName: '',
-        features: [],
-        defaultFeatures: {},
-      },
-      initialFeatures,
-    );
-
-  //Filtrado de Items por Cofre
-  console.log('lootboxCategory:', lootboxCategory);
-
-  console.log(
-    'unownedItems:',
-    unownedItems.map((item) => ({
-      nombre: item.nombre,
-      id_atributo_avatar: item.id_atributo_avatar,
-      tipo: typeof item.id_atributo_avatar,
-    }))
   );
-  const filteredUnownedItems =
-  !lootboxCategory
-    ? unownedItems
-    : unownedItems.filter((item) =>
-        lootboxCategory.includes(item.id_atributo_avatar)
+
+  const [session, setSession] = useState<LootboxSession | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // ── Build chests dynamically for the currently-selected style ────────────────
+  // 1. General chest: random across every attribute of the style
+  // 2. One focused chest per feature in the catalog (hair, eyes, mouth, …)
+  const chests: Chest[] = useMemo(() => {
+    if (!catalog) return [];
+    const styleName = catalog.styleName;
+
+    const result: Chest[] = [
+      {
+        id:           `general-${activeStyleId}`,
+        title:        `Cofre ${styleName}`,
+        description:  `Una colección variada de elementos de ${styleName}.`,
+        costo:        40,
+        attributoIds: null,
+      },
+    ];
+
+    for (const feature of catalog.features) {
+      const variantAttr = atributos.find(
+        a => a.nombre === feature.key && a.id_avatar_style === activeStyleId,
+      );
+      const colorAttr = feature.colorProp
+        ? atributos.find(a => a.nombre === feature.colorProp && a.id_avatar_style === activeStyleId)
+        : undefined;
+
+      const ids: number[] = [];
+      if (variantAttr) ids.push(variantAttr.id);
+      if (colorAttr)   ids.push(colorAttr.id);
+      if (ids.length === 0) continue;
+
+      result.push({
+        id:           `${activeStyleId}-${feature.key}`,
+        title:        `Cofre de ${feature.label}`,
+        description:  `Solo elementos de ${feature.label.toLowerCase()}.`,
+        costo:        10,
+        attributoIds: ids,
+      });
+    }
+
+    return result;
+  }, [catalog, atributos, activeStyleId]);
+
+  // ── Open a chest ─────────────────────────────────────────────────────────────
+  const openChest = async (chest: Chest) => {
+    const userId = user?.id;
+    if (!userId || !atributos.length || !allElements.length || !catalog) return;
+    if (loading) return;
+
+    setLoading(true);
+    try {
+      const styleAttrIds = new Set(
+        atributos.filter(a => a.id_avatar_style === activeStyleId).map(a => a.id),
       );
 
-  console.log(
-    'filteredUnownedItems:',
-    filteredUnownedItems.map((item) => ({
-      nombre: item.nombre,
-      id_atributo_avatar: item.id_atributo_avatar,
-      tipo: typeof item.id_atributo_avatar,
-    }))
-  );
+      const items = unownedItems.filter(it => {
+        if (!styleAttrIds.has(it.id_atributo_avatar)) return false;
+        if (chest.attributoIds && !chest.attributoIds.includes(it.id_atributo_avatar)) return false;
+        return true;
+      });
 
-  return (<>
-    {showLootbox && (
-            <div
-              className="lootbox-overlay"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) setShowLootbox(false);
-              }}
-            >
-              <div className="lootbox-modal">
-                <AvatarLootBox
-                  unownedItems={filteredUnownedItems}
-                  atributos={atributos}
-                  baseFeatures={features}
-                  onOpen={addRandomItem}
-                  onClose={() => setShowLootbox(false)}
-                  disabled={addingItem}
-                />
-              </div>
+      const saved = await fetchUserActiveAvatar(userId, allElements, atributos, activeStyleId);
+      let baseFeatures: DynamicFeatures;
+      if (saved) {
+        baseFeatures = saved.features;
+      } else {
+        const { catalog: styleCatalog } = await fetchCatalog(activeStyleId);
+        baseFeatures = makeDefaultVisibleFeatures(styleCatalog);
+      }
+
+      setSession({
+        styleId:      activeStyleId,
+        styleName:    catalog.styleName,
+        baseFeatures,
+        unownedItems: items,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeLootbox = () => setSession(null);
+
+  return (
+    <>
+      {session && (
+        <div
+          className="lootbox-overlay"
+          onClick={e => {
+            if (e.target === e.currentTarget) closeLootbox();
+          }}
+        >
+          <div className="lootbox-modal">
+            <AvatarLootBox
+              key={`lootbox-${session.styleId}-${session.unownedItems.length}`}
+              unownedItems={session.unownedItems}
+              atributos={atributos}
+              baseFeatures={session.baseFeatures}
+              styleName={session.styleName}
+              onOpen={addRandomItem}
+              onClose={closeLootbox}
+              disabled={addingItem}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="shop-page">
+        <div className="shop-section">
+          <div className="shop-header">
+            <h1 className="shop-title">Tienda</h1>
+            <div className="shop-coins">
+              <span>Monedas: 20</span>
+              <CircleStackIcon className="shop-coins-icon" />
+            </div>
+          </div>
+
+          {styles.length > 1 && onStyleChange && (
+            <div className="shop-style-nav">
+              {styles.map(s => (
+                <button
+                  key={s.id}
+                  className={`shop-style-nav__btn${activeStyleId === s.id ? ' shop-style-nav__btn--active' : ''}`}
+                  onClick={() => onStyleChange(s.id)}
+                >
+                  {s.nombre}
+                </button>
+              ))}
             </div>
           )}
-    <div className="shop-page">
-      <div className="shop-section">
-        <div className="shop-header">
-          <h1 className="shop-title">Tienda</h1>
-        </div>
 
-        <div className="shop-content">
-          <div className="shop-horizontal-scroll">
-            {[...styleItems, ...typeItems].map((item) => (
-              <div
-                key={item.id}
-                className="shop-item"
-              >
-                <div className="shop-item-image">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    style={{
-                      height: item.imageHeight,
-                      transform: 'translateY(-0.7rem)',
-                    }}
-                  />
-                </div>
+          <div className="shop-content">
+            <div className="shop-horizontal-scroll">
+              {chests.map(chest => (
+                <div key={chest.id} className="shop-item">
+                  <div className="shop-item-image">
+                    <img
+                      src={cofreEspecial}
+                      alt={chest.title}
+                      style={{ height: '90px', transform: 'translateY(-0.7rem)' }}
+                    />
+                  </div>
 
-                <div className="shop-item-info">
-                  <h3>{item.title}</h3>
+                  <div className="shop-item-info">
+                    <h3>{chest.title}</h3>
+                    <p>{chest.description}</p>
 
-                  <p>{item.description}</p>
-
-                  <ButtonComponent
-                    label={
-                      <div className="shopButtonLabel">
-                        <span>Comprar</span>
-                    
-                        <span className="shopButtonPrice">
-                          {item.costo}
-                          <CircleStackIcon />
-                        </span>
-                      </div>
-                    }
-                    onClick={() => {
-                      if (item.category === 'types') {
-                        setLootboxCategory(item.subcategory ?? null);
-                      } else {
-                        setLootboxCategory(null);
+                    <ButtonComponent
+                      label={
+                        <div className="shopButtonLabel">
+                          <span>{loading ? 'Cargando…' : 'Comprar'}</span>
+                          <span className="shopButtonPrice">
+                            {chest.costo}
+                            <CircleStackIcon />
+                          </span>
+                        </div>
                       }
-
-                      setShowLootbox(true);
-                      setPopup(null);
-                    }}
-                  />
+                      onClick={() => openChest(chest)}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    </>);
+    </>
+  );
 };
 
 export default ShopPage;

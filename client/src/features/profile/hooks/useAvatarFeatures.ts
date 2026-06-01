@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { makeAvatarSvg } from '../services/avatar.service';
 import type { AvatarCatalog, DynamicFeatures, FeatureMeta } from '../types/avatar.types';
@@ -9,9 +9,14 @@ export function useAvatarFeatures(
 ) {
   const [features, setFeatures] = useState<DynamicFeatures>(initialFeatures);
 
+  // Sync when initialFeatures loads from DB (useState ignores prop changes after mount)
+  useEffect(() => {
+    setFeatures(initialFeatures);
+  }, [initialFeatures]);
+
   const mainAvatarSvg = useMemo(
-    () => makeAvatarSvg(features),
-    [features]
+    () => makeAvatarSvg(features, catalog.styleName),
+    [features, catalog.styleName]
   );
   const handleSelectVariant = (
     meta: FeatureMeta,

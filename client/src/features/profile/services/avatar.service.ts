@@ -1,5 +1,5 @@
 import { createAvatar } from '@dicebear/core';
-import { pixelArt } from '@dicebear/collection';
+import { pixelArt, notionists, miniavs } from '@dicebear/collection';
 
 import type {
   AvatarCatalog,
@@ -40,9 +40,10 @@ const DEFAULT_TYPE_OVERRIDES: Record<string, string> = {
 };
 
 // ── Module-level cache — fetched once per session ─────────────────────────────
-let catalogCache: AvatarCatalog | null = null;
-let allElementsCache: ElementoInventarioAvatar[] | null = null;
-let atributosCache: AtributoAvatar[] | null = null;
+let stylesCache:      AvatarStyle[]                  | null = null;
+let allElementsCache: ElementoInventarioAvatar[]     | null = null;
+let atributosCache:   AtributoAvatar[]               | null = null;
+const catalogByStyle  = new Map<number, AvatarCatalog>();
 
 // ── Catalog builder ───────────────────────────────────────────────────────────
 function buildCatalogFromData(
@@ -163,36 +164,44 @@ export async function fetchCatalog(styleId = 1): Promise<{
   catalog:     AvatarCatalog;
   allElements: ElementoInventarioAvatar[];
   atributos:   AtributoAvatar[];
+  styles:      AvatarStyle[];
 }> {
-  if (catalogCache && allElementsCache && atributosCache) {
-    return { catalog: catalogCache, allElements: allElementsCache, atributos: atributosCache };
+  if (!stylesCache || !allElementsCache || !atributosCache) {
+    const { supabase } = await import('../../../core/supabase/supabase.client');
+
+    const [stylesRes, atributosRes, elementosRes] = await Promise.all([
+      supabase.from('avatar_style').select('id, nombre'),
+      supabase.from('atributo_avatar').select('id, nombre, nombre_es, id_avatar_style'),
+      supabase.from('elemento_inventario_avatar').select('id, nombre, nombre_es, id_atributo_avatar'),
+    ]);
+
+    if (stylesRes.error || atributosRes.error || elementosRes.error) {
+      throw new Error(
+        stylesRes.error?.message ??
+        atributosRes.error?.message ??
+        elementosRes.error?.message ??
+        'Failed to fetch avatar catalog'
+      );
+    }
+
+    stylesCache      = stylesRes.data as AvatarStyle[];
+    atributosCache   = atributosRes.data as AtributoAvatar[];
+    allElementsCache = elementosRes.data as ElementoInventarioAvatar[];
   }
 
-  const { supabase } = await import('../../../core/supabase/supabase.client');
-
-  const [stylesRes, atributosRes, elementosRes] = await Promise.all([
-    supabase.from('avatar_style').select('id, nombre'),
-    supabase.from('atributo_avatar').select('id, nombre, nombre_es, id_avatar_style'),
-    supabase.from('elemento_inventario_avatar').select('id, nombre, nombre_es, id_atributo_avatar'),
-  ]);
-
-  if (stylesRes.error || atributosRes.error || elementosRes.error) {
-    throw new Error(
-      stylesRes.error?.message ??
-      atributosRes.error?.message ??
-      elementosRes.error?.message ??
-      'Failed to fetch avatar catalog'
+  if (!catalogByStyle.has(styleId)) {
+    catalogByStyle.set(
+      styleId,
+      buildCatalogFromData(stylesCache, atributosCache, allElementsCache, styleId),
     );
   }
 
-  const atributos   = atributosRes.data as AtributoAvatar[];
-  const allElements = elementosRes.data as ElementoInventarioAvatar[];
-
-  catalogCache     = buildCatalogFromData(stylesRes.data as AvatarStyle[], atributos, allElements, styleId);
-  allElementsCache = allElements;
-  atributosCache   = atributos;
-
-  return { catalog: catalogCache, allElements, atributos };
+  return {
+    catalog:     catalogByStyle.get(styleId)!,
+    allElements: allElementsCache,
+    atributos:   atributosCache,
+    styles:      stylesCache,
+  };
 }
 
 // ── User inventory ────────────────────────────────────────────────────────────
@@ -215,25 +224,44 @@ export async function fetchUserInventory(userId: number): Promise<Set<number>> {
 }
 
 // ── Active avatar load ────────────────────────────────────────────────────────
+// styleId: pass the target style to load that style's avatar;
+//          omit to read the user's persisted current style (id_avatar_style_actual).
 export async function fetchUserActiveAvatar(
   userId:      number,
   allElements: ElementoInventarioAvatar[],
   atributos:   AtributoAvatar[],
-): Promise<DynamicFeatures | null> {
+  styleId?:    number,
+): Promise<{ features: DynamicFeatures; styleId: number } | null> {
   const { supabase } = await import('../../../core/supabase/supabase.client');
+
+  // Resolve target style: caller-provided OR the user's saved "current" style
+  let resolvedStyleId = styleId;
+  if (resolvedStyleId === undefined) {
+    const { data: userRow, error: userErr } = await supabase
+      .from('usuario')
+      .select('id_avatar_style_actual')
+      .eq('id', userId)
+      .single();
+    if (userErr) throw new Error(userErr.message);
+    resolvedStyleId = (userRow?.id_avatar_style_actual as number | undefined) ?? 1;
+  }
+
   const { data, error } = await supabase
     .from('usuario_avatar')
-    .select('id_elemento')
-    .eq('id_usuario', userId);
+    .select('id_elemento, id_avatar_style')
+    .eq('id_usuario', userId)
+    .eq('id_avatar_style', resolvedStyleId);
   if (error) throw new Error(error.message);
   if (!data || data.length === 0) return null;
 
   const attrById = new Map(atributos.map(a => [a.id, a]));
   const elemById = new Map(allElements.map(e => [e.id, e]));
 
-  // Group element names by their atributo nombre
+  const styleAtributos = atributos.filter(a => a.id_avatar_style === resolvedStyleId);
+
   const grouped = new Map<string, string[]>();
-  for (const row of data as { id_elemento: number }[]) {
+  for (const row of data as { id_elemento: number; id_avatar_style: number }[]) {
+    if (row.id_avatar_style !== resolvedStyleId) continue;
     const elem = elemById.get(row.id_elemento);
     if (!elem) continue;
     const attr = attrById.get(elem.id_atributo_avatar);
@@ -242,32 +270,28 @@ export async function fetchUserActiveAvatar(
     grouped.set(attr.nombre, [...existing, elem.nombre]);
   }
 
-  // Build DynamicFeatures — probability is inferred from presence of a variant row
   const features: DynamicFeatures = {};
   const presentVariants = new Set<string>();
 
   for (const [attrNombre, values] of grouped) {
-    if (attrNombre.endsWith('Probability')) continue; // never stored directly
+    if (attrNombre.endsWith('Probability')) continue;
     features[attrNombre] = values;
     presentVariants.add(attrNombre);
     const probAttrName = `${attrNombre}Probability`;
-    if (atributos.some(a => a.nombre === probAttrName)) {
-      features[probAttrName] = 100; // stored variant → visible
+    if (styleAtributos.some(a => a.nombre === probAttrName)) {
+      features[probAttrName] = 100;
     }
   }
 
-  // Features with a probability attribute that are absent from DB must be
-  // explicitly hidden (probability = 0) so DiceBear does not fall back to its
-  // seed-based default and show them unexpectedly.
-  for (const a of atributos) {
+  for (const a of styleAtributos) {
     if (!a.nombre.endsWith('Probability')) continue;
     const baseKey = a.nombre.slice(0, -'Probability'.length);
     if (!presentVariants.has(baseKey)) {
-      features[a.nombre] = 0; // absent from DB → hidden
+      features[a.nombre] = 0;
     }
   }
 
-  return features;
+  return { features, styleId: resolvedStyleId };
 }
 
 // ── Active avatar save ────────────────────────────────────────────────────────
@@ -276,6 +300,7 @@ export async function saveUserActiveAvatar(
   features:    DynamicFeatures,
   allElements: ElementoInventarioAvatar[],
   atributos:   AtributoAvatar[],
+  styleId:     number,
 ): Promise<void> {
   const { supabase } = await import('../../../core/supabase/supabase.client');
 
@@ -283,12 +308,10 @@ export async function saveUserActiveAvatar(
   const elementIds: number[] = [];
 
   for (const [key, val] of Object.entries(features)) {
-    if (key.endsWith('Probability')) continue; // inferred from presence — not stored
+    if (key.endsWith('Probability')) continue;
     const attr = attrByName.get(key);
     if (!attr) continue;
 
-    // If this feature has a probability and it is explicitly 0, skip it — element
-    // must NOT be saved so that on reload the absence is interpreted as "hidden".
     const probKey = `${key}Probability`;
     if (probKey in features && (features[probKey] as number) === 0) continue;
 
@@ -300,18 +323,28 @@ export async function saveUserActiveAvatar(
     }
   }
 
+  // Delete only this style's rows — other styles are preserved
   const { error: delError } = await supabase
     .from('usuario_avatar')
     .delete()
-    .eq('id_usuario', userId);
+    .eq('id_usuario', userId)
+    .eq('id_avatar_style', styleId);
   if (delError) throw new Error(delError.message);
 
-  if (elementIds.length === 0) return;
+  if (elementIds.length > 0) {
+    const { error: insError } = await supabase
+      .from('usuario_avatar')
+      .insert(elementIds.map(id => ({ id_usuario: userId, id_elemento: id, id_avatar_style: styleId })));
+    if (insError) throw new Error(insError.message);
+  }
 
-  const { error: insError } = await supabase
-    .from('usuario_avatar')
-    .insert(elementIds.map(id => ({ id_usuario: userId, id_elemento: id })));
-  if (insError) throw new Error(insError.message);
+  // Mark this style as the user's current — drives what UserCard and other
+  // global displays show after a save.
+  const { error: updError } = await supabase
+    .from('usuario')
+    .update({ id_avatar_style_actual: styleId })
+    .eq('id', userId);
+  if (updError) throw new Error(updError.message);
 }
 
 // ── Catalog filtered to user inventory ───────────────────────────────────────
@@ -349,31 +382,73 @@ export function filterCatalogByInventory(
   return { ...catalog, features: filteredFeatures };
 }
 
+// ── Full-visible base features for lootbox carousel ──────────────────────────
+// Unlike defaultFeatures (all probabilities = 0), this sets every
+// probability to 100 and picks the first valid variant/color per feature,
+// so carousel tiles render a complete avatar instead of a bare head.
+export function makeDefaultVisibleFeatures(catalog: AvatarCatalog): DynamicFeatures {
+  const features: DynamicFeatures = {};
+
+  for (const meta of catalog.features) {
+    if (meta.colorOnly) {
+      if (meta.colorProp && meta.colorOptions.length > 0) {
+        features[meta.colorProp] = [meta.colorOptions[0]];
+      }
+      if (meta.typeProp && meta.typeOptions.length > 0) {
+        features[meta.typeProp] = [meta.typeOptions[0]];
+      }
+    } else {
+      if (meta.variants.length > 0) {
+        features[meta.key] = [meta.variants[0]];
+      }
+      if (meta.probProp) {
+        features[meta.probProp] = 100;
+      }
+      if (meta.colorProp && meta.colorOptions.length > 0) {
+        features[meta.colorProp] = [meta.colorOptions[0]];
+      }
+    }
+  }
+
+  return features;
+}
+
 // ── SVG generation ────────────────────────────────────────────────────────────
-export function makeAvatarSvg(features: DynamicFeatures): string {
-  return createAvatar(pixelArt, { seed: SEED, ...features } as Parameters<typeof createAvatar>[1]).toString();
+const STYLE_COLLECTIONS: Record<string, Parameters<typeof createAvatar>[0]> = {
+  pixelArt,
+  notionist:  notionists,
+  miniavs,
+};
+
+export function makeAvatarSvg(features: DynamicFeatures, styleName = 'pixelArt'): string {
+  const collection = STYLE_COLLECTIONS[styleName] ?? pixelArt;
+  const svg = createAvatar(collection, { seed: SEED, ...features } as Parameters<typeof createAvatar>[1]).toString();
+
+  return svg;
 }
 
 export function makeVariantTileSvg(
-  base:  DynamicFeatures,
-  meta:  FeatureMeta,
-  value: string | null,
+  base:      DynamicFeatures,
+  meta:      FeatureMeta,
+  value:     string | null,
+  styleName = 'pixelArt',
 ): string {
   const probOverride    = meta.probProp ? { [meta.probProp]: value === null ? 0 : 100 } : {};
   const variantOverride = value !== null ? { [meta.key]: [value] } : {};
-  return makeAvatarSvg({ ...base, ...probOverride, ...variantOverride });
+  return makeAvatarSvg({ ...base, ...probOverride, ...variantOverride }, styleName);
 }
 
 export function makeColorTileSvg(
   base:       DynamicFeatures,
   meta:       FeatureMeta,
   colorValue: string,
+  styleName = 'pixelArt',
 ): string {
-  if (!meta.colorProp) return makeAvatarSvg(base);
+  if (!meta.colorProp) return makeAvatarSvg(base, styleName);
   const probOverride  = meta.probProp ? { [meta.probProp]: 100 } : {};
   const colorOverride = { [meta.colorProp]: [colorValue] };
   // Force solid type in tile previews so each color swatch clearly shows its
   // own colour regardless of whether the user currently has gradient selected.
   const typeOverride  = meta.typeProp ? { [meta.typeProp]: ['solid'] } : {};
-  return makeAvatarSvg({ ...base, ...probOverride, ...typeOverride, ...colorOverride });
+  return makeAvatarSvg({ ...base, ...probOverride, ...typeOverride, ...colorOverride }, styleName);
 }

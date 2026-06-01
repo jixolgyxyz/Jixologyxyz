@@ -45,25 +45,24 @@ export function useUserAvatar(
 
     Promise.all([
       fetchUserInventory(userId),
-      fetchUserActiveAvatar(userId, allElements, atributos),
+      fetchUserActiveAvatar(userId, allElements, atributos, catalog.styleId),
     ])
-      .then(([ids, activeFeatures]) => {
+      .then(([ids, activeResult]) => {
         setOwnedIds(ids);
         const narrowed = filterCatalogByInventory(catalog, ids, allElements, atributos);
         setFilteredCatalog(narrowed);
-        setInitialFeatures(activeFeatures ?? narrowed.defaultFeatures);
+        setInitialFeatures(activeResult?.features ?? narrowed.defaultFeatures);
       })
       .catch(console.error)
       .finally(() => setLoadingAvatar(false));
   }, [userId, catalog, allElements, atributos]);
 
   const saveAvatar = useCallback(async (features: DynamicFeatures) => {
+    if (!filteredCatalog) return;
     setSaving(true);
     try {
-      const styleAtributos = filteredCatalog
-        ? atributos.filter(a => a.id_avatar_style === filteredCatalog.styleId)
-        : atributos;
-      await saveUserActiveAvatar(userId, features, allElements, styleAtributos);
+      const styleAtributos = atributos.filter(a => a.id_avatar_style === filteredCatalog.styleId);
+      await saveUserActiveAvatar(userId, features, allElements, styleAtributos, filteredCatalog.styleId);
     } finally {
       setSaving(false);
     }
@@ -90,15 +89,8 @@ export function useUserAvatar(
           atributos
         );
   
-        console.log(
-          'UPDATED FEATURES LENGTH:',
-          updatedCatalog.features.length
-        );
-  
         setFilteredCatalog(updatedCatalog);
       }
-  
-      console.log('updated owned ids:', [...updated]);
   
     } finally {
       setAddingItem(false);

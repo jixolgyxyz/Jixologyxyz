@@ -6,6 +6,7 @@
   width: 100%;
   max-width: 360px;
   flex-shrink: 0;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -13,9 +14,8 @@
     0 2px 8px rgba(10, 8, 56, 0.04),
     0 12px 40px rgba(10, 8, 56, 0.06);
   position: relative;
-
-  overflow: hidden;
-  min-height: 35rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .profileCard::before {
@@ -33,7 +33,8 @@
 /* ── Avatar ─────────────────────────────────────────────────────── */
 .avatarWrapper {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   padding-top: 4px;
 }
 
@@ -53,6 +54,29 @@
   width: 100%;
   height: 100%;
   display: block;
+}
+
+/* ── Edit avatar button ─────────────────────────────────────────── */
+.editAvatarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-clarity-gray-2);
+  background: var(--color-white);
+  color: var(--color-anchor-gray-1);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.editAvatarBtn:hover {
+  border-color: #6c63ff;
+  background: #f0eeff;
+  color: #6c63ff;
 }
 
 /* ── Edit button ────────────────────────────────────────────────── */

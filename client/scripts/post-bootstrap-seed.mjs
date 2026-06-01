@@ -19,6 +19,7 @@ const SQL_FILES = [
   path.join(ROOT, 'scripts', 'insertProjects.sql'),
   path.join(ROOT, 'scripts', 'InsertProjectsToUser.sql'),
   path.join(ROOT, 'scripts', 'InsertValoresInventario.sql'),
+  path.join(ROOT, 'scripts', 'InsertAvatarUsuario.sql'),
   path.join(ROOT, 'scripts', 'InsertEstatusBacklogItem.sql'),
   path.join(ROOT, 'scripts', 'InsertDummySprint.sql'),
   path.join(ROOT, 'scripts', 'InsertDummyBacklogItems.sql'),
