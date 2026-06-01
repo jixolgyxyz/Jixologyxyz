@@ -34,7 +34,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
   onAvatarEnter,
   onAvatarLeave,
 }) => {
-  const { avatarSvg: dbSvg } = useUserAvatarSvg(userId);
+  const { avatarSvg: dbSvg, loading: avatarLoading } = useUserAvatarSvg(userId);
   const avatarSvg = avatarSvgProp ?? dbSvg;
 
   const rolesContainerRef = useRef<HTMLDivElement>(null);
@@ -84,7 +84,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
     <div className={styles.rowContainer}>
     <div className={`${styles.row}${spread ? ` ${styles.rowSpread}` : ''}`}>
       <div
-        className={`${styles.avatar}${onAvatarEnter ? ` ${styles.avatarClickable}` : ''}`}
+        className={`${styles.avatar}${onAvatarEnter ? ` ${styles.avatarClickable}` : ''}${avatarLoading ? ` ${styles.avatarLoading}` : ''}`}
         onMouseEnter={
           onAvatarEnter
             ? (e) => onAvatarEnter((e.currentTarget as HTMLElement).getBoundingClientRect())
@@ -156,7 +156,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
         onClick={(e) => {
           e.stopPropagation();
           const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          onEdit?.({ x: rect.left, y: rect.top + rect.height / 2 });
+          onEdit?.({ x: rect.right, y: rect.bottom });
         }}
       >
         <EllipsisVerticalIcon className={styles.optionsButtonIcon} />

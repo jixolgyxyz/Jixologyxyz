@@ -8,7 +8,7 @@ import SkeletonAvatarTile from '../SkeletonAvatarTile';
 import { TYPE_LABELS, makeVariantTileSvg, makeColorTileSvg } from '../../services/avatar.service';
 import type { AvatarCatalog, DynamicFeatures, FeatureMeta } from '../../types/avatar.types';
 
-interface InventoryCardProps {
+export interface InventoryCardProps {
   catalog:         AvatarCatalog;
   features:        DynamicFeatures;
   onSelectVariant: (meta: FeatureMeta, value: string | null) => void;
@@ -40,6 +40,8 @@ const InventoryCard: React.FC<InventoryCardProps> = ({
     ? ((features[activeTab.probProp] as number) ?? 100) === 0
     : false;
 
+  const styleName = catalog.styleName;
+
   const variantTiles = useMemo(() => {
     if (!activeTab) return [];
     const tiles: { value: string | null; label: string; svg: string; selected: boolean }[] = [];
@@ -48,7 +50,7 @@ const InventoryCard: React.FC<InventoryCardProps> = ({
       tiles.push({
         value:    null,
         label:    'None',
-        svg:      makeVariantTileSvg(features, activeTab, null),
+        svg:      makeVariantTileSvg(features, activeTab, null, styleName),
         selected: isNoneSelected,
       });
     }
@@ -57,22 +59,22 @@ const InventoryCard: React.FC<InventoryCardProps> = ({
       tiles.push({
         value,
         label:    activeTab.variantLabels[value] ?? value,
-        svg:      makeVariantTileSvg(features, activeTab, value),
+        svg:      makeVariantTileSvg(features, activeTab, value, styleName),
         selected: !isNoneSelected && (features[activeTab.key] as string[])?.[0] === value,
       });
     }
     return tiles;
-  }, [activeTab, features, isNoneSelected]);
+  }, [activeTab, features, isNoneSelected, styleName]);
 
   const colorTiles = useMemo(() => {
     if (!activeTab?.colorProp) return [];
     const selectedColors = (features[activeTab.colorProp] as string[]) ?? [];
     return activeTab.colorOptions.map((c) => ({
       hex:      c,
-      svg:      makeColorTileSvg(features, activeTab, c),
+      svg:      makeColorTileSvg(features, activeTab, c, styleName),
       selected: selectedColors.includes(c),
     }));
-  }, [activeTab, features]);
+  }, [activeTab, features, styleName]);
 
   // All hooks are above — safe to early-return now
   if (!activeTab) {

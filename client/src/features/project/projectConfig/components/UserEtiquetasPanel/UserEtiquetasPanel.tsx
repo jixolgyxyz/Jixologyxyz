@@ -1,17 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import {
-  assignEtiquetaPersonalizada,
-  removeEtiquetaPersonalizada,
-  assignEtiquetaPredeterminada,
-  removeEtiquetaPredeterminada,
-} from '../../services/projectConfig.service';
-import type {
-  EtiquetaPersonalizadaRecord,
-  EtiquetaPredeterminadaRecord,
-  MemberEtiquetaRecord,
-  MemberEtiquetaPredeterminadaRecord,
-} from '../../types/projectConfig.types';
+import {assignEtiquetaPersonalizada,removeEtiquetaPersonalizada,assignEtiquetaPredeterminada, removeEtiquetaPredeterminada,} from '../../services/projectConfig.service';
+import type { EtiquetaPersonalizadaRecord, EtiquetaPredeterminadaRecord,MemberEtiquetaRecord, MemberEtiquetaPredeterminadaRecord,} from '../../types/projectConfig.types';
 import styles from './UserEtiquetasPanel.module.css';
 
 interface UserEtiquetasPanelProps {

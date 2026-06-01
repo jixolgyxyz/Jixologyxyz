@@ -9,7 +9,11 @@ import type {
   SugerenciaRecord,
   ProjectEtiquetaRecord,
   CreateBacklogItemPayload,
+  CreateSprintPayload,
+  UpdateSprintPayload,
   UpdateBacklogItemPayload,
+  BacklogItemBloqueoRecord,
+  ComentarioRecord,
 } from '../types/backlog.types';
 
 export async function fetchBacklogItems(projectId?: number): Promise<BacklogItemRecord[]> {
@@ -66,14 +70,27 @@ export async function fetchSprintsByProject(projectId: number): Promise<SprintRe
   return data ?? [];
 }
 
-export async function fetchProjectMembers(): Promise<UserRecord[]> {
-  const { data, error } = await supabase
+export async function fetchProjectMembers(projectId: number): Promise<UserRecord[]> {
+  // Step 1 — get the user IDs that belong to this project
+  const { data: memberships, error: membershipError } = await supabase
+    .from('usuario_proyecto')
+    .select('id_usuario')
+    .eq('id_proyecto', projectId);
+
+  if (membershipError) throw new Error(membershipError.message);
+
+  const memberIds = (memberships ?? []).map(r => r.id_usuario as number);
+  if (memberIds.length === 0) return [];
+
+  // Step 2 — fetch user details for those IDs
+  const { data: users, error: usersError } = await supabase
     .from('usuario')
     .select('id, nombre, apellido, email')
+    .in('id', memberIds)
     .order('nombre', { ascending: true });
 
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  if (usersError) throw new Error(usersError.message);
+  return users ?? [];
 }
 
 export async function createBacklogItem(payload: CreateBacklogItemPayload): Promise<BacklogItemRecord> {
@@ -93,6 +110,8 @@ export async function createBacklogItem(payload: CreateBacklogItemPayload): Prom
       id_backlog_item_padre: payload.id_backlog_item_padre ?? null,
       id_proyecto:           payload.id_proyecto,
       id_usuario_creador:    payload.id_usuario_creador,
+      complejidad:           payload.complejidad ?? null,
+      tiempo_estimado:       payload.tiempo_estimado ?? null,
       es_terminal:           false,
     })
     .select()
@@ -100,6 +119,36 @@ export async function createBacklogItem(payload: CreateBacklogItemPayload): Prom
 
   if (error) throw new Error(error.message);
   return data;
+}
+
+export async function createSprint(payload: CreateSprintPayload): Promise<void> {
+  const { error } = await supabase
+    .from('sprint')
+    .insert({
+      nombre:             payload.nombre,
+      objetivo:           payload.objetivo,
+      fecha_inicio:       payload.fecha_inicio,
+      fecha_final:        payload.fecha_final,
+      id_proyecto:        payload.id_proyecto,
+      id_usuario_creador: payload.id_usuario_creador,
+      id_estatus:         payload.id_estatus,
+    });
+
+  if (error) throw new Error(error.message);
+}
+
+export async function updateSprint(id: number, payload: UpdateSprintPayload): Promise<void> {
+  const { error } = await supabase
+    .from('sprint')
+    .update({
+      nombre:       payload.nombre,
+      objetivo:     payload.objetivo ?? null,
+      fecha_inicio: payload.fecha_inicio,
+      fecha_final:  payload.fecha_final,
+    })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
 }
 
 export async function updateBacklogItem(id: number, payload: UpdateBacklogItemPayload): Promise<BacklogItemRecord> {
@@ -117,7 +166,8 @@ export async function updateBacklogItem(id: number, payload: UpdateBacklogItemPa
       id_backlog_item_padre:  payload.id_backlog_item_padre  ?? null,
       id_usuario_responsable: payload.id_usuario_responsable ?? null,
       complejidad:            payload.complejidad ?? null,
-      ...(payload.tiempo !== undefined ? { tiempo: payload.tiempo ?? null } : {}),
+      ...(payload.tiempo           !== undefined ? { tiempo:           payload.tiempo           ?? null } : {}),
+      ...(payload.tiempo_estimado  !== undefined ? { tiempo_estimado:  payload.tiempo_estimado  ?? null } : {}),
     })
     .eq('id', id)
     .select()
@@ -151,6 +201,57 @@ export async function fetchProjectEtiquetas(projectId: number): Promise<ProjectE
   return data ?? [];
 }
 
+export async function deleteBacklogItem(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('backlog_item')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
+// ── Block relationships ───────────────────────────────────────────
+
+/** Returns all records where THIS item is blocked (i.e. items that block it). */
+export async function fetchItemBlockers(itemId: number): Promise<BacklogItemBloqueoRecord[]> {
+  const { data, error } = await supabase
+    .from('backlog_item_bloqueo')
+    .select('id_bloqueado, id_bloqueador, fecha_creacion, id_usuario_creador')
+    .eq('id_bloqueado', itemId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Returns all records where THIS item is the blocker (i.e. items it is blocking). */
+export async function fetchItemBlocking(itemId: number): Promise<BacklogItemBloqueoRecord[]> {
+  const { data, error } = await supabase
+    .from('backlog_item_bloqueo')
+    .select('id_bloqueado, id_bloqueador, fecha_creacion, id_usuario_creador')
+    .eq('id_bloqueador', itemId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function addBacklogItemBlock(
+  idBloqueado: number,
+  idBloqueador: number,
+  idUsuarioCreador: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from('backlog_item_bloqueo')
+    .insert({ id_bloqueado: idBloqueado, id_bloqueador: idBloqueador, id_usuario_creador: idUsuarioCreador });
+  if (error) throw new Error(error.message);
+}
+
+export async function removeBacklogItemBlock(idBloqueado: number, idBloqueador: number): Promise<void> {
+  const { error } = await supabase
+    .from('backlog_item_bloqueo')
+    .delete()
+    .eq('id_bloqueado', idBloqueado)
+    .eq('id_bloqueador', idBloqueador);
+  if (error) throw new Error(error.message);
+}
+
 export async function createSugerencia(itemId: number): Promise<void> {
   const { error } = await supabase
     .from('backlog_item_sugerencia_creacion')
@@ -165,5 +266,40 @@ export async function acceptSugerencia(itemId: number, userId: number): Promise<
     .update({ aceptada: true, id_usuario_acepto: userId })
     .eq('id', itemId);
 
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchComentarios(backlogItemId: number): Promise<ComentarioRecord[]> {
+  const { data, error } = await supabase
+    .from('comentario')
+    .select('id, cuerpo, id_usuario_creador, id_comentario_padre, id_backlog_item, usuario:id_usuario_creador(id, nombre, apellido)')
+    .eq('id_backlog_item', backlogItemId)
+    .order('id', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as ComentarioRecord[];
+}
+
+export async function createComentario(
+  backlogItemId: number,
+  cuerpo: string,
+  idUsuarioCreador: number,
+  idComentarioPadre: number | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('comentario')
+    .insert({
+      cuerpo,
+      id_usuario_creador: idUsuarioCreador,
+      id_backlog_item: backlogItemId,
+      id_comentario_padre: idComentarioPadre,
+    });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteComentario(commentId: number): Promise<void> {
+  const { error } = await supabase
+    .from('comentario')
+    .delete()
+    .eq('id', commentId);
   if (error) throw new Error(error.message);
 }

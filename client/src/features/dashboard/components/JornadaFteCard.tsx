@@ -1,5 +1,6 @@
 import type { FC } from 'react';
 import type { UserJornadaFte } from '../services/dashboard.service';
+import ChartEmpty from './ChartEmpty';
 import styles from './JornadaFteCard.module.css';
 
 interface Props {
@@ -19,7 +20,10 @@ const JornadaFteCard: FC<Props> = ({ data }) => {
       </div>
 
       {rows.length === 0 ? (
-        <p className={styles.empty}>Sin asignaciones FTE registradas</p>
+        <ChartEmpty
+          title="Sin asignaciones FTE"
+          hint="Aún no tienes horas estimadas asignadas por proyecto."
+        />
       ) : (
         <table className={styles.table}>
           <thead>

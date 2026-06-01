@@ -4,10 +4,10 @@ import {
   Pie,
   Cell,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import type { StatusSlice } from '../hooks/useUserDashboardData';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 interface Props {
@@ -19,7 +19,7 @@ const StatusDonut: FC<Props> = ({ data }) => {
     return (
       <div className={styles.card}>
         <h3 className={styles.title}>Estado de ítems</h3>
-        <p className={styles.empty}>Sin datos</p>
+        <ChartEmpty hint="Tus ítems asignados aparecerán aquí agrupados por estado." />
       </div>
     );
   }
@@ -37,6 +37,7 @@ const StatusDonut: FC<Props> = ({ data }) => {
             outerRadius={90}
             paddingAngle={3}
             dataKey="value"
+            isAnimationActive={false}
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
@@ -46,13 +47,16 @@ const StatusDonut: FC<Props> = ({ data }) => {
             formatter={(value, name) => [value, name]}
             contentStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
           />
-          <Legend
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: '0.75rem', fontFamily: 'Poppins, sans-serif' }}
-          />
         </PieChart>
       </ResponsiveContainer>
+      <div className={styles.legend}>
+        {data.map((s, i) => (
+          <span key={i} className={styles.legendItem}>
+            <span className={styles.legendDot} style={{ background: s.color }} />
+            {s.name}
+          </span>
+        ))}
+      </div>
     </div>
   );
 };

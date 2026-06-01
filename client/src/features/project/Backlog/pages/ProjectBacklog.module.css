@@ -1,4 +1,56 @@
 /* ── Page shell ───────────────────────────────────────────────────── */
+
+/* Outer flex-row wrapper — contains list + detail panel (always both in DOM) */
+.pageLayout {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(221, 0, 49, 0.04), transparent 28%),
+    var(--color-clarity-gray-1);
+}
+
+/* Left column: the list/toolbar area */
+.contentArea {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* When panel is open, the list shrinks to make room */
+.pageLayoutSplit .contentArea {
+  width: 52%;
+}
+
+/* Right column: always in the DOM, animates width open/closed */
+.detailArea {
+  flex-shrink: 0;
+  width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-white);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Expanded state */
+.pageLayoutSplit .detailArea {
+  width: 48%;
+  border-left: 1px solid var(--color-clarity-gray-2);
+  box-shadow: -4px 0 20px rgba(10, 8, 56, 0.08);
+}
+
+/* Legacy alias kept so nothing else breaks */
 .container {
   display: flex;
   flex-direction: column;
@@ -85,6 +137,47 @@
   opacity: 0.88;
 }
 
+/* ── "Nuevo" dropdown ────────────────────────────────────────────── */
+.newDropdownWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.newDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(10, 8, 56, 0.12);
+  z-index: 200;
+}
+
+.newDropdownOption {
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-blueprint-navy);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.newDropdownOption:hover {
+  background: var(--color-clarity-gray-1);
+}
+
 /* ── Sprint groups scroll area ────────────────────────────────────── */
 .groups {
   flex: 1;
@@ -121,7 +214,6 @@
   border-bottom: 1px solid var(--color-blueprint-navy);
   border-radius: 16px 16px 0 0;
   background: var(--color-white);
-
 }
 
 .sprintName {
@@ -140,6 +232,31 @@
   border: 1px solid var(--color-clarity-gray-2);
   border-radius: 999px;
   padding: 0.1rem 0.5rem;
+}
+
+.sprintDates {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-anchor-gray-1);
+  margin-left: auto;
+}
+
+.sprintEditBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  border: none;
+  background: transparent;
+  color: var(--color-anchor-gray-1);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sprintEditBtn:hover {
+  background: var(--color-clarity-gray-2);
+  color: var(--color-blueprint-navy);
 }
 
 .list {

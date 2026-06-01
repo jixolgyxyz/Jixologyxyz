@@ -199,13 +199,14 @@ export async function removeEtiquetaPersonalizada(
   userId: number,
   etiquetaId: number,
 ): Promise<void> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from('etiqueta_proyecto_personalizada')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('id_usuario', userId)
     .eq('id_etiqueta_proyecto_personalizada', etiquetaId);
 
   if (error) throw new Error(error.message);
+  if (!count) throw new Error('No tienes permiso para quitar esta etiqueta.');
 }
 
 // ── Predefined etiqueta assignments ──────────────────────────────
@@ -246,14 +247,15 @@ export async function removeEtiquetaPredeterminada(
   etiquetaId: number,
   projectId: number,
 ): Promise<void> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from('etiqueta_proyecto_predeterminada')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('id_usuario', userId)
     .eq('id_etiqueta_proyecto_predeterminada', etiquetaId)
     .eq('id_proyecto', projectId);
 
   if (error) throw new Error(error.message);
+  if (!count) throw new Error('No tienes permiso para quitar esta etiqueta.');
 }
 
 // ── Etiqueta edit / delete with cascade ──────────────────────────
@@ -293,6 +295,51 @@ export async function deleteEtiquetaWithCascade(id: number): Promise<void> {
     .eq('id', id);
 
   if (error) throw new Error(error.message);
+}
+
+// ── Member removal ────────────────────────────────────────────────
+
+export async function removeMemberFromProject(
+  userId: number,
+  projectId: number,
+): Promise<void> {
+  // 1. Remove predeterminada etiqueta assignments for this project
+  const { error: predErr } = await supabase
+    .from('etiqueta_proyecto_predeterminada')
+    .delete()
+    .eq('id_usuario', userId)
+    .eq('id_proyecto', projectId);
+  if (predErr) throw new Error(predErr.message);
+
+  // 2. Remove personalizada etiqueta assignments for this project's etiquetas
+  const { data: catalog } = await supabase
+    .from('catalogo_etiqueta_proyecto_personalizada')
+    .select('id')
+    .eq('id_proyecto', projectId);
+  if (catalog && catalog.length > 0) {
+    const { error: custErr } = await supabase
+      .from('etiqueta_proyecto_personalizada')
+      .delete()
+      .eq('id_usuario', userId)
+      .in('id_etiqueta_proyecto_personalizada', (catalog as { id: number }[]).map(e => e.id));
+    if (custErr) throw new Error(custErr.message);
+  }
+
+  // 3. Unassign their backlog items in this project
+  const { error: backlogErr } = await supabase
+    .from('backlog_item')
+    .update({ id_usuario_responsable: null })
+    .eq('id_usuario_responsable', userId)
+    .eq('id_proyecto', projectId);
+  if (backlogErr) throw new Error(backlogErr.message);
+
+  // 4. Remove from the project
+  const { error: memberErr } = await supabase
+    .from('usuario_proyecto')
+    .delete()
+    .eq('id_usuario', userId)
+    .eq('id_proyecto', projectId);
+  if (memberErr) throw new Error(memberErr.message);
 }
 
 // ── Jornada / FTE ─────────────────────────────────────────────────
@@ -375,6 +422,191 @@ export async function fetchCommittedHoursExcludingProject(
     }
   }
   return totals;
+}
+
+// ── GitHub integration ────────────────────────────────────────────
+
+export interface GithubConfigRecord {
+  id_proyecto: number;
+  github_org: string;
+  github_repo: string;
+  installation_id: number;
+  default_branch: string;
+}
+
+export async function fetchGithubConfig(projectId: number): Promise<GithubConfigRecord | null> {
+  const { data, error } = await supabase
+    .from('proyecto_github_config')
+    .select('id_proyecto, github_org, github_repo, installation_id, default_branch')
+    .eq('id_proyecto', projectId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export function buildGithubInstallUrl(projectId: number, org: string, repo: string): string {
+  const state = btoa(JSON.stringify({ projectId, org, repo }));
+  const appSlug = import.meta.env.VITE_GITHUB_APP_SLUG as string;
+  return `https://github.com/apps/${appSlug}/installations/new?state=${state}`;
+}
+
+export interface BranchData {
+  branchName: string;
+  branchSha: string;
+}
+
+export interface BacklogItemGithubRecord {
+  branch_name: string | null;
+  pr_number: number | null;
+  pr_url: string | null;
+  pr_status: string | null;
+}
+
+export async function fetchBacklogItemGithub(itemId: number): Promise<BacklogItemGithubRecord | null> {
+  const { data } = await supabase
+    .from('github_backlog_item')
+    .select('branch_name, pr_number, pr_url, pr_status')
+    .eq('id_backlog_item', itemId)
+    .maybeSingle();
+  return data;
+}
+
+export async function createGithubBranch(
+  projectId: number,
+  itemId: number,
+  itemTitle: string,
+  branchName?: string,
+): Promise<{ branchName: string }> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-create-branch`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, itemId, itemTitle, branchName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? 'Failed to create branch');
+  }
+  return res.json() as Promise<{ branchName: string }>;
+}
+
+export async function createGithubPR(
+  projectId: number,
+  itemId: number,
+  title: string,
+  body?: string,
+  baseBranch?: string,
+): Promise<{ prNumber: number; prUrl: string }> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-create-pr`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, itemId, title, body, baseBranch }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? 'Failed to create PR');
+  }
+  return res.json() as Promise<{ prNumber: number; prUrl: string }>;
+}
+
+export async function fetchProjectBranches(projectId: number): Promise<BranchData[]> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github_get_branches`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId }),
+  });
+  if (!res.ok) throw new Error('Failed to fetch branches');
+  return res.json() as Promise<BranchData[]>;
+}
+export interface GithubOrg {
+  installation_id: number;
+  login: string;
+  avatar_url: string;
+}
+
+export interface GithubRepo {
+  name: string;
+  full_name: string;
+  private: boolean;
+}
+
+async function getAuthHeader(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('No auth session');
+  return `Bearer ${token}`;
+}
+
+const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+export class GithubNotConnectedError extends Error {}
+
+export async function fetchGithubUserOrgs(): Promise<GithubOrg[]> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-user-orgs`, {
+    headers: { Authorization: authHeader },
+  });
+  if (res.status === 404) throw new GithubNotConnectedError();
+  if (!res.ok) throw new Error('Failed to fetch GitHub orgs');
+  return res.json() as Promise<GithubOrg[]>;
+}
+
+export async function fetchGithubInstallationRepos(installationId: number): Promise<GithubRepo[]> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(
+    `${FUNCTIONS_URL}/functions/v1/github-user-repos?installation_id=${installationId}`,
+    { headers: { Authorization: authHeader } },
+  );
+  if (!res.ok) throw new Error('Failed to fetch GitHub repos');
+  return res.json() as Promise<GithubRepo[]>;
+}
+
+export async function disconnectGithubProject(projectId: number): Promise<void> {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-project-disconnect`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId }),
+  });
+  if (!res.ok) throw new Error('Failed to disconnect GitHub');
+}
+
+export async function saveGithubProjectConfig(
+  projectId: number,
+  org: string,
+  repo: string,
+  installationId: number,
+  defaultBranch: string = 'main',
+): Promise<void> {
+  const { error } = await supabase
+    .from('proyecto_github_config')
+    .upsert(
+      { id_proyecto: projectId, github_org: org, github_repo: repo, installation_id: installationId, default_branch: defaultBranch },
+      { onConflict: 'id_proyecto' },
+    );
+  if (error) throw new Error(error.message);
+}
+
+export async function updateGithubDefaultBranch(projectId: number, branch: string): Promise<void> {
+  const { error } = await supabase
+    .from('proyecto_github_config')
+    .update({ default_branch: branch })
+    .eq('id_proyecto', projectId);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteGithubBranch(projectId: number, itemId: number): Promise<void>{
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${FUNCTIONS_URL}/functions/v1/github-delete-branch`, {
+    method: 'POST',
+    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify ({projectId, itemId}), 
+  });
+
+  if (!res.ok) throw new Error('Failed to delete branch')
 }
 
 export function buildFteData(

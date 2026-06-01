@@ -115,6 +115,7 @@ function DebugBacklogList() {
 
 function DebugCreateBacklogItem() {
   const [open, setOpen] = useState(false);
+  const { meta } = useBacklogMeta(1);
   return (
     <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
       <button
@@ -135,6 +136,7 @@ function DebugCreateBacklogItem() {
       <CreateBacklogItemForm
         projectId={1}
         userId={1}
+        meta={meta}
         isOpen={open}
         onClose={() => setOpen(false)}
         onCreated={() => setOpen(false)}

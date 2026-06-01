@@ -41,6 +41,7 @@ type UseCreateProjectFormReturn = {
   addStackField: () => void;
   removeStackField: (index: number) => void;
   updateStackField: (index: number, value: string) => void;
+  togglePmUser: (userId: number) => void;
 };
 
 type UseCreateProjectFormOptions = {
@@ -68,9 +69,9 @@ function buildInitialValues(catalogs?: ProjectCatalogs | null): CreateProjectFor
     id_modelo_facturacion: String(catalogs?.modelo_facturacion[0]?.id ?? ''),
     id_complejidad: String(catalogs?.complejidad_proyecto[0]?.id ?? ''),
     id_tipo: String(catalogs?.tipo_proyecto[0]?.id ?? ''),
-    id_estatus: '',
     id_metodologia: '',
     stack_tecnologico: [''],
+    pm_user_ids: [],
   };
 }
 
@@ -216,10 +217,6 @@ function validateForm(values: CreateProjectFormValues): CreateProjectFormErrors 
     errors.peso_retraso = 'El peso debe estar entre 0 y 1.';
   }
 
-  if (values.id_estatus.trim().length === 0) {
-    errors.id_estatus = 'Selecciona un estatus.';
-  }
-
   if (values.id_metodologia.trim().length === 0) {
     errors.id_metodologia = 'Selecciona una metodología.';
   }
@@ -230,7 +227,6 @@ function validateForm(values: CreateProjectFormValues): CreateProjectFormErrors 
 function hasRequiredFields(values: CreateProjectFormValues): boolean {
   return (
     values.nombre.trim().length > 0 &&
-    values.id_estatus.trim().length > 0 &&
     values.id_metodologia.trim().length > 0
   );
 }
@@ -257,10 +253,10 @@ function normalizePayload(
     id_modelo_facturacion: parseOptionalId(values.id_modelo_facturacion),
     id_complejidad: parseOptionalId(values.id_complejidad),
     id_tipo: parseOptionalId(values.id_tipo),
-    id_estatus: parseRequiredId(values.id_estatus),
     id_metodologia: parseRequiredId(values.id_metodologia),
     id_creador: userId,
     stack_tecnologico: normalizeStack(values.stack_tecnologico),
+    pm_user_ids: values.pm_user_ids,
   };
 }
 
@@ -446,6 +442,20 @@ export function useCreateProjectForm(
     setFeedback(null);
   };
 
+  const togglePmUser = (userId: number): void => {
+    setValues((currentValues) => {
+      const isSelected = currentValues.pm_user_ids.includes(userId);
+      return {
+        ...currentValues,
+        pm_user_ids: isSelected
+          ? currentValues.pm_user_ids.filter((id) => id !== userId)
+          : [...currentValues.pm_user_ids, userId],
+      };
+    });
+
+    setFeedback(null);
+  };
+
   const handleReset = (): void => {
     setValues(buildInitialValues(catalogs));
     setErrors({});
@@ -529,5 +539,6 @@ export function useCreateProjectForm(
     addStackField,
     removeStackField,
     updateStackField,
+    togglePmUser,
   };
 }

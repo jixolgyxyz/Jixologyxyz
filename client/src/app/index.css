@@ -60,6 +60,7 @@ body {
 .status-completed  { background-color: var(--status-blue); }
 .status-delayed    { background-color: var(--status-red); }
 .status-onTrack    { background-color: var(--status-yellow); }
+.status-ahead      { background-color: var(--status-green, #10b981); }
 .status-unassigned { background-color: var(--status-gray); }
 .status-archived   { background-color: var(--status-gray); opacity: 0.6; }
 

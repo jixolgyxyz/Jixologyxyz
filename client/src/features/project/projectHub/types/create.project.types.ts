@@ -12,6 +12,14 @@ export type ProjectStatusOption = ProjectCatalogOption & {
   es_terminal: boolean;
 };
 
+// Usuario seleccionable para invitar como PM al crear el proyecto.
+export type ProjectUserOption = {
+  id: number;
+  nombre: string | null;
+  apellido: string | null;
+  email: string;
+};
+
 export type ProjectCatalogs = {
   divisa: ProjectCurrencyOption[];
   metodologia_proyecto: ProjectCatalogOption[];
@@ -19,6 +27,7 @@ export type ProjectCatalogs = {
   tipo_proyecto: ProjectCatalogOption[];
   modelo_facturacion: ProjectCatalogOption[];
   complejidad_proyecto: ProjectCatalogOption[];
+  usuarios: ProjectUserOption[];
 };
 
 export type CreateProjectFormValues = {
@@ -39,9 +48,10 @@ export type CreateProjectFormValues = {
   id_modelo_facturacion: string;
   id_complejidad: string;
   id_tipo: string;
-  id_estatus: string;
   id_metodologia: string;
   stack_tecnologico: string[];
+  // IDs de usuarios que se invitarán como PM al crear el proyecto.
+  pm_user_ids: number[];
 };
 
 export type CreateProjectFormErrors = Partial<
@@ -57,7 +67,6 @@ export type CreateProjectFormErrors = Partial<
     | 'tolerancia_desviacion'
     | 'peso_presupuesto'
     | 'peso_retraso'
-    | 'id_estatus'
     | 'id_metodologia',
     string
   >
@@ -81,10 +90,10 @@ export type CreateProjectPayload = {
   id_modelo_facturacion: number | null;
   id_complejidad: number | null;
   id_tipo: number | null;
-  id_estatus: number;
   id_metodologia: number;
   id_creador: number;
   stack_tecnologico: string[];
+  pm_user_ids: number[];
 };
 
 export type CreateProjectResponse = {

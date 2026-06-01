@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, PlusIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import BacklogListItem from '@/features/project/Backlog/components/BacklogListItem';
 import type { BacklogStatus, Priority, BacklogItemType } from '@/features/project/Backlog/components/BacklogListItem';
 import CreateBacklogItemForm from '@/features/project/Backlog/components/CreateBacklogItemForm';
+import CreateSprintForm from '@/features/project/Backlog/components/CreateSprintForm';
 import ViewItemDetail from '@/shared/components/ViewItemDetail/ViewItemDetail';
 import SkeletonBacklogItem from '@/features/project/Backlog/components/SkeletonBacklogItem/SkeletonBacklogItem';
 import FilterBar from '@/shared/components/FilterBar';
@@ -11,7 +12,7 @@ import ContextMenu from '@/shared/components/ContextMenu';
 import type { MenuComponent } from '@/shared/components/ContextMenu';
 import { useBacklogItems } from '@/features/project/Backlog/hooks/useBacklogItems';
 import { useBacklogMeta } from '@/features/project/Backlog/hooks/useBacklogMeta';
-import { acceptSugerencia, updateBacklogItem } from '@/features/project/Backlog/services/backlog.service';
+import { acceptSugerencia, updateBacklogItem, deleteBacklogItem } from '@/features/project/Backlog/services/backlog.service';
 import { useUser } from '@/core/auth/userContext';
 import type { BacklogItemRecord, BacklogStatusRecord, BacklogPriorityRecord, SprintRecord } from '@/features/project/Backlog/types/backlog.types';
 import styles from './ProjectBacklog.module.css';
@@ -90,21 +91,44 @@ function FilterBubble({ label, selectedLabel, elements }: FilterBubbleProps) {
   );
 }
 
+function formatSprintDate(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('es-MX', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 // ── Main component ────────────────────────────────────────────────
 const ProjectBacklog: React.FC = () => {
   const { id } = useParams();
   const PROJECT_ID = Number(id);
-  const USER_ID = 1;
   const { user } = useUser();
   const { items, loading: itemsLoading, refresh } = useBacklogItems(PROJECT_ID);
   const { meta, loading: metaLoading, refresh: refreshMeta } = useBacklogMeta(PROJECT_ID);
   const isPM = user != null && meta.etiquetas.some(
     e => e.id_usuario === user.id && e.id_etiqueta_proyecto_predeterminada === 1,
   );
+  const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
+  const canManageSprints = isPM || isAdmin;
   const refreshAll = () => { refresh(); refreshMeta(); };
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateSprintForm, setShowCreateSprintForm] = useState(false);
+  const [editingSprint, setEditingSprint] = useState<SprintRecord | null>(null);
+  const [showNewDropdown, setShowNewDropdown] = useState(false);
+  const newDropdownRef = useRef<HTMLDivElement>(null);
   const [expandedItems, setExpandedItems]   = useState<Set<number>>(new Set());
   const [openInEditMode, setOpenInEditMode] = useState(false);
+
+  useEffect(() => {
+    if (!showNewDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (newDropdownRef.current && !newDropdownRef.current.contains(e.target as Node))
+        setShowNewDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showNewDropdown]);
 
   const toggleExpanded = (itemId: number) => {
     setExpandedItems(prev => {
@@ -137,8 +161,14 @@ const ProjectBacklog: React.FC = () => {
   // Derive viewingItem from URL + items list (works across tab switches / refreshes)
   const viewingItem  = viewingId != null ? (meta.items.find(i => i.id === viewingId) ?? null) : null;
 
-  const setViewingItem = (item: BacklogItemRecord | null) =>
-    setParam('item', item ? item.id : null);
+  const setViewingItem = useCallback((item: BacklogItemRecord | null) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (item) next.set('item', String(item.id));
+      else next.delete('item');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const setParam = (key: string, value: number | string | null) => {
     setSearchParams(prev => {
@@ -180,7 +210,7 @@ const ProjectBacklog: React.FC = () => {
     }
     const groups: { sprint: SprintRecord | null; items: BacklogItemRecord[] }[] = [];
     for (const sprint of meta.sprints) {
-      if (map.has(sprint.id)) groups.push({ sprint, items: map.get(sprint.id)! });
+      groups.push({ sprint, items: map.get(sprint.id) ?? [] });
     }
     if (map.has(null)) groups.push({ sprint: null, items: map.get(null)! });
     return groups;
@@ -251,6 +281,27 @@ const ProjectBacklog: React.FC = () => {
             priority={toPriority(priorityRecord)}
             itemType={typeRecord?.nombre as BacklogItemType | undefined}
             responsibleUserId={item.id_usuario_responsable ?? undefined}
+            users={meta.users}
+            onAssigneeChange={async (userId) => {
+              try {
+                await updateBacklogItem(item.id, {
+                  nombre:                 item.nombre,
+                  descripcion:            item.descripcion,
+                  id_tipo:                item.id_tipo,
+                  id_estatus:             item.id_estatus,
+                  id_prioridad:           item.id_prioridad,
+                  id_sprint:              item.id_sprint,
+                  fecha_inicio:           item.fecha_inicio,
+                  fecha_vencimiento:      item.fecha_vencimiento,
+                  id_backlog_item_padre:  item.id_backlog_item_padre,
+                  id_usuario_responsable: userId,
+                  complejidad:            item.complejidad,
+                });
+                refreshAll();
+              } catch (err) {
+                console.error('Error actualizando responsable:', err);
+              }
+            }}
             isSuggestion={isSuggestion && isPM}
             hasChildren={filterType !== null && children.length > 0}
             isExpanded={isExpanded}
@@ -279,6 +330,16 @@ const ProjectBacklog: React.FC = () => {
             }}
             onViewDetails={() => { setOpenInEditMode(false); setViewingItem(item); }}
             onEdit={() => { setOpenInEditMode(true); setViewingItem(item); }}
+            onDelete={async () => {
+              if (!window.confirm(`¿Eliminar "${item.nombre}"? Esta acción no se puede deshacer.`)) return;
+              try {
+                await deleteBacklogItem(item.id);
+                if (viewingId === item.id) { setViewingItem(null); setOpenInEditMode(false); }
+                refreshAll();
+              } catch (err) {
+                console.error('Error eliminando ítem:', err);
+              }
+            }}
             onAcceptSuggestion={isPM && isSuggestion ? async () => {
               await acceptSugerencia(item.id, user!.id);
               refreshAll();
@@ -290,89 +351,147 @@ const ProjectBacklog: React.FC = () => {
     );
   };
 
+  const detailPanel = viewingItem && (() => {
+    const sugerencia   = meta.sugerencias.find(s => s.id === viewingItem.id);
+    const isSuggestion = !!sugerencia && !sugerencia.aceptada;
+    return (
+      <ViewItemDetail
+        inline
+        item={viewingItem}
+        meta={meta}
+        isSuggestion={isSuggestion && isPM}
+        initialEditing={openInEditMode}
+        onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
+        onUpdated={() => refreshAll()}
+        onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}
+        onAcceptSuggestion={isPM && isSuggestion ? async () => {
+          await acceptSugerencia(viewingItem.id, user!.id);
+          refreshAll();
+        } : undefined}
+      />
+    );
+  })();
+
   return (
-    <div className={styles.container}>
+    <div className={`${styles.pageLayout} ${detailPanel ? styles.pageLayoutSplit : ''}`}>
 
-      <div className={styles.toolbar}>
-        <FilterBar
-          searchPlaceholder="Buscar ítems..."
-          onSearchChange={setSearch}
-          filters={[]}
-          activeFilter={null}
-          onFilterChange={() => {}}
-        >
-          <button
-            type="button"
-            className={styles.newItemBtn}
-            onClick={() => setShowCreateForm(true)}
+      {/* ── Left: list ── */}
+      <div className={styles.contentArea}>
+        <div className={styles.toolbar}>
+          <FilterBar
+            searchPlaceholder="Buscar ítems..."
+            onSearchChange={setSearch}
+            filters={[]}
+            activeFilter={null}
+            onFilterChange={() => {}}
           >
-            <PlusIcon width={16} height={16} />
-            Nuevo ítem
-          </button>
-        </FilterBar>
-      </div>
-
-      <div className={styles.bubbles}>
-        <FilterBubble label="Estatus"     selectedLabel={selectedStatusLabel} elements={statusOptions} />
-        <FilterBubble label="Tipo"        selectedLabel={selectedTypeLabel}   elements={typeOptions} />
-        <FilterBubble label="Responsable" selectedLabel={selectedUserLabel}   elements={userOptions} />
-        <FilterBubble label="Sprint"      selectedLabel={selectedSprintLabel} elements={sprintOptions} />
-      </div>
-
-      <div className={styles.groups}>
-        {loading ? (
-          <div className={styles.list}>
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonBacklogItem key={i} />)}
-          </div>
-        ) : filteredItems.length === 0 ? (
-          <p className={styles.empty}>No hay ítems en el backlog.</p>
-        ) : (
-          sprintGroups.map(({ sprint, items: groupItems }) => (
-            <div key={sprint?.id ?? 'no-sprint'} className={styles.sprintGroup}>
-              <div className={styles.sprintHeader}>
-                <span className={styles.sprintName}>
-                  {sprint ? sprint.nombre : 'Sin sprint'}
-                </span>
-                <span className={styles.sprintCount}>
-                  {groupItems.length} {groupItems.length === 1 ? 'ítem' : 'ítems'}
-                </span>
-              </div>
-
-              <div className={styles.list}>
-                {groupItems.map(item => renderItem(item))}
-              </div>
+            <div ref={newDropdownRef} className={styles.newDropdownWrapper}>
+              <button
+                type="button"
+                className={styles.newItemBtn}
+                onClick={() => setShowNewDropdown(o => !o)}
+              >
+                <PlusIcon width={16} height={16} />
+                Nuevo
+                <ChevronDownIcon width={12} height={12} />
+              </button>
+              {showNewDropdown && (
+                <div className={styles.newDropdownMenu}>
+                  <button
+                    type="button"
+                    className={styles.newDropdownOption}
+                    onClick={() => { setShowNewDropdown(false); setShowCreateForm(true); }}
+                  >
+                    Ítem
+                  </button>
+                  {canManageSprints && (
+                    <button
+                      type="button"
+                      className={styles.newDropdownOption}
+                      onClick={() => { setShowNewDropdown(false); setShowCreateSprintForm(true); }}
+                    >
+                      Sprint
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-          ))
-        )}
+          </FilterBar>
+        </div>
+
+        <div className={styles.bubbles}>
+          <FilterBubble label="Estatus"     selectedLabel={selectedStatusLabel} elements={statusOptions} />
+          <FilterBubble label="Tipo"        selectedLabel={selectedTypeLabel}   elements={typeOptions} />
+          <FilterBubble label="Responsable" selectedLabel={selectedUserLabel}   elements={userOptions} />
+          <FilterBubble label="Sprint"      selectedLabel={selectedSprintLabel} elements={sprintOptions} />
+        </div>
+
+        <div className={styles.groups}>
+          {loading ? (
+            <div className={styles.list}>
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonBacklogItem key={i} />)}
+            </div>
+          ) : sprintGroups.length === 0 ? (
+            <p className={styles.empty}>No hay ítems en el backlog.</p>
+          ) : (
+            sprintGroups.map(({ sprint, items: groupItems }) => (
+              <div key={sprint?.id ?? 'no-sprint'} className={styles.sprintGroup}>
+                <div className={styles.sprintHeader}>
+                  <span className={styles.sprintName}>
+                    {sprint ? sprint.nombre : 'Sin sprint'}
+                  </span>
+                  <span className={styles.sprintCount}>
+                    {groupItems.length} {groupItems.length === 1 ? 'ítem' : 'ítems'}
+                  </span>
+                  {sprint && (
+                    <span className={styles.sprintDates}>
+                      {formatSprintDate(sprint.fecha_inicio)} — {formatSprintDate(sprint.fecha_final)}
+                    </span>
+                  )}
+                  {sprint && canManageSprints && (
+                    <button
+                      type="button"
+                      className={styles.sprintEditBtn}
+                      onClick={() => setEditingSprint(sprint)}
+                      title="Editar sprint"
+                    >
+                      <PencilSquareIcon width={14} height={14} />
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.list}>
+                  {groupItems.map(item => renderItem(item))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ── Right: detail panel — always in DOM so width transition runs both ways ── */}
+      <div className={styles.detailArea}>
+        {detailPanel}
       </div>
 
       <CreateBacklogItemForm
         projectId={PROJECT_ID}
-        userId={USER_ID}
+        userId={user?.id ?? 0}
+        meta={meta}
         isOpen={showCreateForm}
-        onClose={() => setShowCreateForm(false)}
-        onCreated={() => { refreshAll(); setShowCreateForm(false); }}
+        onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
+        onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
       />
-
-      {viewingItem && (() => {
-        const sugerencia = meta.sugerencias.find(s => s.id === viewingItem.id);
-        const isSuggestion = !!sugerencia && !sugerencia.aceptada;
-        return (
-          <ViewItemDetail
-            item={viewingItem}
-            meta={meta}
-            isSuggestion={isSuggestion && isPM}
-            initialEditing={openInEditMode}
-            onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
-            onUpdated={() => refreshAll()}
-            onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}
-            onAcceptSuggestion={isPM && isSuggestion ? async () => {
-              await acceptSugerencia(viewingItem.id, user!.id);
-              refreshAll();
-            } : undefined}
-          />
-        );
-      })()}
+      <CreateSprintForm
+        key={editingSprint != null ? `edit-${editingSprint.id}` : 'create'}
+        projectId={PROJECT_ID}
+        userId={user?.id ?? 0}
+        isOpen={showCreateSprintForm || editingSprint !== null}
+        sprintToEdit={editingSprint ?? undefined}
+        existingSprints={meta.sprints}
+        onClose={() => { setShowCreateSprintForm(false); setEditingSprint(null); }}
+        onCreated={() => { refreshAll(); setShowCreateSprintForm(false); setEditingSprint(null); }}
+      />
     </div>
   );
 };

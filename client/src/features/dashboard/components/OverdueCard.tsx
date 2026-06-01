@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { Link } from 'react-router-dom';
 import { ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import type { BacklogItemRecord } from '@/features/project/Backlog/types/backlog.types';
+import ChartEmpty from './ChartEmpty';
 import styles from './ChartCard.module.css';
 
 interface Props {
@@ -34,6 +35,14 @@ const OverdueCard: FC<Props> = ({ items }) => {
           {items.length === 1 ? 'ítem vencido' : 'ítems vencidos'}
         </span>
       </div>
+
+      {items.length === 0 && (
+        <ChartEmpty
+          variant="positive"
+          title="Sin ítems vencidos"
+          hint="No tienes ítems con la fecha límite vencida."
+        />
+      )}
 
       {items.length > 0 && (
         <ul className={styles.overdueList}>

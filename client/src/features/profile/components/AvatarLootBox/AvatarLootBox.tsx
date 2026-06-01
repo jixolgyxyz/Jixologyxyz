@@ -9,7 +9,8 @@ interface Props {
   unownedItems: ElementoInventarioAvatar[];
   atributos:    AtributoAvatar[];
   baseFeatures: DynamicFeatures;
-  onOpen:       () => Promise<ElementoInventarioAvatar | null>;
+  styleName?:   string;
+  onOpen:       (item: ElementoInventarioAvatar) => Promise<void>;
   onClose?:     () => void;
   disabled?:    boolean;
 }
@@ -104,6 +105,7 @@ const AvatarLootBox: React.FC<Props> = ({
   unownedItems,
   atributos,
   baseFeatures,
+  styleName = 'pixelArt',
   onOpen,
   onClose,
   disabled,
@@ -127,10 +129,20 @@ const AvatarLootBox: React.FC<Props> = ({
   const elemToSvg = useCallback(
     (elem: ElementoInventarioAvatar): string => {
       const attr = attrById.get(elem.id_atributo_avatar);
-      if (!attr) return makeAvatarSvg(baseFeatures);
-      return makeAvatarSvg({ ...baseFeatures, [attr.nombre]: [elem.nombre] });
+      if (!attr) return makeAvatarSvg(baseFeatures, styleName);
+
+      const probAttrName = `${attr.nombre}Probability`;
+      const hasProbAttr = atributos.some(
+        a => a.nombre === probAttrName && a.id_avatar_style === attr.id_avatar_style,
+      );
+      const probOverride = hasProbAttr ? { [probAttrName]: 100 } : {};
+
+      return makeAvatarSvg(
+        { ...baseFeatures, ...probOverride, [attr.nombre]: [elem.nombre] },
+        styleName,
+      );
     },
-    [attrById, baseFeatures],
+    [attrById, atributos, baseFeatures, styleName],
   );
 
   // ── Open ──────────────────────────────────────────────────────────────────
@@ -140,15 +152,20 @@ const AvatarLootBox: React.FC<Props> = ({
     setPhase('spinning');
     setWinner(null);
 
-    const wonItem = await onOpen().catch(() => null);
+    const randomIndex = Math.floor(Math.random() * unownedItems.length);
+    const wonItem = unownedItems[randomIndex];
+
+    const items = buildStrip(unownedItems, wonItem);
+
+    setStrip(items.map(elem => ({ elem, svg: elemToSvg(elem) })));
+    setWinner(wonItem);
+    
+    await onOpen(wonItem);
+    
     if (!wonItem) {
       setPhase('idle');
       return;
     }
-
-    const items = buildStrip(unownedItems, wonItem);
-    setStrip(items.map(elem => ({ elem, svg: elemToSvg(elem) })));
-    setWinner(wonItem);
 
     // Animate currentIndex from IDLE_IDX → WIN_IDX using rAF
     const startIdx = IDLE_IDX;

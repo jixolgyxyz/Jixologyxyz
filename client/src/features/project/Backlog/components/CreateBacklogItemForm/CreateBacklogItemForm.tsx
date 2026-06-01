@@ -5,14 +5,29 @@ import {
   ChevronUpIcon,
   MinusIcon,
   ChevronDoubleDownIcon,
+  BugAntIcon,
+  BookOpenIcon,
+  BoltIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
+import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
 import FormPopUp from '@/shared/components/FormPopUp';
+import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
+import { Select } from '@/shared/components/Select/Select';
 import styles from './CreateBacklogItemForm.module.css';
-import { useBacklogMeta } from '../../hooks/useBacklogMeta';
 import { useCreateBacklogItem } from '../../hooks/useCreateBacklogItem';
-import { createSugerencia } from '../../services/backlog.service';
+import { createSugerencia, addBacklogItemBlock } from '../../services/backlog.service';
 import { useUser } from '@/core/auth/userContext';
-import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload } from '../../types/backlog.types';
+import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload, BacklogMeta, BacklogItemRecord, BacklogTypeRecord } from '../../types/backlog.types';
+
+// ── Type prefix map ───────────────────────────────────────────────
+const TYPE_PREFIX: Record<string, string> = {
+  'Historia de Usuario': 'HU',
+  'Tarea':               'TA',
+  'Bug':                 'BG',
+  'Épica':               'EP',
+  'Subtarea':            'ST',
+};
 
 // ── Status colour map by orden ────────────────────────────────────
 const STATUS_COLORS: Record<number, { bg: string; text: string }> = {
@@ -111,66 +126,154 @@ function StatusPillSelect({ statuses, value, onChange, onBlur, required, hasErro
   );
 }
 
-// ── PriorityIconSelect ────────────────────────────────────────────
-interface PriorityIconSelectProps {
-  priorities: BacklogPriorityRecord[];
-  value: string;
-  onChange: (id: string) => void;
+
+// ── Type icons ────────────────────────────────────────────────────
+function TaskIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="12" height="12" rx="1.5" />
+      <path d="M5 8L7.5 10.5L11 5.5" />
+    </svg>
+  );
+}
+function SubtaskIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="1.5" y1="0.5" x2="1.5" y2="12.5" />
+      <line x1="1.5" y1="4" x2="5" y2="4" />
+      <line x1="1.5" y1="12.5" x2="5" y2="12.5" />
+      <rect x="5" y="1" width="6" height="6" />
+      <path d="M6.5 4L7.5 6.5L11.5 1.5" />
+      <rect x="5" y="9.5" width="6" height="6" />
+      <path d="M6.5 12.5L7.5 15L11.5 10" />
+    </svg>
+  );
+}
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  Bug:                   <BugAntIcon   width={16} height={16} />,
+  Tarea:                 <TaskIcon />,
+  Subtarea:              <SubtaskIcon />,
+  'Historia de Usuario': <BookOpenIcon width={16} height={16} />,
+  'Épica':               <BoltIcon     width={16} height={16} />,
+};
+
+
+// ── UserPickerOption — one avatar+name row ─────────────────────────
+function UserPickerOption({ user, displayName }: { user: { id: number }; displayName: string }) {
+  const { avatarSvg } = useUserAvatarSvg(user.id);
+  return (
+    <>
+      <div className={styles.avatarCircle}>
+        {avatarSvg
+          ? <div className={styles.avatarSvg} dangerouslySetInnerHTML={{ __html: avatarSvg }} />
+          : <UserIcon width={12} height={12} />
+        }
+      </div>
+      <span>{displayName}</span>
+    </>
+  );
 }
 
-function PriorityIconSelect({ priorities, value, onChange }: PriorityIconSelectProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+// ── UserAvatarSelect — assignee dropdown with avatars ─────────────
+interface UserAvatarSelectProps {
+  users: { id: number; nombre: string | null; apellido: string | null; email: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}
+function UserAvatarSelect({ users, value, onChange }: UserAvatarSelectProps) {
+  const [open,        setOpen]        = useState(false);
+  const [popupStyle,  setPopupStyle]  = useState<React.CSSProperties>({});
+  const wrapperRef  = useRef<HTMLDivElement>(null);
+  const triggerRef  = useRef<HTMLButtonElement>(null);
 
+  // Close on outside click
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    const close = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
   }, [open]);
 
-  const selected = priorities.find(p => String(p.id) === value);
-  const selConfig = selected ? priorityConfig(selected) : null;
+  // Close on outside scroll/resize
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (wrapperRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => { window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); };
+  }, [open]);
+
+  function toggle() {
+    if (open) { setOpen(false); return; }
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) { setOpen(true); return; }
+    const POPUP_W = Math.max(rect.width, 200);
+    let left = rect.left;
+    if (left + POPUP_W > window.innerWidth - 8) left = window.innerWidth - POPUP_W - 8;
+    if (left < 8) left = 8;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const style: React.CSSProperties = { position: 'fixed', width: POPUP_W, left, zIndex: 9999 };
+    if (spaceBelow < 260 && rect.top > 260) style.bottom = window.innerHeight - rect.top + 6;
+    else style.top = rect.bottom + 6;
+    setPopupStyle(style);
+    setOpen(true);
+  }
+
+  const getName = (u: { nombre: string | null; apellido: string | null; email: string }) =>
+    [u.nombre, u.apellido].filter(Boolean).join(' ') || u.email;
+
+  const selected = users.find(u => String(u.id) === value);
 
   return (
-    <div className={styles.customSelect} ref={ref}>
+    <div className={styles.avatarSelectWrapper} ref={wrapperRef}>
       <button
         type="button"
-        className={styles.iconTrigger}
-        onClick={() => setOpen(o => !o)}
-        style={{ color: selConfig?.color ?? 'var(--color-anchor-gray-1)' }}
+        ref={triggerRef}
+        className={`${styles.avatarTrigger} ${open ? styles.avatarTriggerOpen : ''}`}
+        onClick={toggle}
       >
-        <span className={styles.iconTriggerIcon}>{selConfig?.icon ?? <MinusIcon width={16} height={16} />}</span>
-        <span className={styles.iconTriggerLabel}>{selected ? selected.nombre : 'Sin prioridad'}</span>
-        <ChevronDownIcon width={12} height={12} className={styles.iconTriggerChevron} />
+        {selected ? (
+          <span className={styles.avatarTriggerValue}>
+            <UserPickerOption user={selected} displayName={getName(selected)} />
+          </span>
+        ) : (
+          <>
+            <UserIcon width={16} height={16} style={{ color: 'var(--color-anchor-gray-1)', flexShrink: 0 }} />
+            <span className={styles.avatarTriggerPlaceholder}>Sin responsable</span>
+          </>
+        )}
+        <ChevronDownIcon width={13} height={13} className={`${styles.avatarChevron} ${open ? styles.avatarChevronOpen : ''}`} />
       </button>
 
       {open && (
-        <div className={styles.iconDropdown}>
-          <button
-            type="button"
-            className={`${styles.iconOption} ${!value ? styles.iconOptionActive : ''}`}
-            onClick={() => { onChange(''); setOpen(false); }}
-          >
-            <MinusIcon width={16} height={16} style={{ color: 'var(--color-clarity-gray-2)' }} />
-            <span>Sin prioridad</span>
-          </button>
-          {priorities.map(p => {
-            const cfg = priorityConfig(p);
-            return (
+        <div className={styles.avatarDropdown} style={popupStyle}>
+          <div className={styles.avatarOptionList}>
+            <button
+              type="button"
+              className={`${styles.avatarOption} ${!value ? styles.avatarOptionActive : ''}`}
+              onClick={() => { onChange(''); setOpen(false); }}
+            >
+              <div className={styles.avatarCircle} style={{ background: 'var(--color-clarity-gray-1)', flexShrink: 0 }}>
+                <UserIcon width={12} height={12} style={{ color: 'var(--color-anchor-gray-1)' }} />
+              </div>
+              <span className={styles.avatarOptionPlaceholder}>Sin responsable</span>
+            </button>
+            {users.map(u => (
               <button
-                key={p.id}
+                key={u.id}
                 type="button"
-                className={`${styles.iconOption} ${String(p.id) === value ? styles.iconOptionActive : ''}`}
-                onClick={() => { onChange(String(p.id)); setOpen(false); }}
+                className={`${styles.avatarOption} ${String(u.id) === value ? styles.avatarOptionActive : ''}`}
+                onClick={() => { onChange(String(u.id)); setOpen(false); }}
               >
-                <span style={{ color: cfg.color }}>{cfg.icon}</span>
-                <span>{p.nombre}</span>
+                <UserPickerOption user={u} displayName={getName(u)} />
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -194,6 +297,91 @@ function friendlyError(msg: string): string {
   return 'Ocurrió un error al crear el ítem. Intenta de nuevo.';
 }
 
+// ── BlockerMultiSelect — pick multiple blocking items ─────────────
+interface BlockerMultiSelectProps {
+  items: BacklogItemRecord[];
+  types: BacklogTypeRecord[];
+  selectedIds: number[];
+  onChange: (ids: number[]) => void;
+}
+
+function BlockerMultiSelect({ items, types, selectedIds, onChange }: BlockerMultiSelectProps) {
+  const [open,   setOpen]   = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const getCode = (item: BacklogItemRecord) => {
+    const type = types.find(t => t.id === item.id_tipo);
+    const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+    return `${prefix}-${String(item.id).padStart(2, '0')}`;
+  };
+
+  const available = items.filter(i => !selectedIds.includes(i.id));
+  const filtered  = search.trim()
+    ? available.filter(i =>
+        i.nombre.toLowerCase().includes(search.toLowerCase()) ||
+        getCode(i).toLowerCase().includes(search.toLowerCase())
+      )
+    : available;
+
+  const selected = items.filter(i => selectedIds.includes(i.id));
+
+  const remove = (id: number) => onChange(selectedIds.filter(x => x !== id));
+  const add    = (id: number) => { onChange([...selectedIds, id]); setSearch(''); setOpen(false); };
+
+  return (
+    <div className={styles.blockerWrapper} ref={wrapperRef}>
+      <div className={styles.blockerTags}>
+        {selected.map(item => (
+          <span key={item.id} className={styles.blockerTag}>
+            <span className={styles.blockerTagText}>{getCode(item)} — {item.nombre}</span>
+            <button type="button" className={styles.blockerTagRemove} onClick={() => remove(item.id)} aria-label={`Quitar ${getCode(item)}`}>×</button>
+          </span>
+        ))}
+        <button type="button" className={styles.blockerAddBtn} onClick={() => setOpen(o => !o)}>
+          + Añadir
+        </button>
+      </div>
+
+      {open && (
+        <div className={styles.blockerDropdown}>
+          <input
+            autoFocus
+            type="text"
+            className={styles.blockerSearch}
+            placeholder="Buscar ítem..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <div className={styles.blockerList}>
+            {filtered.length === 0
+              ? <span className={styles.blockerEmpty}>Sin resultados.</span>
+              : filtered.slice(0, 25).map(item => (
+                  <button key={item.id} type="button" className={styles.blockerOption} onClick={() => add(item.id)}>
+                    <span className={styles.blockerOptionCode}>{getCode(item)}</span>
+                    <span className={styles.blockerOptionName}>{item.nombre}</span>
+                  </button>
+                ))
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Hierarchy: which type can be parent of which ──────────────────
 const PARENT_TYPE_NAME: Record<string, string> = {
   'Historia de Usuario': 'Épica',
@@ -206,6 +394,7 @@ const PARENT_TYPE_NAME: Record<string, string> = {
 interface CreateBacklogItemFormProps {
   projectId: number;
   userId: number;
+  meta: BacklogMeta;
   isOpen: boolean;
   onClose: () => void;
   onCreated?: () => void;
@@ -223,22 +412,24 @@ interface FormState {
   id_backlog_item_padre: string;
   id_usuario_responsable: string;
   complejidad: number | null;
+  tiempo_estimado: string;   // horas, como texto del input
 }
 
 const EMPTY_FORM: FormState = {
   nombre: '', descripcion: '', id_tipo: '', id_estatus: '',
   id_prioridad: '', id_sprint: '', fecha_inicio: '', fecha_vencimiento: '',
   id_backlog_item_padre: '', id_usuario_responsable: '', complejidad: null,
+  tiempo_estimado: '',
 };
 
 const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
-  projectId, userId, isOpen, onClose, onCreated,
+  projectId, userId, meta, isOpen, onClose, onCreated,
 }) => {
-  const { meta, loading: metaLoading } = useBacklogMeta(projectId);
   const { submit, loading: submitting, error } = useCreateBacklogItem();
   const { user } = useUser();
   const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [bloqueadores,   setBloqueadores]   = useState<number[]>([]);
   const [nombreTouched,  setNombreTouched]  = useState(false);
   const [estatusTouched, setEstatusTouched] = useState(false);
   const [tipoTouched,    setTipoTouched]    = useState(false);
@@ -252,6 +443,14 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
     setEstatusTouched(true);
     setTipoTouched(true);
     if (!form.nombre.trim() || !form.id_estatus || !form.id_tipo) return;
+
+    // El input es en horas; la columna tiempo_estimado se guarda en minutos.
+    const horas = form.tiempo_estimado.trim();
+    const tiempoEstimadoMin =
+      horas !== '' && Number.isFinite(Number(horas)) && Number(horas) >= 0
+        ? Math.round(Number(horas) * 60)
+        : null;
+
     const payload: CreateBacklogItemPayload = {
       nombre:                 form.nombre.trim(),
       descripcion:            form.descripcion || null,
@@ -266,12 +465,23 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       id_proyecto:            projectId,
       id_usuario_creador:     userId,
       complejidad:            form.complejidad,
+      tiempo_estimado:        tiempoEstimadoMin,
     };
     try {
       const newItem = await submit(payload);
-      if (!isAdmin && newItem?.id) {
-        await createSugerencia(newItem.id);
+      if (newItem?.id) {
+        if (!isAdmin) {
+          await createSugerencia(newItem.id);
+        }
+        if (bloqueadores.length > 0) {
+          await Promise.all(
+            bloqueadores.map(blockerItemId =>
+              addBacklogItemBlock(newItem.id, blockerItemId, userId)
+            )
+          );
+        }
       }
+      setBloqueadores([]);
       onCreated?.();
       onClose();
     } catch { /* shown via error state */ }
@@ -285,10 +495,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       isOpen={isOpen}
       onClose={onClose}
     >
-      {metaLoading ? (
-        <p className={styles.loading}>Cargando opciones...</p>
-      ) : (
-        <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <form className={styles.form} onSubmit={handleSubmit} noValidate>
 
           {/* Nombre */}
           <div className={styles.field}>
@@ -337,10 +544,17 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
 
             <div className={styles.field}>
               <label className={styles.label}>Prioridad</label>
-              <PriorityIconSelect
-                priorities={meta.priorities}
+              <Select
+                options={[
+                  { value: '', label: 'Sin prioridad', icon: <MinusIcon width={16} height={16} />, color: 'var(--color-anchor-gray-1)' },
+                  ...meta.priorities.map(p => {
+                    const cfg = priorityConfig(p);
+                    return { value: String(p.id), label: p.nombre, icon: cfg.icon, color: cfg.color };
+                  }),
+                ]}
                 value={form.id_prioridad}
                 onChange={v => setForm(f => ({ ...f, id_prioridad: v }))}
+                required
               />
             </div>
           </div>
@@ -349,22 +563,23 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
           <div className={styles.row}>
             <div className={styles.field}>
               <label className={styles.label}>Sprint</label>
-              <select name="id_sprint" className={styles.select} value={form.id_sprint} onChange={handleChange}>
-                <option value="">Sin sprint</option>
-                {meta.sprints.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-              </select>
+              <Select
+                options={meta.sprints.map(s => ({ value: String(s.id), label: s.nombre }))}
+                value={form.id_sprint}
+                onChange={v => setForm(f => ({ ...f, id_sprint: v }))}
+                placeholder="Sin sprint"
+                emptyLabel="Sin sprint"
+                searchable
+              />
             </div>
 
             <div className={styles.field}>
               <label className={styles.label}>Responsable</label>
-              <select name="id_usuario_responsable" className={styles.select} value={form.id_usuario_responsable} onChange={handleChange}>
-                <option value="">Sin responsable</option>
-                {meta.users.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {[u.nombre, u.apellido].filter(Boolean).join(' ') || u.email}
-                  </option>
-                ))}
-              </select>
+              <UserAvatarSelect
+                users={meta.users}
+                value={form.id_usuario_responsable}
+                onChange={v => setForm(f => ({ ...f, id_usuario_responsable: v }))}
+              />
             </div>
           </div>
 
@@ -372,35 +587,58 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
           <div className={styles.row}>
             <div className={styles.field}>
               <label className={styles.label}>Fecha inicio</label>
-              <input name="fecha_inicio" className={styles.input} type="date" value={form.fecha_inicio} onChange={handleChange} />
+              <DatePicker
+                value={form.fecha_inicio}
+                onChange={v => setForm(f => ({ ...f, fecha_inicio: v }))}
+                placeholder="Seleccionar fecha"
+              />
             </div>
             <div className={styles.field}>
               <label className={styles.label}>Fecha vencimiento</label>
-              <input name="fecha_vencimiento" className={styles.input} type="date" value={form.fecha_vencimiento} onChange={handleChange} />
+              <DatePicker
+                value={form.fecha_vencimiento}
+                onChange={v => setForm(f => ({ ...f, fecha_vencimiento: v }))}
+                placeholder="Seleccionar fecha"
+              />
             </div>
           </div>
 
-          {/* Tipo — determines parent options, so placed before Ítem padre */}
-          <div className={styles.field}>
-            <label className={styles.label}>
-              Tipo <span className={styles.required}>*</span>
-            </label>
-            <select
-              name="id_tipo"
-              className={`${styles.select} ${tipoTouched && !form.id_tipo ? styles.inputError : ''}`}
-              value={form.id_tipo}
-              onChange={e => {
-                setTipoTouched(true);
-                setForm(f => ({ ...f, id_tipo: e.target.value, id_backlog_item_padre: '' }));
-              }}
-              onBlur={() => setTipoTouched(true)}
-            >
-              <option value="">Seleccionar tipo...</option>
-              {meta.types.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-            </select>
-            {tipoTouched && !form.id_tipo && (
-              <p className={styles.fieldError}>Selecciona un tipo para continuar.</p>
-            )}
+          {/* Row: Tipo + Tiempo estimado — Tipo determines parent options */}
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <label className={styles.label}>
+                Tipo <span className={styles.required}>*</span>
+              </label>
+              <Select
+                options={meta.types.map(t => ({ value: String(t.id), label: t.nombre, icon: TYPE_ICONS[t.nombre] }))}
+                value={form.id_tipo}
+                onChange={v => { setTipoTouched(true); setForm(f => ({ ...f, id_tipo: v, id_backlog_item_padre: '' })); }}
+                placeholder="Seleccionar tipo..."
+                onBlur={() => setTipoTouched(true)}
+                hasError={tipoTouched && !form.id_tipo}
+                required
+                searchable
+              />
+              {tipoTouched && !form.id_tipo && (
+                <p className={styles.fieldError}>Selecciona un tipo para continuar.</p>
+              )}
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="tiempo_estimado">Tiempo estimado (h)</label>
+              <input
+                id="tiempo_estimado"
+                name="tiempo_estimado"
+                className={styles.input}
+                type="text"
+                inputMode="numeric"
+                placeholder="Ej. 8"
+                value={form.tiempo_estimado}
+                onChange={e =>
+                  setForm(f => ({ ...f, tiempo_estimado: e.target.value.replace(/[^0-9]/g, '') }))
+                }
+              />
+            </div>
           </div>
 
           {/* Ítem padre — only shown when a type that can have a parent is selected */}
@@ -413,19 +651,22 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             const validParents = parentTypeId != null
               ? meta.items.filter(i => i.id_tipo === parentTypeId)
               : [];
-            const PREFIX: Record<string, string> = { 'Historia de Usuario': 'HU', 'Tarea': 'TA', 'Bug': 'BG', 'Épica': 'EP', 'Subtarea': 'ST' };
-            const parentPrefix = PREFIX[parentTypeName] ?? 'IT';
+            const parentPrefix = TYPE_PREFIX[parentTypeName] ?? 'IT';
             return (
               <div className={styles.field}>
                 <label className={styles.label}>Ítem padre <span className={styles.parentTypeHint}>({parentTypeName})</span></label>
-                <select name="id_backlog_item_padre" className={styles.select} value={form.id_backlog_item_padre} onChange={handleChange}>
-                  <option value="">Sin ítem padre</option>
-                  {validParents.map(item => (
-                    <option key={item.id} value={item.id}>
-                      {parentPrefix}-{String(item.id).padStart(2, '0')} — {item.nombre}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  options={validParents.map(item => ({
+                    value: String(item.id),
+                    label: `${parentPrefix}-${String(item.id).padStart(2, '0')} — ${item.nombre}`,
+                  }))}
+                  value={form.id_backlog_item_padre}
+                  onChange={v => setForm(f => ({ ...f, id_backlog_item_padre: v }))}
+                  placeholder="Sin ítem padre"
+                  emptyLabel="Sin ítem padre"
+                  small
+                  searchable
+                />
               </div>
             );
           })()}
@@ -447,6 +688,17 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             </div>
           </div>
 
+          {/* Bloqueado por */}
+          <div className={styles.field}>
+            <label className={styles.label}>Bloqueado por</label>
+            <BlockerMultiSelect
+              items={meta.items}
+              types={meta.types}
+              selectedIds={bloqueadores}
+              onChange={setBloqueadores}
+            />
+          </div>
+
           {error && <p className={styles.error}>{friendlyError(error)}</p>}
 
           <div className={styles.actions}>
@@ -454,12 +706,11 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
               Cancelar
             </button>
             <button type="submit" className={styles.submitBtn}
-              disabled={submitting || !form.nombre.trim() || !form.id_estatus || !form.id_tipo}>
+              disabled={submitting}>
               {submitting ? 'Guardando...' : 'Crear ítem'}
             </button>
           </div>
-        </form>
-      )}
+      </form>
     </FormPopUp>
   );
 };

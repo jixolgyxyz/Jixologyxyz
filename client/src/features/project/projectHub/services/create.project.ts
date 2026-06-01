@@ -6,6 +6,7 @@ import type {
   ProjectCatalogOption,
   ProjectCurrencyOption,
   ProjectStatusOption,
+  ProjectUserOption,
   CreateProjectFormValues,
 } from '@/features/project/projectHub/types/create.project.types';
 import { hasAdminRole } from '@/core/auth/user.service';
@@ -43,6 +44,20 @@ function mapStatusOption(row: {
   };
 }
 
+function mapUserOption(row: {
+  id: number;
+  nombre: string | null;
+  apellido: string | null;
+  email: string;
+}): ProjectUserOption {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    apellido: row.apellido,
+    email: row.email,
+  };
+}
+
 export async function getCreateProjectCatalogs(): Promise<ProjectCatalogs> {
   const [
     divisaResult,
@@ -51,6 +66,7 @@ export async function getCreateProjectCatalogs(): Promise<ProjectCatalogs> {
     tipoResult,
     modeloFacturacionResult,
     complejidadResult,
+    usuariosResult,
   ] = await Promise.all([
     supabase.from('divisa').select('id, nombre, abreviatura').order('id'),
     supabase.from('metodologia_proyecto').select('id, nombre').order('id'),
@@ -58,6 +74,7 @@ export async function getCreateProjectCatalogs(): Promise<ProjectCatalogs> {
     supabase.from('tipo_proyecto').select('id, nombre').order('id'),
     supabase.from('modelo_facturacion').select('id, nombre').order('id'),
     supabase.from('complejidad_proyecto').select('id, nombre').order('id'),
+    supabase.from('usuario').select('id, nombre, apellido, email').eq('activo', true).order('nombre'),
   ]);
 
   if (divisaResult.error) throw new Error(divisaResult.error.message);
@@ -66,6 +83,7 @@ export async function getCreateProjectCatalogs(): Promise<ProjectCatalogs> {
   if (tipoResult.error) throw new Error(tipoResult.error.message);
   if (modeloFacturacionResult.error) throw new Error(modeloFacturacionResult.error.message);
   if (complejidadResult.error) throw new Error(complejidadResult.error.message);
+  if (usuariosResult.error) throw new Error(usuariosResult.error.message);
 
   return {
     divisa: (divisaResult.data ?? []).map(mapCurrencyOption),
@@ -74,6 +92,7 @@ export async function getCreateProjectCatalogs(): Promise<ProjectCatalogs> {
     tipo_proyecto: (tipoResult.data ?? []).map(mapCatalogOption),
     modelo_facturacion: (modeloFacturacionResult.data ?? []).map(mapCatalogOption),
     complejidad_proyecto: (complejidadResult.data ?? []).map(mapCatalogOption),
+    usuarios: (usuariosResult.data ?? []).map(mapUserOption),
   };
 }
 
@@ -100,7 +119,10 @@ export async function createProject(
       id_modelo_facturacion: payload.id_modelo_facturacion,
       id_complejidad: payload.id_complejidad,
       id_tipo: payload.id_tipo,
-      id_estatus: payload.id_estatus,
+      // El estatus ya no lo elige el usuario: se calcula en vivo
+      // (project_card_view.estatus_calculado). 4 = "Sin Asignar" es solo el
+      // valor base almacenado para un proyecto recién creado, sin ítems.
+      id_estatus: 4,
       id_metodologia: payload.id_metodologia,
       id_creador: payload.id_creador,
       stack_tecnologico: payload.stack_tecnologico,
@@ -112,8 +134,22 @@ export async function createProject(
     throw new Error(error.message);
   }
 
+  const projectId = data.id as number;
+
+  // Agregar usuarios seleccionados como PM. Va por RPC (SECURITY DEFINER):
+  // usuario_proyecto tiene RLS que no permite INSERT directo desde el cliente.
+  if (payload.pm_user_ids.length > 0) {
+    const { error: pmError } = await supabase.rpc('agregar_pms_iniciales', {
+      p_id_proyecto: projectId,
+      p_user_ids:    payload.pm_user_ids,
+    });
+    if (pmError) {
+      throw new Error(`Proyecto creado, pero no se pudo asignar el rol PM: ${pmError.message}`);
+    }
+  }
+
   return {
-    id: data.id,
+    id: projectId,
     message: `Proyecto "${data.nombre}" creado correctamente.`,
   };
 }
@@ -123,7 +159,7 @@ export async function getAllCreateProyectData(projectId: number, userId: number)
 
   const { data, error } = await supabase
     .from('proyecto')
-    .select('nombre, descripcion, cliente, fecha_inicial, fecha_final, dependencia_externa, hitos_estimados, presupuesto, costo_mensual, tolerancia_desviacion, peso_presupuesto, peso_retraso, id_divisa_presupuesto, id_divisa_costo, id_modelo_facturacion, id_complejidad, id_tipo, id_estatus, id_metodologia, stack_tecnologico')
+    .select('nombre, descripcion, cliente, fecha_inicial, fecha_final, dependencia_externa, hitos_estimados, presupuesto, costo_mensual, tolerancia_desviacion, peso_presupuesto, peso_retraso, id_divisa_presupuesto, id_divisa_costo, id_modelo_facturacion, id_complejidad, id_tipo, id_metodologia, stack_tecnologico')
     .eq('id', projectId)
     .single();
 
@@ -147,9 +183,11 @@ export async function getAllCreateProyectData(projectId: number, userId: number)
     id_modelo_facturacion:   data.id_modelo_facturacion != null ? String(data.id_modelo_facturacion) : '',
     id_complejidad:          data.id_complejidad != null ? String(data.id_complejidad) : '',
     id_tipo:                 data.id_tipo != null ? String(data.id_tipo) : '',
-    id_estatus:              data.id_estatus != null ? String(data.id_estatus) : '',
     id_metodologia:          data.id_metodologia != null ? String(data.id_metodologia) : '',
     stack_tecnologico:       data.stack_tecnologico?.length ? data.stack_tecnologico : [''],
+    // La invitación de PMs solo aplica al crear; al editar se gestiona en
+    // la configuración del proyecto.
+    pm_user_ids:             [],
   };
 }
 
@@ -177,7 +215,6 @@ export async function updateCreateProyectData(
       id_modelo_facturacion: payload.id_modelo_facturacion,
       id_complejidad: payload.id_complejidad,
       id_tipo: payload.id_tipo,
-      id_estatus: payload.id_estatus,
       id_metodologia: payload.id_metodologia,
       stack_tecnologico: payload.stack_tecnologico,
     })

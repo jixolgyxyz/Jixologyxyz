@@ -7,6 +7,8 @@ import {
   fetchBacklogPriorities,
   fetchBacklogTypes,
 } from '@/features/project/Backlog/services/backlog.service';
+import { localToday } from '../utils/dates';
+import { PRIORITY_COLORS, STATUS_PALETTE, PROJECT_PALETTE, colorMap } from '../config/palettes';
 import type {
   BacklogItemRecord,
   BacklogStatusRecord,
@@ -24,33 +26,24 @@ export interface SprintHoursData {
 }
 export interface TypeCount     { tipo: string; count: number }
 export interface PriorityCount { prioridad: string; count: number; color: string }
-export interface ComplexityBar  { complejidad: number; horas: number; count: number }
+export interface ComplexityBar        { complejidad: number; horas: number; count: number }
+export interface ComplexityTimePoint  { complejidad: number; horas: number; nombre: string }
+export interface TimeAccuracyBar      { complejidad: number; avgEstimated: number; avgActual: number; count: number }
 
 export interface DashboardData {
-  totalItems:         number;
-  itemsWithEstimate:  number;
-  statusData:         StatusSlice[];
-  sprintHours:        SprintHoursData;
-  typeData:           TypeCount[];
-  priorityData:       PriorityCount[];
-  complexityData:     ComplexityBar[];
-  overdueItems:       BacklogItemRecord[];
-  upcomingItems:      BacklogItemRecord[];
-  jornadaFte:         UserJornadaFte;
+  totalItems:            number;
+  itemsWithEstimate:     number;
+  statusData:            StatusSlice[];
+  sprintHours:           SprintHoursData;
+  typeData:              TypeCount[];
+  priorityData:          PriorityCount[];
+  complexityData:        ComplexityBar[];
+  complexityTimeData:    ComplexityTimePoint[];
+  timeAccuracyData:      TimeAccuracyBar[];
+  overdueItems:          BacklogItemRecord[];
+  upcomingItems:         BacklogItemRecord[];
+  jornadaFte:            UserJornadaFte;
 }
-
-const STATUS_PALETTE = [
-  '#0A0838', '#E31837', '#3b82f6', '#f59e0b',
-  '#10b981', '#8b5cf6', '#ec4899', '#6b7280',
-];
-
-const PRIORITY_COLORS: Record<string, string> = {
-  'Crítica': '#E31837',
-  'Alta':    '#f97316',
-  'Media':   '#6b7280',
-  'Baja':    '#3b82f6',
-  'Mínima':  '#1d4ed8',
-};
 
 function buildStatusData(
   items: BacklogItemRecord[],
@@ -61,14 +54,13 @@ function buildStatusData(
   for (const item of items) {
     counts.set(item.id_estatus, (counts.get(item.id_estatus) ?? 0) + 1);
   }
-  return Array.from(counts.entries()).map(([id, value], i) => ({
-    name:  statusMap.get(id) ?? `Estado ${id}`,
+  const entries = Array.from(counts.entries()).map(([id, value]) => ({
+    name: statusMap.get(id) ?? `Estado ${id}`,
     value,
-    color: STATUS_PALETTE[i % STATUS_PALETTE.length],
   }));
+  const colors = colorMap(entries.map(e => e.name), STATUS_PALETTE);
+  return entries.map(e => ({ ...e, color: colors.get(e.name)! }));
 }
-
-const PROJECT_COLORS = ['#3b82f6', '#f59e0b', '#E31837', '#10b981', '#8b5cf6', '#0A0838'];
 
 function buildSprintHours(
   items: BacklogItemRecord[],
@@ -108,9 +100,11 @@ function buildSprintHours(
     }
   }
 
-  const projectList = Array.from(seenProjects).map((name, i) => ({
+  const seenList      = Array.from(seenProjects);
+  const projectColors = colorMap(seenList, PROJECT_PALETTE);
+  const projectList   = seenList.map(name => ({
     name,
-    color: PROJECT_COLORS[i % PROJECT_COLORS.length],
+    color: projectColors.get(name)!,
   }));
 
   const rows: SprintGroupRow[] = sprintNames.map(sprint => {
@@ -162,6 +156,37 @@ function buildPriorityData(
   });
 }
 
+function buildComplexityTimeData(items: BacklogItemRecord[]): ComplexityTimePoint[] {
+  return items
+    .filter(item => item.complejidad != null && item.tiempo != null && item.tiempo > 0)
+    .map(item => ({
+      complejidad: item.complejidad!,
+      horas:       Math.round((item.tiempo! / 60) * 10) / 10,
+      nombre:      item.nombre,
+    }));
+}
+
+function buildTimeAccuracyData(items: BacklogItemRecord[]): TimeAccuracyBar[] {
+  const map = new Map<number, { totalEst: number; totalAct: number; count: number }>();
+  for (const item of items) {
+    if (item.complejidad == null || item.tiempo_estimado == null || item.tiempo == null || !item.es_terminal) continue;
+    if (!map.has(item.complejidad)) map.set(item.complejidad, { totalEst: 0, totalAct: 0, count: 0 });
+    const b = map.get(item.complejidad)!;
+    b.totalEst += item.tiempo_estimado / 60;
+    b.totalAct += item.tiempo / 60;
+    b.count++;
+  }
+  return [1, 2, 3, 4, 5].map(c => {
+    const b = map.get(c);
+    return {
+      complejidad:   c,
+      avgEstimated:  b ? Math.round((b.totalEst / b.count) * 10) / 10 : 0,
+      avgActual:     b ? Math.round((b.totalAct / b.count) * 10) / 10 : 0,
+      count:         b?.count ?? 0,
+    };
+  });
+}
+
 function buildComplexityData(items: BacklogItemRecord[]): ComplexityBar[] {
   const hoursMap = new Map<number, number>();
   const countMap = new Map<number, number>();
@@ -184,7 +209,7 @@ function buildUpcomingItems(
   statuses: BacklogStatusRecord[],
 ): BacklogItemRecord[] {
   const terminalIds = new Set(statuses.filter(s => s.es_terminal).map(s => s.id));
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   return items
     .filter(
       item =>
@@ -200,7 +225,7 @@ function buildOverdueItems(
   statuses: BacklogStatusRecord[],
 ): BacklogItemRecord[] {
   const terminalIds = new Set(statuses.filter(s => s.es_terminal).map(s => s.id));
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   return items.filter(
     item =>
       item.fecha_vencimiento !== null &&
@@ -286,16 +311,18 @@ export function useUserDashboardData(selectedProjectIds: number[] | null): UserD
       : projects;
 
     return {
-      totalItems:        items.length,
-      itemsWithEstimate: items.filter(i => i.complejidad != null && i.tiempo != null).length,
-      statusData:        buildStatusData(items, statuses),
-      sprintHours:       buildSprintHours(items, sprints, visibleProjects),
-      typeData:          buildTypeData(items, types),
-      priorityData:      buildPriorityData(items, priorities),
-      complexityData:    buildComplexityData(items),
-      overdueItems:      buildOverdueItems(items, statuses),
-      upcomingItems:     buildUpcomingItems(items, statuses),
-      jornadaFte:        filteredJornadaFte,
+      totalItems:         items.length,
+      itemsWithEstimate:  items.filter(i => i.complejidad != null && i.tiempo != null).length,
+      statusData:         buildStatusData(items, statuses),
+      sprintHours:        buildSprintHours(items, sprints, visibleProjects),
+      typeData:           buildTypeData(items, types),
+      priorityData:       buildPriorityData(items, priorities),
+      complexityData:     buildComplexityData(items),
+      complexityTimeData: buildComplexityTimeData(items),
+      timeAccuracyData:   buildTimeAccuracyData(items),
+      overdueItems:       buildOverdueItems(items, statuses),
+      upcomingItems:      buildUpcomingItems(items, statuses),
+      jornadaFte:         filteredJornadaFte,
     };
   }, [raw, selectedProjectIds]);
 

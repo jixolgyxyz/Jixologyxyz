@@ -2,7 +2,7 @@ import type { FC, ReactNode } from 'react';
 import './ButtonComponent.css';
 
 interface ButtonComponentProps {
-  label: string;
+  label: ReactNode;
   onClick?: () => void;
   icon?: ReactNode;
   type?: 'button' | 'submit' | 'reset';

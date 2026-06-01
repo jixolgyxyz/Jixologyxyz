@@ -86,13 +86,51 @@ Supabase configuration, database migrations, and project resources.
 
 
 ## #######################################################################################################################################
-## What to run after db reset --local
+## Supabase — Local Database
 
--- cd supabase
+### Full reset (runs all migrations from scratch)
 
--- npm run begin-project
+Stops Supabase, wipes the DB, re-runs every migration, and seeds users + data.
+Run this after a fresh clone or when you need a completely clean state.
 
-(properly stop the DB Supabase before)
+```bash
+cd supabase
+npm run begin-project
+```
+
+> Stop Supabase before running if it is already up.
+
+---
+
+### Apply only new (pending) migrations
+
+Runs migrations that have **not yet been applied** — no data loss, no reset.
+Use this after pulling changes that include new migration files.
+
+```bash
+cd supabase
+npx supabase migration up --local
+```
+
+---
+
+### Re-run a specific migration that already ran
+
+Remove its tracking record so the CLI treats it as pending, then apply it.
+
+```bash
+# 1. Connect to the local DB
+psql postgresql://postgres:postgres@localhost:54322/postgres
+
+# 2. Delete the migration record (use the timestamp prefix of the file, without .sql)
+DELETE FROM supabase_migrations.schema_migrations
+WHERE version = '20260522191821';
+\q
+
+# 3. Re-apply
+cd supabase
+npx supabase migration up --local
+```
 
 
 
@@ -122,9 +160,12 @@ Edit `client/.env.e2e`:
 ```
 E2E_EMAIL=testuser@example.com
 E2E_PASSWORD=your_test_password
+E2E_PROJECT_ID=1
+E2E_TESTER_NAME=Your Name
 ```
 
 > The test user must already exist in Supabase and have an active `usuario` record.
+> `E2E_TESTER_NAME` is stamped into the HTML report (and into the report folder name) so a shared report shows who ran it.
 
 ### 3. Run the tests
 
@@ -141,6 +182,44 @@ Playwright will:
 
 ---
 
+### Generate a shareable report
+
+Use this when you need to hand the results to someone else:
+
+```bash
+cd client
+npm run test:e2e:report
+```
+
+It runs the full suite and saves a **self-contained HTML report** into a folder
+named after the run date and the tester:
+
+```
+client/e2e-reports/2026-05-20_Your-Name/
+```
+
+- The tester name comes from `E2E_TESTER_NAME` in `.env.e2e`. It is used in the
+  folder name and written into the report's metadata, so the recipient can see
+  who produced it. If the variable is missing the folder is just the date.
+- Running it again the same day **overwrites** that folder. To keep every run,
+  append the time:
+  ```bash
+  npm run test:e2e:report -- --time   # → e2e-reports/2026-05-20_14-30-05_Your-Name/
+  ```
+- The report is saved whether the tests pass or fail.
+- When it finishes, the script prints a ready-to-use zip command, e.g.:
+  ```powershell
+  Compress-Archive -Path "client\e2e-reports\2026-05-20_Your-Name\*" -DestinationPath "report.zip"
+  ```
+- Whoever receives the zip opens it with:
+  ```bash
+  npx playwright show-report <unzipped-folder>
+  ```
+
+> `e2e-reports/` is gitignored — the reports are build artifacts, not source.
+
+---
+
 ### Commands
 
 | Command | What it does |
@@ -148,8 +227,11 @@ Playwright will:
 | `npm run test:e2e` | Run all tests headlessly and generate the HTML report |
 | `npm run test:e2e:ui` | Open Playwright's interactive UI — pick and watch individual tests |
 | `npm run test:e2e:debug` | Run tests with the browser visible and the Playwright inspector attached |
+| `npm run test:e2e:report` | Run all tests and save a dated, shareable HTML report under `e2e-reports/` |
+| `npm run test:e2e:report -- --time` | Same, but the report folder also includes the time (keeps multiple same-day runs) |
 | `npx playwright show-report` | Open the last HTML report in the browser |
 | `npx playwright test --grep "login"` | Run only tests whose name matches a keyword |
+| `npx playwright test tests/e2e/backlog` |Run only test on the backlog folder |
 
 ---
 
@@ -167,8 +249,11 @@ client/
       login/
         login.spec.ts   # Login flow tests
       global.setup.ts   # Runs once before all specs to log in and save session
+  scripts/
+    run-e2e-report.mjs  # Runs the suite + saves a dated, shareable HTML report
+  e2e-reports/          # Gitignored — dated HTML reports from test:e2e:report
   playwright.config.ts  # Playwright configuration
-  .env.e2e              # Gitignored — test credentials
+  .env.e2e              # Gitignored — test credentials + E2E_TESTER_NAME
   .env.e2e.example      # Template — copy this and fill in your credentials
 ```
 
@@ -181,16 +266,27 @@ client/
   ```
   SUPABASE_URL=your_supabase_url
   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+  JWT_SECRET=your_jwt_secret
   PORT=3000
   ```
   Find these values in the Supabase dashboard under **Project Settings → API**.
+
+> **Important:** The client build bakes environment variables into the JS bundle at build time.  
+> You must pass the real production values via `--build-arg` — the local `.env` file is excluded from Docker builds.
 
 ### 1. Build the images
 Run both commands from the **repo root**:
 
 ```bash
 # Client (Nginx, serves the React app)
-docker build -t jixology-client -f client/Dockerfile client/
+# Replace each value with your real Supabase / API / Gemini credentials
+docker build \
+  --build-arg VITE_SUPABASE_URL=https://your-project-id.supabase.co \
+  --build-arg VITE_SUPABASE_ANON_KEY=your-anon-key \
+  --build-arg VITE_BUSINESS_API_URL=http://localhost:3000 \
+  --build-arg VITE_GEMINI_API_KEY=your-gemini-api-key \
+  -t jixology-client \
+  -f client/Dockerfile client/
 
 # Server (Express + Socket.io)
 docker build -t jixology-server -f server/Dockerfile .
@@ -200,7 +296,7 @@ docker build -t jixology-server -f server/Dockerfile .
 
 ```bash
 # Client — available at http://localhost
-docker run -d -p 80:80 --name jixology-client jixology-client
+docker run -d -p 5173:80 --name jixology-client jixology-client
 
 # Server — available at http://localhost:3000
 docker run -d -p 3000:3000 --env-file server/.env --name jixology-server jixology-server

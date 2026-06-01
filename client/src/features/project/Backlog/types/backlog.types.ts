@@ -14,8 +14,10 @@ export interface BacklogItemRecord {
   id_estatus: number;
   id_proyecto: number;
   id_sprint: number | null;
-  complejidad: number | null;
-  tiempo: number | null;
+  complejidad:      number | null;
+  tiempo:           number | null;
+  tiempo_estimado:  number | null;
+  fecha_completado: string | null;
 }
 
 export interface BacklogStatusRecord {
@@ -59,6 +61,24 @@ export interface UpdateBacklogItemPayload {
   id_usuario_responsable?: number | null;
   complejidad?: number | null;
   tiempo?: number | null;
+  tiempo_estimado?: number | null;
+}
+
+export interface UpdateSprintPayload {
+  nombre: string;
+  objetivo?: string | null;
+  fecha_inicio: string | null;
+  fecha_final: string | null;
+}
+
+export interface CreateSprintPayload {
+  nombre: string;
+  objetivo?: string | null;
+  fecha_inicio: string | null;
+  fecha_final: string | null;
+  id_proyecto: number;
+  id_usuario_creador: number;
+  id_estatus: number;
 }
 
 export interface CreateBacklogItemPayload {
@@ -75,6 +95,7 @@ export interface CreateBacklogItemPayload {
   id_proyecto: number;
   id_usuario_creador: number;
   complejidad?: number | null;
+  tiempo_estimado?: number | null;   // minutos
 }
 
 export interface UserRecord {
@@ -105,4 +126,24 @@ export interface BacklogMeta {
   users:       UserRecord[];
   sugerencias: SugerenciaRecord[];
   etiquetas:   ProjectEtiquetaRecord[];
+}
+
+export interface BacklogItemBloqueoRecord {
+  id_bloqueado:       number;
+  id_bloqueador:      number;
+  fecha_creacion:     string;
+  id_usuario_creador: number;
+}
+
+export interface ComentarioRecord {
+  id:                  number;
+  cuerpo:              string;
+  id_usuario_creador:  number;
+  id_comentario_padre: number | null;
+  id_backlog_item:     number;
+  usuario: {
+    id:       number;
+    nombre:   string | null;
+    apellido: string | null;
+  } | null;
 }

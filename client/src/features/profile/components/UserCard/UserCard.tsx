@@ -3,9 +3,11 @@ import {
   PencilSquareIcon,
   CheckIcon,
   XMarkIcon,
+  SwatchIcon,
 } from '@heroicons/react/24/outline';
 import styles from './UserCard.module.css';
 import { useUserAvatarSvg } from '../../hooks/useUserAvatarSvg';
+import type { ZonaHorariaOption } from '../../services/profileEdit.service';
 
 export interface UserCardEditValues {
   nombre: string;
@@ -33,6 +35,8 @@ interface UserCardProps {
   aboutMe: string;
   editScope?: EditScope;
   saving?: boolean;
+  zonaHorariaOptions?: ZonaHorariaOption[];
+  onEditAvatar?: () => void;
   onSaveAboutMe?: (sobreMi: string) => Promise<void>;
   onSubmitFullEdit?: () => Promise<void>;
   formValues?: UserCardEditValues;
@@ -52,12 +56,14 @@ const UserCard: React.FC<UserCardProps> = ({
   aboutMe,
   editScope = 'none',
   saving = false,
+  zonaHorariaOptions = [],
+  onEditAvatar,
   onSaveAboutMe,
   onSubmitFullEdit,
   formValues,
   onFieldChange,
 }) => {
-  const { avatarSvg: dbSvg } = useUserAvatarSvg(userId);
+  const { avatarSvg: dbSvg, loading: avatarLoading } = useUserAvatarSvg(userId);
   const avatarSvg = avatarSvgProp ?? dbSvg;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -122,9 +128,19 @@ const UserCard: React.FC<UserCardProps> = ({
 
       <div className={styles.avatarWrapper}>
         <div
-          className={styles.avatarCircle}
+          className={`${styles.avatarCircle}${avatarLoading ? ` ${styles.avatarCircleLoading}` : ''}`}
           dangerouslySetInnerHTML={{ __html: avatarSvg }}
         />
+        {onEditAvatar && !isEditing && (
+          <button
+            className={styles.editAvatarBtn}
+            onClick={onEditAvatar}
+            type="button"
+          >
+            <SwatchIcon width={13} height={13} />
+            Editar avatar
+          </button>
+        )}
       </div>
 
       {(isSelfEdit || isFullEdit) && isEditing && formValues && onFieldChange ? (
@@ -246,21 +262,38 @@ const UserCard: React.FC<UserCardProps> = ({
             <div className={styles.formGrid}>
               <label className={styles.fieldGroup}>
                 <span className={styles.fieldLabel}>Zona horaria</span>
-                <input
-                  className={styles.inputField}
+                <select
+                  className={styles.selectField}
                   name="idZonaHoraria"
                   value={formValues.idZonaHoraria ?? ''}
                   onChange={onFieldChange}
-                />
+                >
+                  <option value="">— Seleccionar —</option>
+                  {zonaHorariaOptions.map(z => (
+                    <option key={z.id} value={String(z.id)}>
+                      {z.nombre}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label className={styles.fieldGroup}>
-                <span className={styles.fieldLabel}>Jornada</span>
+                <span className={styles.fieldLabel}>Jornada (horas)</span>
                 <input
                   className={styles.inputField}
+                  type="number"
                   name="jornada"
+                  min="0"
+                  step="1"
                   value={formValues.jornada ?? ''}
-                  onChange={onFieldChange}
+                  onKeyDown={(e) => {
+                    if (e.key === '-' || e.key === 'e') e.preventDefault();
+                  }}
+                  onChange={(e) => {
+                    if (e.target.value !== '' && Number(e.target.value) < 0)
+                      e.target.value = '0';
+                    onFieldChange(e);
+                  }}
                 />
               </label>
             </div>

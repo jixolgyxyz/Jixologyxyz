@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef  } from 'react';
 import type { ReactNode } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import styles from './FormPopUp.module.css';
@@ -12,6 +12,7 @@ export interface FormPopUpProps {
   children: ReactNode;
   wide?: boolean;
   bodyRef?: React.RefObject<HTMLDivElement | null>;
+  closeOnOverlayClick?: boolean;
 }
 
 const FormPopUp: React.FC<FormPopUpProps> = ({
@@ -23,6 +24,7 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
   children,
   wide,
   bodyRef,
+  closeOnOverlayClick = true,
 }) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -38,13 +40,36 @@ const FormPopUp: React.FC<FormPopUpProps> = ({
     return () => { document.body.style.overflow = prev; };
   }, [isOpen]);
 
+  // Tracks whether the window currently has focus.
+  // A separate ref keeps it out of startedOutside's effect closure, which
+  // was triggering the react-hooks/immutability lint error.
+  const windowFocusedRef = useRef(true);
+  useEffect(() => {
+    if (!isOpen) return;
+    const onBlur  = () => { windowFocusedRef.current = false; };
+    const onFocus = () => { windowFocusedRef.current = true;  };
+    window.addEventListener('blur',  onBlur);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('blur',  onBlur);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [isOpen]);
+
+  const startedOutside = useRef(false);
   if (!isOpen) return null;
 
   return (
-    <div
-      className={styles.overlay}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
+      <div className={styles.overlay}
+        onMouseDown={(e) => {
+          startedOutside.current = closeOnOverlayClick && windowFocusedRef.current && e.target === e.currentTarget;
+        }}
+        onMouseUp={(e) => {
+          if (startedOutside.current && e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
       <div className={`${styles.modal}${wide ? ` ${styles.modalWide}` : ''}`} role="dialog" aria-modal="true">
 
         {/* Header */}

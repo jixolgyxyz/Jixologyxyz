@@ -1,0 +1,151 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+/* ── Search (matches .create-project-modal__control) ──────────────── */
+.searchWrapper {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 1.125rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--color-anchor-gray-2);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 3.25rem;
+  box-sizing: border-box;
+  padding: 0 1.125rem 0 2.875rem;
+  border: 0.0625rem solid var(--color-clarity-gray-1);
+  border-radius: 999rem;
+  background-color: var(--color-white);
+  color: var(--color-blueprint-navy);
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--color-anchor-gray-2);
+}
+
+.searchInput:focus {
+  border-color: var(--color-blueprint-navy);
+  box-shadow: 0 0 0 0.125rem rgba(31, 54, 80, 0.18);
+}
+
+/* ── Selected count line (matches .create-project-modal__hint) ────── */
+.count {
+  margin: 0;
+  padding: 0 1.1875rem;
+  color: var(--color-anchor-gray-2);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* ── User list ────────────────────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 13rem;
+  overflow-y: auto;
+  padding: 0.375rem;
+  border: 0.0625rem solid var(--color-clarity-gray-1);
+  border-radius: 1.25rem;
+  background-color: var(--color-white);
+}
+
+/* Each row carries its own inset, rounded highlight — so the hover/selected
+   state never collides with the list's rounded corners or its neighbours. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.625rem 0.75rem;
+  background: none;
+  border: none;
+  border-radius: 0.875rem;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.row:hover:not(:disabled) {
+  background-color: var(--color-clarity-gray-1);
+}
+
+.row:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.rowSelected,
+.rowSelected:hover:not(:disabled) {
+  background-color: rgba(31, 54, 80, 0.06);
+}
+
+/* ── Checkbox ──────────────────────────────────────────────────────── */
+.checkbox {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.0625rem solid var(--color-clarity-gray-1);
+  border-radius: 0.4375rem;
+  color: var(--color-white);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.rowSelected .checkbox {
+  background-color: var(--color-blueprint-navy);
+  border-color: var(--color-blueprint-navy);
+}
+
+/* ── User text ────────────────────────────────────────────────────── */
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.name {
+  color: var(--color-blueprint-navy);
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.email {
+  color: var(--color-anchor-gray-2);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--color-anchor-gray-2);
+  font-size: 0.875rem;
+}

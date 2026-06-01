@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   XMarkIcon,
   UserIcon,
@@ -13,16 +13,22 @@ import {
   MinusIcon,
   PencilIcon,
   CheckIcon,
+  ClipboardDocumentIcon,
+  ArrowUturnLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
-import { updateBacklogItem } from '@/features/project/Backlog/services/backlog.service';
+import { Select } from '@/shared/components/Select/Select';
+import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
+import { updateBacklogItem, fetchItemBlockers, fetchItemBlocking, addBacklogItemBlock, removeBacklogItemBlock, fetchComentarios, createComentario, deleteComentario } from '@/features/project/Backlog/services/backlog.service';
+import { fetchBacklogItemGithub, fetchGithubConfig, createGithubBranch, createGithubPR, deleteGithubBranch, type BacklogItemGithubRecord, type GithubConfigRecord } from '@/features/project/projectConfig/services/projectConfig.service';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
+import { useUser } from '@/core/auth/userContext';
 import type {
   BacklogItemRecord,
   BacklogMeta,
   BacklogStatusRecord,
-  BacklogPriorityRecord,
   UpdateBacklogItemPayload,
+  ComentarioRecord,
 } from '@/features/project/Backlog/types/backlog.types';
 import styles from './ViewItemDetail.module.css';
 
@@ -31,7 +37,8 @@ const STATUS_COLORS: Record<number, { color: string; textColor: string }> = {
   1: { color: '#F3F4F6', textColor: '#6B7280' },
   2: { color: '#DBEAFE', textColor: '#1D4ED8' },
   3: { color: '#FEF3C7', textColor: '#D97706' },
-  4: { color: '#D1FAE5', textColor: '#065F46' },
+  4: { color: '#FDE68A', textColor: '#92400E' }, // Pendiente
+  5: { color: '#D1FAE5', textColor: '#065F46' }, // Completado
 };
 
 const TYPE_PREFIX: Record<string, string> = {
@@ -40,6 +47,22 @@ const TYPE_PREFIX: Record<string, string> = {
   'Bug':                 'BG',
   'Épica':               'EP',
   'Subtarea':            'ST',
+};
+
+/** Which type must be the PARENT of a given type */
+const VALID_PARENT_TYPE: Record<string, string> = {
+  'Historia de Usuario': 'Épica',
+  'Tarea':               'Historia de Usuario',
+  'Subtarea':            'Tarea',
+  'Bug':                 'Subtarea',
+};
+
+/** Which type must be the CHILD of a given type */
+const VALID_CHILD_TYPE: Record<string, string> = {
+  'Épica':               'Historia de Usuario',
+  'Historia de Usuario': 'Tarea',
+  'Tarea':               'Subtarea',
+  'Subtarea':            'Bug',
 };
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -73,6 +96,24 @@ const PRIORITY_OPTIONS: Record<string, { icon: React.ReactNode; color: string }>
   'Mínima':  { icon: <ChevronDoubleDownIcon width={14} height={14} />, color: '#1d4ed8' },
 };
 
+// ── GitHub branch helpers ─────────────────────────────────────────────
+const PREFIX_MAP_CLIENT: Record<string, string> = {
+  'Historia de Usuario': 'feat',
+  'Tarea':               'task',
+  'Bug':                 'fix',
+  'Épica':               'epic',
+  'Subtarea':            'subtask',
+};
+
+function slugifyClient(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 50);
+}
+
 // ── Inline select sub-components ─────────────────────────────────────
 function StatusPillSelect({ statuses, value, onChange }: {
   statuses: BacklogStatusRecord[];
@@ -92,7 +133,8 @@ function StatusPillSelect({ statuses, value, onChange }: {
     1: { bg: '#F3F4F6', text: '#6B7280' },
     2: { bg: '#DBEAFE', text: '#1D4ED8' },
     3: { bg: '#FEF3C7', text: '#D97706' },
-    4: { bg: '#D1FAE5', text: '#065F46' },
+    4: { bg: '#FDE68A', text: '#92400E' },
+    5: { bg: '#D1FAE5', text: '#065F46' },
   };
   const selected = statuses.find(s => String(s.id) === value);
   const { bg, text } = selected ? (STATUS_COLORS_BG[selected.orden] ?? { bg: '#F3F4F6', text: '#6B7280' }) : { bg: 'var(--color-clarity-gray-1)', text: 'var(--color-anchor-gray-1)' };
@@ -121,82 +163,17 @@ function StatusPillSelect({ statuses, value, onChange }: {
   );
 }
 
-function PriorityIconSelect({ priorities, value, onChange }: {
-  priorities: BacklogPriorityRecord[];
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const selected = priorities.find(p => String(p.id) === value);
-  const cfg = selected ? (PRIORITY_OPTIONS[selected.nombre] ?? null) : null;
-
-  return (
-    <div className={styles.inlineSelect} ref={ref}>
-      <button type="button" className={styles.iconTrigger} style={{ color: cfg?.color ?? 'var(--color-anchor-gray-1)' }} onClick={() => setOpen(o => !o)}>
-        {cfg?.icon ?? <MinusIcon width={14} height={14} />}
-        <span>{selected?.nombre ?? 'Sin prioridad'}</span>
-        <ChevronDownIcon width={11} height={11} />
-      </button>
-      {open && (
-        <div className={styles.iconDropdown}>
-          <button type="button" className={`${styles.iconOption} ${!value ? styles.iconOptionActive : ''}`} onClick={() => { onChange(''); setOpen(false); }}>
-            <MinusIcon width={14} height={14} style={{ color: 'var(--color-clarity-gray-2)' }} />
-            <span>Sin prioridad</span>
-          </button>
-          {priorities.map(p => {
-            const pCfg = PRIORITY_OPTIONS[p.nombre];
-            return (
-              <button key={p.id} type="button" className={`${styles.iconOption} ${String(p.id) === value ? styles.iconOptionActive : ''}`}
-                onClick={() => { onChange(String(p.id)); setOpen(false); }}>
-                <span style={{ color: pCfg?.color }}>{pCfg?.icon}</span>
-                <span>{p.nombre}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Time parsing / formatting ─────────────────────────────────────────
-function parseTimeInput(str: string): number | null {
-  const s = str.trim().toLowerCase();
-  if (!s) return null;
-  const hMatch = s.match(/(\d+)\s*h/);
-  const mMatch = s.match(/(\d+)\s*m/);
-  const h = hMatch ? parseInt(hMatch[1]) : 0;
-  const m = mMatch ? parseInt(mMatch[1]) : 0;
-  const total = h * 60 + m;
-  return total > 0 ? total : null;
-}
-
-function minutesToInput(min: number | null): string {
-  if (!min) return '';
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
 
 // ── Time tracking popup ───────────────────────────────────────────────
 interface TimeTrackingPopupProps {
+  title: string;
   currentMinutes: number | null;
   onSave: (minutes: number | null, onError: (msg: string) => void) => void;
   onClose: () => void;
 }
 
-function TimeTrackingPopup({ currentMinutes, onSave, onClose }: TimeTrackingPopupProps) {
-  const [value, setValue]     = useState(minutesToInput(currentMinutes));
+function TimeTrackingPopup({ title, currentMinutes, onSave, onClose }: TimeTrackingPopupProps) {
+  const [value, setValue]     = useState(currentMinutes ? String(Math.round(currentMinutes / 60)) : '');
   const [error, setError]     = useState('');
   const [saving, setSaving]   = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -204,39 +181,38 @@ function TimeTrackingPopup({ currentMinutes, onSave, onClose }: TimeTrackingPopu
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const handleSave = () => {
-    const parsed = parseTimeInput(value);
-    if (value.trim() && parsed === null) {
-      setError('Formato inválido. Usa: 2h 30m, 1h, 45m');
-      return;
-    }
+    // El input es en horas enteras; la columna se guarda en minutos.
+    const horas   = Number(value.trim());
+    const minutes = value.trim() === '' || horas <= 0 ? null : horas * 60;
     setSaving(true);
-    onSave(parsed, (msg) => { setError(msg); setSaving(false); });
+    onSave(minutes, (msg) => { setError(msg); setSaving(false); });
   };
 
   return (
-    <div className={styles.timePopupOverlay} onClick={onClose}>
+    <div className={styles.timePopupOverlay} data-detail-panel onClick={onClose}>
       <div className={styles.timePopup} onClick={e => e.stopPropagation()}>
         <div className={styles.timePopupHeader}>
-          <span className={styles.timePopupTitle}>Editar tiempo estimado</span>
+          <span className={styles.timePopupTitle}>{title}</span>
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Cerrar">
             <XMarkIcon width={16} height={16} />
           </button>
         </div>
 
         <div className={styles.timePopupBody}>
-          <label className={styles.timePopupLabel}>Tiempo estimado</label>
+          <label className={styles.timePopupLabel}>{title}</label>
           <input
             ref={inputRef}
             type="text"
+            inputMode="numeric"
             className={`${styles.timePopupInput} ${error ? styles.timePopupInputError : ''}`}
             value={value}
-            onChange={e => { setValue(e.target.value); setError(''); }}
+            onChange={e => { setValue(e.target.value.replace(/[^0-9]/g, '')); setError(''); }}
             onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') onClose(); }}
-            placeholder="ej. 2h 30m"
+            placeholder="ej. 8"
           />
           {error && <span className={styles.timePopupError}>{error}</span>}
           <p className={styles.timePopupHint}>
-            Usa el formato: <strong>2h 30m</strong>, <strong>1h</strong>, <strong>45m</strong>
+            Ingresa el número de horas — solo enteros.
           </p>
         </div>
 
@@ -278,12 +254,90 @@ function UserAvatar({ userId }: { userId: number }) {
   );
 }
 
+// ── UserSelectOption — renders avatar + name for one user ─────────────
+function UserSelectOption({ user, displayName }: { user: { id: number }; displayName: string }) {
+  const { avatarSvg } = useUserAvatarSvg(user.id);
+  return (
+    <>
+      <div className={styles.avatarCircle}>
+        {avatarSvg
+          ? <div className={styles.avatarSvg} dangerouslySetInnerHTML={{ __html: avatarSvg }} />
+          : <UserIcon width={12} height={12} />
+        }
+      </div>
+      <span>{displayName}</span>
+    </>
+  );
+}
+
+// ── UserSelect — custom dropdown with avatar + name per option ────────
+interface UserSelectProps {
+  value: string;
+  users: { id: number; nombre: string | null; apellido: string | null; email: string }[];
+  onChange: (id: string) => void;
+}
+function UserSelect({ value, users, onChange }: UserSelectProps) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const getDisplayName = (u: { nombre: string | null; apellido: string | null; email: string }) =>
+    [u.nombre, u.apellido].filter(Boolean).join(' ') || u.email;
+
+  const selected = users.find(u => String(u.id) === value) ?? null;
+
+  return (
+    <div ref={ref} className={styles.userSelect}>
+      <button type="button" className={styles.userSelectTrigger} onClick={() => setOpen(o => !o)}>
+        <span className={styles.userSelectValue}>
+          {selected
+            ? <UserSelectOption user={selected} displayName={getDisplayName(selected)} />
+            : <span className={styles.userSelectPlaceholder}>Sin responsable</span>
+          }
+        </span>
+        <ChevronDownIcon width={12} height={12} className={open ? styles.userSelectChevronOpen : styles.userSelectChevron} />
+      </button>
+
+      {open && (
+        <div className={styles.userSelectMenu}>
+          <button
+            type="button"
+            className={`${styles.userSelectItem} ${!value ? styles.userSelectItemActive : ''}`}
+            onClick={() => { onChange(''); setOpen(false); }}
+          >
+            <span className={styles.userSelectPlaceholder}>Sin responsable</span>
+          </button>
+          {users.map(u => (
+            <button
+              key={u.id}
+              type="button"
+              className={`${styles.userSelectItem} ${String(u.id) === value ? styles.userSelectItemActive : ''}`}
+              onClick={() => { onChange(String(u.id)); setOpen(false); }}
+            >
+              <UserSelectOption user={u} displayName={getDisplayName(u)} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Subtask tree ──────────────────────────────────────────────────────
 const STATUS_COLORS_BG: Record<number, { color: string; textColor: string }> = {
   1: { color: '#F3F4F6', textColor: '#6B7280' },
   2: { color: '#DBEAFE', textColor: '#1D4ED8' },
   3: { color: '#FEF3C7', textColor: '#D97706' },
-  4: { color: '#D1FAE5', textColor: '#065F46' },
+  4: { color: '#FDE68A', textColor: '#92400E' },
+  5: { color: '#D1FAE5', textColor: '#065F46' },
 };
 
 interface SubtaskNodeProps {
@@ -292,9 +346,10 @@ interface SubtaskNodeProps {
   meta: BacklogMeta;
   depth: number;
   onSelect: (item: BacklogItemRecord) => void;
+  onRemove?: (itemId: number) => void;
 }
 
-function SubtaskNode({ item, allItems, meta, depth, onSelect }: SubtaskNodeProps) {
+function SubtaskNode({ item, allItems, meta, depth, onSelect, onRemove }: SubtaskNodeProps) {
   const [expanded, setExpanded] = useState(false);
   const children  = allItems.filter(i => i.id_backlog_item_padre === item.id);
   const typeRec   = meta.types.find(t => t.id === item.id_tipo);
@@ -307,14 +362,16 @@ function SubtaskNode({ item, allItems, meta, depth, onSelect }: SubtaskNodeProps
     <>
       <div style={{ marginLeft: `${depth * 16}px` }}>
       <div className={styles.subtaskRow}>
-        {children.length > 0
-          ? (
-            <button type="button" className={styles.subtaskToggle} onClick={() => setExpanded(e => !e)} aria-label={expanded ? 'Contraer' : 'Expandir'}>
-              <ChevronDownIcon width={11} height={11} className={`${styles.subtaskToggleIcon} ${expanded ? styles.subtaskToggleOpen : ''}`} />
-            </button>
-          )
-          : <span className={styles.subtaskToggleSpacer} />
-        }
+        {children.length > 0 && (
+          <button type="button" className={styles.subtaskToggle} onClick={() => setExpanded(e => !e)} aria-label={expanded ? 'Contraer' : 'Expandir'}>
+            <ChevronDownIcon width={11} height={11} className={`${styles.subtaskToggleIcon} ${expanded ? styles.subtaskToggleOpen : ''}`} />
+          </button>
+        )}
+        {typeRec && (
+          <span className={styles.blockTypeIcon} aria-label={typeRec.nombre}>
+            {TYPE_ICONS[typeRec.nombre]}
+          </span>
+        )}
         <span className={styles.subtaskCode}>{code}</span>
         <span className={styles.subtaskName} onClick={() => onSelect(item)} style={{ cursor: 'pointer' }}
           onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
@@ -323,12 +380,449 @@ function SubtaskNode({ item, allItems, meta, depth, onSelect }: SubtaskNodeProps
         <span className={styles.subtaskStatus} style={{ backgroundColor: colors.color, color: colors.textColor }}>
           {statusRec?.nombre ?? '—'}
         </span>
+        {onRemove && (
+          <button
+            type="button"
+            className={styles.blockRemoveBtn}
+            onClick={() => onRemove(item.id)}
+            aria-label={`Quitar ${code}`}
+          >
+            ×
+          </button>
+        )}
       </div>
       </div>
       {expanded && children.map(child => (
-        <SubtaskNode key={child.id} item={child} allItems={allItems} meta={meta} depth={depth + 1} onSelect={onSelect} />
+        <SubtaskNode key={child.id} item={child} allItems={allItems} meta={meta} depth={depth + 1} onSelect={onSelect} onRemove={onRemove} />
       ))}
     </>
+  );
+}
+
+// ── BlocksSection ─────────────────────────────────────────────────────
+interface BlocksSectionProps {
+  linkedItems:    BacklogItemRecord[];
+  meta:           BacklogMeta;
+  emptyText:      string;
+  excludeIds:     Set<number>;
+  isEditing:      boolean;
+  onSelect:       (item: BacklogItemRecord) => void;
+  onRemove:       (itemId: number) => void;
+  onAdd:          (itemId: number) => void;
+}
+
+function BlocksSection({ linkedItems, meta, emptyText, excludeIds, isEditing, onSelect, onRemove, onAdd }: BlocksSectionProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [search,     setSearch]     = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [pickerOpen]);
+
+  const available = meta.items.filter(i => !excludeIds.has(i.id));
+  const filtered  = search.trim()
+    ? available.filter(i => {
+        const type   = meta.types.find(t => t.id === i.id_tipo);
+        const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+        const code   = `${prefix}-${String(i.id).padStart(2, '0')}`;
+        return i.nombre.toLowerCase().includes(search.toLowerCase())
+            || code.toLowerCase().includes(search.toLowerCase());
+      })
+    : available;
+
+  return (
+    <div ref={wrapperRef}>
+      {linkedItems.length === 0 && (
+        <span className={styles.noSubtasks}>{emptyText}</span>
+      )}
+      {linkedItems.length > 0 && (
+        <div className={styles.subtaskList}>
+          {linkedItems.map(item => {
+            const typeRec   = meta.types.find(t => t.id === item.id_tipo);
+            const statusRec = meta.statuses.find(s => s.id === item.id_estatus);
+            const colors    = statusRec ? (STATUS_COLORS_BG[statusRec.orden] ?? STATUS_COLORS_BG[1]) : STATUS_COLORS_BG[1];
+            const prefix    = TYPE_PREFIX[typeRec?.nombre ?? ''] ?? 'IT';
+            const code      = `${prefix}-${String(item.id).padStart(2, '0')}`;
+            return (
+              <div key={item.id} className={styles.subtaskRow}>
+                {typeRec && (
+                  <span className={styles.blockTypeIcon} aria-label={typeRec.nombre}>
+                    {TYPE_ICONS[typeRec.nombre]}
+                  </span>
+                )}
+                <span className={styles.subtaskCode}>{code}</span>
+                <span
+                  className={styles.subtaskName}
+                  onClick={() => onSelect(item)}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  {item.nombre}
+                </span>
+                <span className={styles.subtaskStatus} style={{ backgroundColor: colors.color, color: colors.textColor }}>
+                  {statusRec?.nombre ?? '—'}
+                </span>
+                {isEditing && (
+                  <button
+                    type="button"
+                    className={styles.blockRemoveBtn}
+                    onClick={() => onRemove(item.id)}
+                    aria-label={`Quitar ${code}`}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {isEditing && <div className={styles.blockAddWrapper}>
+        <button type="button" className={styles.blockAddBtn} onClick={() => setPickerOpen(o => !o)}>
+          + Añadir
+        </button>
+
+        {pickerOpen && (
+          <div className={styles.blockPickerDropdown}>
+            <input
+              autoFocus
+              type="text"
+              className={styles.blockPickerSearch}
+              placeholder="Buscar ítem..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <div className={styles.blockPickerList}>
+              {filtered.length === 0
+                ? <span className={styles.blockPickerEmpty}>Sin resultados.</span>
+                : filtered.slice(0, 20).map(i => {
+                    const type   = meta.types.find(t => t.id === i.id_tipo);
+                    const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+                    const code   = `${prefix}-${String(i.id).padStart(2, '0')}`;
+                    return (
+                      <button
+                        key={i.id}
+                        type="button"
+                        className={styles.blockPickerOption}
+                        onClick={() => { onAdd(i.id); setPickerOpen(false); setSearch(''); }}
+                      >
+                        {type && <span className={styles.blockTypeIcon}>{TYPE_ICONS[type.nombre]}</span>}
+                        <span className={styles.blockPickerCode}>{code}</span>
+                        <span className={styles.blockPickerName}>{i.nombre}</span>
+                      </button>
+                    );
+                  })
+              }
+            </div>
+          </div>
+        )}
+      </div>}
+    </div>
+  );
+}
+
+// ── Comments ──────────────────────────────────────────────────────────
+const MAX_COMMENT_LENGTH = 50;
+
+function commentAuthorName(comment: ComentarioRecord): string {
+  return [comment.usuario?.nombre, comment.usuario?.apellido].filter(Boolean).join(' ') || 'Usuario';
+}
+
+function CommentAvatar({ userId, small }: { userId: number; small?: boolean }) {
+  const { avatarSvg } = useUserAvatarSvg(userId);
+  return (
+    <div className={`${styles.commentAvatar}${small ? ` ${styles.commentAvatarSmall}` : ''}`}>
+      {avatarSvg
+        ? <div className={styles.avatarSvg} dangerouslySetInnerHTML={{ __html: avatarSvg }} />
+        : <UserIcon width={small ? 10 : 12} height={small ? 10 : 12} />
+      }
+    </div>
+  );
+}
+
+interface CommentBubbleProps {
+  comment:       ComentarioRecord;
+  replies:       ComentarioRecord[];
+  allComments:   ComentarioRecord[];
+  currentUserId: number;
+  onReply:       (parentId: number, text: string) => Promise<void>;
+  onDelete:      (commentId: number) => Promise<void>;
+}
+
+function CommentBubble({ comment, replies, allComments, currentUserId, onReply, onDelete }: CommentBubbleProps) {
+  const [replyingToId,  setReplyingToId]  = useState<number | null>(null);
+  const [collapsed,     setCollapsed]     = useState(false);
+  const [replyText,     setReplyText]     = useState('');
+  const [submitting,    setSubmitting]    = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [deleting,      setDeleting]      = useState(false);
+
+  const toggleReply = (id: number) => {
+    setReplyingToId(prev => (prev === id ? null : id));
+    setReplyText('');
+  };
+
+  const handleSubmitReply = async () => {
+    if (!replyText.trim() || replyingToId === null) return;
+    setSubmitting(true);
+    try {
+      await onReply(replyingToId, replyText.trim());
+      setReplyText('');
+      setReplyingToId(null);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeleting(true);
+    try { await onDelete(id); }
+    finally { setDeleting(false); setConfirmDelete(null); }
+  };
+
+  // How many hops from the top-level comment — drives left indentation
+  const depthOf = (r: ComentarioRecord): number => {
+    let depth = 0;
+    let parentId = r.id_comentario_padre;
+    while (parentId !== null && parentId !== comment.id) {
+      const parent = allComments.find(c => c.id === parentId);
+      if (!parent) break;
+      parentId = parent.id_comentario_padre;
+      depth++;
+    }
+    return depth;
+  };
+
+  // Name of the comment being replied to (shown in compose box header)
+  const replyTargetName = replyingToId !== null && replyingToId !== comment.id
+    ? commentAuthorName(allComments.find(c => c.id === replyingToId) ?? { usuario: null } as ComentarioRecord)
+    : null;
+
+  const renderReplyCompose = (indentRem: number) => (
+    <div className={styles.replyBox} style={{ marginLeft: `${indentRem}rem` }}>
+      {replyTargetName && (
+        <p className={styles.replyingToChip}>Respondiendo a <strong>{replyTargetName}</strong></p>
+      )}
+      <textarea
+        className={styles.commentTextarea}
+        rows={2}
+        placeholder="Escribe una respuesta…"
+        value={replyText}
+        onChange={e => setReplyText(e.target.value)}
+        disabled={submitting}
+        maxLength={MAX_COMMENT_LENGTH}
+        autoFocus
+      />
+      <span className={`${styles.charCount}${replyText.length >= MAX_COMMENT_LENGTH ? ` ${styles.charCountMax}` : replyText.length >= MAX_COMMENT_LENGTH * 0.8 ? ` ${styles.charCountWarn}` : ''}`}>
+        {replyText.length} / {MAX_COMMENT_LENGTH}
+      </span>
+      <div className={styles.commentActions}>
+        <button
+          type="button"
+          className={styles.commentSubmitBtn}
+          onClick={() => void handleSubmitReply()}
+          disabled={submitting || !replyText.trim()}
+        >
+          {submitting ? 'Enviando…' : 'Enviar'}
+        </button>
+        <button
+          type="button"
+          className={styles.commentCancelBtn}
+          onClick={() => { setReplyingToId(null); setReplyText(''); }}
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+
+  const BASE_INDENT = 2.25; // rem — aligns with avatar width
+  const LEVEL_STEP  = 1.5;  // rem per depth level
+
+  return (
+    <div className={styles.commentThread}>
+      {/* Top-level comment */}
+      <div className={styles.comment}>
+        <CommentAvatar userId={comment.id_usuario_creador} />
+        <div className={styles.commentBody}>
+          <span className={styles.commentAuthor}>{commentAuthorName(comment)}</span>
+          <p className={styles.commentText}>{comment.cuerpo}</p>
+          <div className={styles.commentMeta}>
+            <button type="button" className={styles.replyIconBtn} title="Responder" onClick={() => toggleReply(comment.id)}>
+              <ArrowUturnLeftIcon width={13} height={13} />
+            </button>
+            {replies.length > 0 && (
+              <button type="button" className={styles.collapseBtn} onClick={() => setCollapsed(c => !c)}>
+                {collapsed ? `▶ ${replies.length} respuesta${replies.length !== 1 ? 's' : ''}` : '▼ Ocultar'}
+              </button>
+            )}
+            {comment.id_usuario_creador === currentUserId && (
+              confirmDelete === comment.id ? (
+                <span className={styles.deleteConfirm}>
+                  ¿Eliminar?
+                  <button type="button" className={styles.deleteYesBtn} onClick={() => void handleDelete(comment.id)} disabled={deleting}>Sí</button>
+                  <button type="button" className={styles.deleteCancelBtn} onClick={() => setConfirmDelete(null)}>No</button>
+                </span>
+              ) : (
+                <button type="button" className={styles.commentDeleteBtn} onClick={() => setConfirmDelete(comment.id)}>×</button>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+
+      {replyingToId === comment.id && renderReplyCompose(BASE_INDENT)}
+
+      {!collapsed && replies.map(r => {
+        const depth      = depthOf(r);
+        const indentRem  = BASE_INDENT + depth * LEVEL_STEP;
+        return (
+          <React.Fragment key={r.id}>
+            <div className={styles.commentReply} style={{ marginLeft: `${indentRem}rem` }}>
+              <CommentAvatar userId={r.id_usuario_creador} small />
+              <div className={styles.commentBody}>
+                <span className={styles.commentAuthor}>{commentAuthorName(r)}</span>
+                <p className={styles.commentText}>{r.cuerpo}</p>
+                <div className={styles.commentMeta}>
+                  <button type="button" className={styles.replyIconBtn} title="Responder" onClick={() => toggleReply(r.id)}>
+                    <ArrowUturnLeftIcon width={13} height={13} />
+                  </button>
+                  {r.id_usuario_creador === currentUserId && (
+                    confirmDelete === r.id ? (
+                      <span className={styles.deleteConfirm}>
+                        ¿Eliminar?
+                        <button type="button" className={styles.deleteYesBtn} onClick={() => void handleDelete(r.id)} disabled={deleting}>Sí</button>
+                        <button type="button" className={styles.deleteCancelBtn} onClick={() => setConfirmDelete(null)}>No</button>
+                      </span>
+                    ) : (
+                      <button type="button" className={styles.commentDeleteBtn} onClick={() => setConfirmDelete(r.id)}>×</button>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+            {replyingToId === r.id && renderReplyCompose(indentRem)}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+interface CommentsSectionProps {
+  backlogItemId:  number;
+  currentUserId:  number;
+}
+
+function CommentsSection({ backlogItemId, currentUserId }: CommentsSectionProps) {
+  const [comments,   setComments]   = useState<ComentarioRecord[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [newText,    setNewText]    = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setComments(await fetchComentarios(backlogItemId)); }
+    catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [backlogItemId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const handleNew = async () => {
+    if (!newText.trim()) return;
+    setSubmitting(true);
+    try {
+      await createComentario(backlogItemId, newText.trim(), currentUserId, null);
+      setNewText('');
+      await load();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReply = async (parentId: number, text: string) => {
+    await createComentario(backlogItemId, text, currentUserId, parentId);
+    await load();
+  };
+
+  const handleDelete = async (commentId: number) => {
+    await deleteComentario(commentId);
+    await load();
+  };
+
+  const topLevel = comments.filter(c => !c.id_comentario_padre);
+
+  // DFS: each child appears immediately after its parent
+  const repliesFor = (topLevelId: number): ComentarioRecord[] => {
+    const result: ComentarioRecord[] = [];
+    const visit = (id: number) => {
+      const children = comments.filter(c => c.id_comentario_padre === id);
+      for (const child of children) {
+        result.push(child);
+        visit(child.id);
+      }
+    };
+    visit(topLevelId);
+    return result;
+  };
+
+  return (
+    <div className={styles.commentsSection}>
+      {loading ? (
+        <p className={styles.commentsLoading}>Cargando comentarios…</p>
+      ) : topLevel.length === 0 ? (
+        <p className={styles.noComments}>Sin comentarios aún.</p>
+      ) : (
+        topLevel.map(c => (
+          <CommentBubble
+            key={c.id}
+            comment={c}
+            replies={repliesFor(c.id)}
+            allComments={comments}
+            currentUserId={currentUserId}
+            onReply={handleReply}
+            onDelete={handleDelete}
+          />
+        ))
+      )}
+
+      <div className={styles.newCommentBox}>
+        <textarea
+          className={styles.commentTextarea}
+          rows={2}
+          placeholder="Añadir un comentario…"
+          value={newText}
+          onChange={e => setNewText(e.target.value)}
+          disabled={submitting}
+          maxLength={MAX_COMMENT_LENGTH}
+        />
+        <span className={`${styles.charCount}${newText.length >= MAX_COMMENT_LENGTH ? ` ${styles.charCountMax}` : newText.length >= MAX_COMMENT_LENGTH * 0.8 ? ` ${styles.charCountWarn}` : ''}`}>
+          {newText.length} / {MAX_COMMENT_LENGTH}
+        </span>
+        <div className={styles.commentActions}>
+          <button
+            type="button"
+            className={styles.commentSubmitBtn}
+            onClick={() => void handleNew()}
+            disabled={submitting || !newText.trim()}
+          >
+            {submitting ? 'Enviando…' : 'Comentar'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -373,18 +867,149 @@ interface ViewItemDetailProps {
   onNavigate?: (item: BacklogItemRecord) => void;
   onAcceptSuggestion?: () => Promise<void>;
   initialEditing?: boolean;
+  /** When true the panel renders inline (no fixed overlay) — parent controls sizing */
+  inline?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────────
-const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestion = false, onClose, onUpdated, onNavigate, onAcceptSuggestion, initialEditing = false }) => {
-  const [isEditing, setIsEditing]         = useState(initialEditing);
-  const [form, setForm]                   = useState<FormState>(() => itemToForm(item));
-  const [submitting, setSubmitting]       = useState(false);
-  const [accepting, setAccepting]         = useState(false);
-  const [error, setError]                 = useState<string | null>(null);
-  const [showTimePopup, setShowTimePopup] = useState(false);
+const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestion = false, onClose, onUpdated, onNavigate, onAcceptSuggestion, initialEditing = false, inline = false }) => {
+  const { user } = useUser();
+  const [isEditing, setIsEditing]                 = useState(initialEditing);
+  const [form, setForm]                           = useState<FormState>(() => itemToForm(item));
+  const [submitting, setSubmitting]               = useState(false);
+  const [accepting, setAccepting]                 = useState(false);
+  const [error, setError]                         = useState<string | null>(null);
+  const [showTimePopup, setShowTimePopup]         = useState(false);
 
-  useEffect(() => { setForm(itemToForm(item)); setIsEditing(initialEditing); }, [item, initialEditing]);
+  // ── Block relationships ──
+  const [blockerIds,  setBlockerIds]  = useState<Set<number>>(new Set());
+  const [blockingIds, setBlockingIds] = useState<Set<number>>(new Set());
+
+  const [githubRecord, setGithubRecord]           = useState<BacklogItemGithubRecord | null>(null);
+  const [githubConfig, setGithubConfig]           = useState<GithubConfigRecord | null>(null);
+  const [githubLoading, setGithubLoading]         = useState(true);
+  const [prCreating, setPrCreating]               = useState(false);
+  const [prError, setPrError]                     = useState<string | null>(null);
+  const [branchCreating, setBranchCreating]               = useState(false);
+  const [branchError, setBranchError]                     = useState<string | null>(null);
+  const [showDeleteBranchModal, setShowDeleteBranchModal] = useState(false);
+  const [deletingBranch, setDeletingBranch]               = useState(false);
+  const [deleteBranchError, setDeleteBranchError]         = useState<string | null>(null);
+  const [branchSuffix, setBranchSuffix]                   = useState(() => slugifyClient(item.nombre));
+  const [prBody, setPrBody]                               = useState('');
+  const [copyFeedback, setCopyFeedback]                   = useState<string | null>(null);
+
+  useEffect(() => { setForm(itemToForm(item)); setIsEditing(initialEditing); setBranchSuffix(slugifyClient(item.nombre)); }, [item, initialEditing]);
+
+  useEffect(() => {
+    setGithubLoading(true);
+    Promise.all([
+      fetchBacklogItemGithub(item.id),
+      fetchGithubConfig(item.id_proyecto),
+    ])
+      .then(([record, config]) => { setGithubRecord(record); setGithubConfig(config); })
+      .catch(() => {})
+      .finally(() => setGithubLoading(false));
+  }, [item.id, item.id_proyecto]);
+
+  useEffect(() => {
+    setBlockerIds(new Set());
+    setBlockingIds(new Set());
+    Promise.all([fetchItemBlockers(item.id), fetchItemBlocking(item.id)])
+      .then(([blockers, blocking]) => {
+        setBlockerIds(new Set(blockers.map(b => b.id_bloqueador)));
+        setBlockingIds(new Set(blocking.map(b => b.id_bloqueado)));
+      })
+      .catch(() => {});
+  }, [item.id]);
+
+  // ── Block handlers ──
+  const handleAddBlocker = async (blockerItemId: number) => {
+    try {
+      await addBacklogItemBlock(item.id, blockerItemId, user!.id);
+      setBlockerIds(prev => new Set([...prev, blockerItemId]));
+    } catch (err) { console.error('Error añadiendo bloqueador:', err); }
+  };
+
+  const handleRemoveBlocker = async (blockerItemId: number) => {
+    try {
+      await removeBacklogItemBlock(item.id, blockerItemId);
+      setBlockerIds(prev => { const n = new Set(prev); n.delete(blockerItemId); return n; });
+    } catch (err) { console.error('Error quitando bloqueador:', err); }
+  };
+
+  const handleAddBlocking = async (blockedItemId: number) => {
+    try {
+      await addBacklogItemBlock(blockedItemId, item.id, user!.id);
+      setBlockingIds(prev => new Set([...prev, blockedItemId]));
+    } catch (err) { console.error('Error añadiendo bloqueado:', err); }
+  };
+
+  const handleRemoveBlocking = async (blockedItemId: number) => {
+    try {
+      await removeBacklogItemBlock(blockedItemId, item.id);
+      setBlockingIds(prev => { const n = new Set(prev); n.delete(blockedItemId); return n; });
+    } catch (err) { console.error('Error quitando bloqueado:', err); }
+  };
+
+  // ── Subtask picker ──
+  const [subtaskPickerOpen, setSubtaskPickerOpen] = useState(false);
+  const [subtaskSearch,     setSubtaskSearch]     = useState('');
+  const subtaskPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!subtaskPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (subtaskPickerRef.current && !subtaskPickerRef.current.contains(e.target as Node)) {
+        setSubtaskPickerOpen(false);
+        setSubtaskSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [subtaskPickerOpen]);
+
+  const handleAddSubtask = async (childItemId: number) => {
+    const childItem = meta.items.find(i => i.id === childItemId);
+    if (!childItem) return;
+    try {
+      await updateBacklogItem(childItemId, {
+        nombre:                 childItem.nombre,
+        descripcion:            childItem.descripcion,
+        id_tipo:                childItem.id_tipo,
+        id_estatus:             childItem.id_estatus,
+        id_prioridad:           childItem.id_prioridad,
+        id_sprint:              childItem.id_sprint,
+        fecha_inicio:           childItem.fecha_inicio,
+        fecha_vencimiento:      childItem.fecha_vencimiento,
+        id_backlog_item_padre:  item.id,
+        id_usuario_responsable: childItem.id_usuario_responsable,
+        complejidad:            childItem.complejidad,
+      });
+      onUpdated?.();
+    } catch (err) { console.error('Error añadiendo subtarea:', err); }
+  };
+
+  const handleRemoveSubtask = async (childItemId: number) => {
+    const childItem = meta.items.find(i => i.id === childItemId);
+    if (!childItem) return;
+    try {
+      await updateBacklogItem(childItemId, {
+        nombre:                 childItem.nombre,
+        descripcion:            childItem.descripcion,
+        id_tipo:                childItem.id_tipo,
+        id_estatus:             childItem.id_estatus,
+        id_prioridad:           childItem.id_prioridad,
+        id_sprint:              childItem.id_sprint,
+        fecha_inicio:           childItem.fecha_inicio,
+        fecha_vencimiento:      childItem.fecha_vencimiento,
+        id_backlog_item_padre:  null,
+        id_usuario_responsable: childItem.id_usuario_responsable,
+        complejidad:            childItem.complejidad,
+      });
+      onUpdated?.();
+    } catch (err) { console.error('Error quitando subtarea:', err); }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -420,10 +1045,103 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
     try { await onAcceptSuggestion(); } finally { setAccepting(false); }
   };
 
+  const handleCopy = (text: string, key: string) => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopyFeedback(key);
+      setTimeout(() => setCopyFeedback(null), 2000);
+    });
+  };
+
+  const handleCreatePR = async () => {
+    setPrCreating(true);
+    setPrError(null);
+    try {
+      const result = await createGithubPR(
+        item.id_proyecto,
+        item.id,
+        item.nombre,
+        prBody || undefined,
+        githubConfig?.default_branch,
+      );
+      setGithubRecord(prev => prev
+        ? { ...prev, pr_number: result.prNumber, pr_url: result.prUrl, pr_status: 'open' }
+        : prev,
+      );
+    } catch (err) {
+      setPrError(err instanceof Error ? err.message : 'Error al crear PR');
+    } finally {
+      setPrCreating(false);
+    }
+  };
+
+  const handleCreateBranch = async () => {
+    const branchPrefix = PREFIX_MAP_CLIENT[typeName] ?? 'task';
+    const fullBranchName = `${branchPrefix}/JIX-${item.id}-${branchSuffix}`;
+    setBranchCreating(true);
+    setBranchError(null);
+    try {
+      const result = await createGithubBranch(item.id_proyecto, item.id, item.nombre, fullBranchName);
+      setGithubRecord(prev => prev
+        ? { ...prev, branch_name: result.branchName }
+        : { branch_name: result.branchName, pr_number: null, pr_url: null, pr_status: null },
+      );
+    } catch (err) {
+      setBranchError(err instanceof Error ? err.message : 'Error al crear rama');
+    } finally {
+      setBranchCreating(false);
+    }
+  };
+
+  const handleDeleteBranch = async () => {
+    setDeletingBranch(true);
+    setDeleteBranchError(null);
+    try {
+      await deleteGithubBranch(item.id_proyecto, item.id);
+      setGithubRecord(prev => prev ? { ...prev, branch_name: null } : prev);
+      setShowDeleteBranchModal(false);
+    } catch (err) {
+      setDeleteBranchError(err instanceof Error ? err.message : 'Error al eliminar rama');
+    } finally {
+      setDeletingBranch(false);
+    }
+  };
+
+  const handleCompleteFromMerge = async () => {
+    const terminalStatus = meta.statuses.find(s => s.es_terminal);
+    if (!terminalStatus) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updateBacklogItem(item.id, {
+        nombre:                 item.nombre,
+        descripcion:            item.descripcion,
+        id_tipo:                item.id_tipo,
+        id_estatus:             terminalStatus.id,
+        id_prioridad:           item.id_prioridad,
+        id_sprint:              item.id_sprint,
+        fecha_inicio:           item.fecha_inicio,
+        fecha_vencimiento:      item.fecha_vencimiento,
+        id_backlog_item_padre:  item.id_backlog_item_padre,
+        id_usuario_responsable: item.id_usuario_responsable,
+        complejidad:            item.complejidad,
+      });
+      onUpdated?.();
+      if (githubRecord?.branch_name) {
+        setShowDeleteBranchModal(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al completar');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.nombre.trim() || !form.id_estatus) return;
     setSubmitting(true);
     setError(null);
+    const newStatusRecord  = meta.statuses.find(s => s.id === Number(form.id_estatus));
+    const becomingTerminal = (newStatusRecord?.es_terminal ?? false) && !item.es_terminal;
     const payload: UpdateBacklogItemPayload = {
       nombre:                 form.nombre.trim(),
       descripcion:            form.descripcion || null,
@@ -441,6 +1159,9 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
       await updateBacklogItem(item.id, payload);
       onUpdated?.();
       setIsEditing(false);
+      if (becomingTerminal && githubRecord?.branch_name) {
+        setShowDeleteBranchModal(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -457,15 +1178,39 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
   const creator        = meta.users.find(u => u.id === item.id_usuario_creador);
   const subtasks       = meta.items.filter(i => i.id_backlog_item_padre === item.id);
   const parentItem     = item.id_backlog_item_padre != null ? meta.items.find(i => i.id === item.id_backlog_item_padre) : null;
+  const blockerItems   = meta.items.filter(i => blockerIds.has(i.id));
+  const blockingItems  = meta.items.filter(i => blockingIds.has(i.id));
 
   const typeName     = typeRecord?.nombre ?? '';
   const prefix       = TYPE_PREFIX[typeName] ?? 'IT';
   const code         = `${prefix}-${String(item.id).padStart(2, '0')}`;
+
+  // Items eligible to become a subtask:
+  //   - must be of the valid child type for this item's type
+  //   - exclude self and all descendants (prevents cycles)
+  const subtaskDescendantIds   = new Set(collectDescendants(item.id, meta.items).map(d => d.item.id));
+  const validChildTypeName     = VALID_CHILD_TYPE[typeName];
+  const validChildTypeId       = validChildTypeName ? meta.types.find(t => t.nombre === validChildTypeName)?.id : undefined;
+  const subtaskPickerAvailable = validChildTypeId != null
+    ? meta.items.filter(i => i.id !== item.id && !subtaskDescendantIds.has(i.id) && i.id_tipo === validChildTypeId)
+    : [];
+  const subtaskPickerFiltered  = subtaskSearch.trim()
+    ? subtaskPickerAvailable.filter(i => {
+        const type   = meta.types.find(t => t.id === i.id_tipo);
+        const pfx    = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+        const cd     = `${pfx}-${String(i.id).padStart(2, '0')}`;
+        return i.nombre.toLowerCase().includes(subtaskSearch.toLowerCase())
+            || cd.toLowerCase().includes(subtaskSearch.toLowerCase());
+      })
+    : subtaskPickerAvailable;
   const statusColors = statusRecord ? (STATUS_COLORS[statusRecord.orden] ?? STATUS_COLORS[1]) : STATUS_COLORS[1];
   const priority     = priorityRecord ? PRIORITY_OPTIONS[priorityRecord.nombre] : null;
 
   const formatDate = (iso: string | null) =>
     iso ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
+
+  const formatDateTime = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
 
   const formatTiempo = (min: number | null) => {
     if (!min) return null;
@@ -479,9 +1224,8 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
   const fullName = (u: { nombre: string | null; apellido: string | null; email: string } | undefined) =>
     u ? ([u.nombre, u.apellido].filter(Boolean).join(' ') || u.email) : null;
 
-  return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.panel} onClick={e => e.stopPropagation()}>
+  const panelContent = (
+      <div className={`${styles.panel} ${inline ? styles.panelInline : ''}`} data-detail-panel onClick={e => e.stopPropagation()}>
 
         {/* ── Top bar ── */}
         <div className={styles.topBar}>
@@ -542,6 +1286,24 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
               }
             </div>
 
+            {/* PR merged banner */}
+            {githubRecord?.pr_status === 'merged' && !item.es_terminal && (
+              <div className={styles.mergedBanner}>
+                <div className={styles.mergedBannerLeft}>
+                  <span className={styles.mergedBannerTitle}>PR mergeado</span>
+                  <span className={styles.mergedBannerText}>¿Deseas marcar este ítem como completado?</span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.mergedBannerConfirmBtn}
+                  onClick={() => void handleCompleteFromMerge()}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Guardando...' : 'Sí, completar'}
+                </button>
+              </div>
+            )}
+
             {/* Description */}
             <div className={styles.section}>
               <span className={styles.sectionTitle}>Descripción</span>
@@ -553,19 +1315,225 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
               }
             </div>
 
-            {/* Subtasks — always read-only, recursive tree */}
+            {/* Subtasks */}
             <div className={styles.section}>
               <span className={styles.sectionTitle}>Subtareas</span>
-              {subtasks.length === 0
-                ? <span className={styles.noSubtasks}>Sin subtareas.</span>
-                : (
+              <div ref={subtaskPickerRef}>
+                {subtasks.length === 0 && (
+                  <span className={styles.noSubtasks}>Sin subtareas.</span>
+                )}
+                {subtasks.length > 0 && (
                   <div className={styles.subtaskList}>
                     {subtasks.map(sub => (
-                      <SubtaskNode key={sub.id} item={sub} allItems={meta.items} meta={meta} depth={0} onSelect={i => onNavigate?.(i)} />
+                      <SubtaskNode key={sub.id} item={sub} allItems={meta.items} meta={meta} depth={0} onSelect={i => onNavigate?.(i)} onRemove={isEditing ? id => void handleRemoveSubtask(id) : undefined} />
                     ))}
                   </div>
-                )
-              }
+                )}
+
+                {isEditing && (
+                  <div className={styles.blockAddWrapper}>
+                    <button type="button" className={styles.blockAddBtn} onClick={() => setSubtaskPickerOpen(o => !o)}>
+                      + Añadir
+                    </button>
+
+                    {subtaskPickerOpen && (
+                      <div className={styles.blockPickerDropdown}>
+                        <input
+                          autoFocus
+                          type="text"
+                          className={styles.blockPickerSearch}
+                          placeholder="Buscar ítem..."
+                          value={subtaskSearch}
+                          onChange={e => setSubtaskSearch(e.target.value)}
+                        />
+                        <div className={styles.blockPickerList}>
+                          {subtaskPickerFiltered.length === 0
+                            ? <span className={styles.blockPickerEmpty}>Sin resultados.</span>
+                            : subtaskPickerFiltered.slice(0, 20).map(i => {
+                                const type   = meta.types.find(t => t.id === i.id_tipo);
+                                const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+                                const code   = `${prefix}-${String(i.id).padStart(2, '0')}`;
+                                return (
+                                  <button
+                                    key={i.id}
+                                    type="button"
+                                    className={styles.blockPickerOption}
+                                    onClick={() => { void handleAddSubtask(i.id); setSubtaskPickerOpen(false); setSubtaskSearch(''); }}
+                                  >
+                                    {type && <span className={styles.blockTypeIcon}>{TYPE_ICONS[type.nombre]}</span>}
+                                    <span className={styles.blockPickerCode}>{code}</span>
+                                    <span className={styles.blockPickerName}>{i.nombre}</span>
+                                  </button>
+                                );
+                              })
+                          }
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bloqueado por — items that block THIS item */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>Bloqueado por</span>
+              <BlocksSection
+                linkedItems={blockerItems}
+                meta={meta}
+                emptyText="Sin bloqueadores."
+                excludeIds={new Set([item.id, ...blockerIds])}
+                isEditing={isEditing}
+                onSelect={i => onNavigate?.(i)}
+                onRemove={id => void handleRemoveBlocker(id)}
+                onAdd={id => void handleAddBlocker(id)}
+              />
+            </div>
+
+            {/* Bloqueando a — items THIS item is blocking */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>Bloqueando a</span>
+              <BlocksSection
+                linkedItems={blockingItems}
+                meta={meta}
+                emptyText="No bloquea ningún ítem."
+                excludeIds={new Set([item.id, ...blockingIds])}
+                isEditing={isEditing}
+                onSelect={i => onNavigate?.(i)}
+                onRemove={id => void handleRemoveBlocking(id)}
+                onAdd={id => void handleAddBlocking(id)}
+              />
+            </div>
+
+            {/* GitHub */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>GitHub</span>
+              {githubLoading ? (
+                <div className={styles.githubCardSkeleton} />
+              ) : !githubConfig ? (
+                <div className={styles.githubNotConfigured}>
+                  GitHub no está conectado a este proyecto. Conéctalo en Configuración del proyecto.
+                </div>
+              ) : !githubRecord?.branch_name ? (
+                <div className={styles.githubCard}>
+                  <p className={styles.githubNoBranchText}>Sin rama asociada. Personaliza el nombre y crea una.</p>
+                  <div className={styles.branchNameBuilder}>
+                    <span className={styles.branchPrefixBadge}>
+                      {PREFIX_MAP_CLIENT[typeName] ?? 'task'}/JIX-{item.id}-
+                    </span>
+                    <input
+                      type="text"
+                      className={styles.branchSuffixInput}
+                      value={branchSuffix}
+                      onChange={e => setBranchSuffix(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50))}
+                      placeholder="nombre-rama"
+                      disabled={branchCreating}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.createBranchBtn}
+                    onClick={() => void handleCreateBranch()}
+                    disabled={branchCreating || !branchSuffix.trim()}
+                  >
+                    {branchCreating ? 'Creando rama…' : 'Crear rama'}
+                  </button>
+                  {branchError && <span className={styles.inlineError}>{branchError}</span>}
+                </div>
+              ) : (
+                <div className={styles.githubCard}>
+                  <div className={styles.githubBranchLine}>
+                    <span className={styles.githubMetaLabel}>Rama</span>
+                    <span className={styles.branchChip}>{githubRecord.branch_name}</span>
+                    <button
+                      type="button"
+                      className={styles.deleteBranchBtn}
+                      onClick={() => setShowDeleteBranchModal(true)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+
+                  {/* Terminal code blocks */}
+                  <div className={styles.codeBlockSection}>
+                    <div>
+                      <span className={styles.codeBlockLabel}>Trabajar en la rama</span>
+                      <div className={styles.codeBlock}>
+                        <span className={styles.codeText}>{`git fetch && git checkout ${githubRecord.branch_name}`}</span>
+                        <button
+                          type="button"
+                          className={`${styles.copyBtn} ${copyFeedback === 'checkout' ? styles.copyBtnSuccess : ''}`}
+                          onClick={() => handleCopy(`git fetch && git checkout ${githubRecord.branch_name}`, 'checkout')}
+                          aria-label="Copiar"
+                        >
+                          <ClipboardDocumentIcon className={styles.copyIcon} />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <span className={styles.codeBlockLabel}>Clonar repositorio</span>
+                      <div className={styles.codeBlock}>
+                        <span className={styles.codeText}>{`git clone https://github.com/${githubConfig.github_org}/${githubConfig.github_repo}.git`}</span>
+                        <button
+                          type="button"
+                          className={`${styles.copyBtn} ${copyFeedback === 'clone' ? styles.copyBtnSuccess : ''}`}
+                          onClick={() => handleCopy(`git clone https://github.com/${githubConfig.github_org}/${githubConfig.github_repo}.git`, 'clone')}
+                          aria-label="Copiar"
+                        >
+                          <ClipboardDocumentIcon className={styles.copyIcon} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PR section */}
+                  <div className={styles.githubPrLine}>
+                    <span className={styles.githubMetaLabel}>PR</span>
+                    {!githubRecord.pr_number ? (
+                      <div className={styles.githubPrCreate}>
+                        <textarea
+                          className={styles.prBodyInput}
+                          placeholder="Descripción del PR (opcional)…"
+                          value={prBody}
+                          onChange={e => setPrBody(e.target.value)}
+                          rows={2}
+                          disabled={prCreating}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className={styles.createPrBtn}
+                            onClick={() => void handleCreatePR()}
+                            disabled={prCreating}
+                          >
+                            {prCreating ? 'Creando PR…' : 'Crear PR'}
+                          </button>
+                          {prError && <span className={styles.inlineError}>{prError}</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <span className={`${styles.prStatusBadge} ${styles[`prStatus_${githubRecord.pr_status ?? 'open'}`]}`}>
+                          {githubRecord.pr_status}
+                        </span>
+                        <a href={githubRecord.pr_url!} target="_blank" rel="noreferrer" className={styles.prLink}>
+                          PR #{githubRecord.pr_number} ↗
+                        </a>
+                      </>
+                    )}
+                  </div>
+
+                  <p className={styles.githubDisclaimer}>Los PRs se aceptan/rechazan desde GitHub.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Comentarios */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>Comentarios</span>
+              {user && (
+                <CommentsSection backlogItemId={item.id} currentUserId={user.id} />
+              )}
             </div>
           </div>
 
@@ -575,10 +1543,14 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Tipo</span>
               {isEditing
-                ? <select name="id_tipo" className={styles.editSelect} value={form.id_tipo} onChange={handleChange}>
-                    <option value="">Sin tipo</option>
-                    {meta.types.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                  </select>
+                ? <Select
+                    options={meta.types.map(t => ({ value: String(t.id), label: t.nombre, icon: TYPE_ICONS[t.nombre] }))}
+                    value={form.id_tipo}
+                    onChange={v => setForm(f => ({ ...f, id_tipo: v }))}
+                    placeholder="Sin tipo"
+                    emptyLabel="Sin tipo"
+                    searchable
+                  />
                 : typeName
                   ? <span className={styles.detailValue}>{TYPE_ICONS[typeName]}{typeName}</span>
                   : <span className={styles.detailEmpty}>Sin tipo</span>
@@ -588,7 +1560,18 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Prioridad</span>
               {isEditing
-                ? <PriorityIconSelect priorities={meta.priorities} value={form.id_prioridad} onChange={v => setForm(f => ({ ...f, id_prioridad: v }))} />
+                ? <Select
+                    options={[
+                      { value: '', label: 'Sin prioridad', icon: <MinusIcon width={14} height={14} />, color: 'var(--color-anchor-gray-1)' },
+                      ...meta.priorities.map(p => {
+                        const cfg = PRIORITY_OPTIONS[p.nombre];
+                        return { value: String(p.id), label: p.nombre, icon: cfg?.icon, color: cfg?.color };
+                      }),
+                    ]}
+                    value={form.id_prioridad}
+                    onChange={v => setForm(f => ({ ...f, id_prioridad: v }))}
+                    required
+                  />
                 : priority && priorityRecord
                   ? <span className={styles.detailValue}><span className={styles.priorityChip} style={{ color: priority.color }}>{priority.icon}{priorityRecord.nombre}</span></span>
                   : <span className={styles.detailEmpty}>Sin prioridad</span>
@@ -625,9 +1608,17 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
             </div>
 
             <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Tiempo estimado</span>
+              {item.tiempo_estimado != null
+                ? <span className={styles.detailValue}>{formatTiempo(item.tiempo_estimado)}</span>
+                : <span className={styles.detailEmpty}>Sin estimación</span>
+              }
+            </div>
+
+            <div className={styles.detailRow}>
               <div className={styles.detailLabelRow}>
-                <span className={styles.detailLabel}>Manejo de tiempo</span>
-                <button type="button" className={styles.timEditBtn} onClick={() => setShowTimePopup(true)} aria-label="Editar tiempo">
+                <span className={styles.detailLabel}>Tiempo real</span>
+                <button type="button" className={styles.timEditBtn} onClick={() => setShowTimePopup(true)} aria-label="Editar tiempo real">
                   <PencilIcon width={11} height={11} />
                 </button>
               </div>
@@ -636,7 +1627,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
                 const descendantSum  = descendants.reduce((acc, d) => acc + (d.item.tiempo ?? 0), 0);
                 const total          = (item.tiempo ?? 0) + descendantSum || null;
                 if (total == null) {
-                  return <span className={styles.detailEmpty}>Sin estimación</span>;
+                  return <span className={styles.detailEmpty}>Sin registro</span>;
                 }
                 return (
                   <div className={styles.timeBreakdown}>
@@ -644,14 +1635,12 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
                       <span>Tiempo total</span>
                       <span>{formatTiempo(total)}</span>
                     </div>
-                    {/* Current item's own time */}
                     {item.tiempo != null && (
                       <div className={styles.timeRow}>
                         <span className={styles.timeRowLabel}>{code}</span>
                         <span>{formatTiempo(item.tiempo)}</span>
                       </div>
                     )}
-                    {/* All descendants */}
                     {descendants.map(({ item: d, depth }) => {
                       if (d.tiempo == null) return null;
                       const dType   = meta.types.find(t => t.id === d.id_tipo);
@@ -671,10 +1660,14 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Sprint</span>
               {isEditing
-                ? <select name="id_sprint" className={styles.editSelect} value={form.id_sprint} onChange={handleChange}>
-                    <option value="">Sin sprint</option>
-                    {meta.sprints.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                  </select>
+                ? <Select
+                    options={meta.sprints.map(s => ({ value: String(s.id), label: s.nombre }))}
+                    value={form.id_sprint}
+                    onChange={v => setForm(f => ({ ...f, id_sprint: v }))}
+                    placeholder="Sin sprint"
+                    emptyLabel="Sin sprint"
+                    searchable
+                  />
                 : sprintRecord
                   ? <span className={styles.detailValue}>{sprintRecord.nombre}</span>
                   : <span className={styles.detailEmpty}>Sin sprint</span>
@@ -684,10 +1677,11 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Responsable</span>
               {isEditing
-                ? <select name="id_usuario_responsable" className={styles.editSelect} value={form.id_usuario_responsable} onChange={handleChange}>
-                    <option value="">Sin responsable</option>
-                    {meta.users.map(u => <option key={u.id} value={u.id}>{[u.nombre, u.apellido].filter(Boolean).join(' ') || u.email}</option>)}
-                  </select>
+                ? <UserSelect
+                    value={form.id_usuario_responsable}
+                    users={meta.users}
+                    onChange={id => setForm(f => ({ ...f, id_usuario_responsable: id }))}
+                  />
                 : assignee
                   ? <span className={styles.detailValue}><UserAvatar userId={assignee.id} />{fullName(assignee)}</span>
                   : <span className={styles.detailEmpty}>Sin asignar</span>
@@ -697,14 +1691,34 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Ítem padre</span>
               {isEditing
-                ? <select name="id_backlog_item_padre" className={styles.editSelect} value={form.id_backlog_item_padre} onChange={handleChange}>
-                    <option value="">Sin ítem padre</option>
-                    {meta.items.filter(i => i.id !== item.id).map(i => {
-                      const iType = meta.types.find(t => t.id === i.id_tipo);
-                      const iPrefix = TYPE_PREFIX[iType?.nombre ?? ''] ?? 'IT';
-                      return <option key={i.id} value={i.id}>{iPrefix}-{String(i.id).padStart(2, '0')} — {i.nombre}</option>;
-                    })}
-                  </select>
+                ? (() => {
+                    // Only show items of the valid parent type for the currently selected type
+                    const editTypeName      = meta.types.find(t => t.id === (form.id_tipo ? Number(form.id_tipo) : item.id_tipo))?.nombre ?? '';
+                    const validParentName   = VALID_PARENT_TYPE[editTypeName];
+                    const validParentTypeId = validParentName ? meta.types.find(t => t.nombre === validParentName)?.id : undefined;
+                    const parentOptions     = validParentTypeId != null
+                      ? meta.items.filter(i => i.id !== item.id && i.id_tipo === validParentTypeId)
+                      : [];
+                    return (
+                      <Select
+                        options={parentOptions.map(i => {
+                          const iType   = meta.types.find(t => t.id === i.id_tipo);
+                          const iPrefix = TYPE_PREFIX[iType?.nombre ?? ''] ?? 'IT';
+                          return {
+                            value: String(i.id),
+                            label: `${iPrefix}-${String(i.id).padStart(2, '0')} — ${i.nombre}`,
+                            icon:  iType ? TYPE_ICONS[iType.nombre] : undefined,
+                          };
+                        })}
+                        value={form.id_backlog_item_padre}
+                        onChange={v => setForm(f => ({ ...f, id_backlog_item_padre: v }))}
+                        placeholder="Sin ítem padre"
+                        emptyLabel="Sin ítem padre"
+                        small
+                        searchable
+                      />
+                    );
+                  })()
                 : parentItem
                   ? <span className={styles.detailValue}>
                       {TYPE_PREFIX[meta.types.find(t => t.id === parentItem.id_tipo)?.nombre ?? ''] ?? 'IT'}
@@ -718,11 +1732,19 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
               <>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Fecha inicio</span>
-                  <input name="fecha_inicio" type="date" className={styles.editInput} value={form.fecha_inicio} onChange={handleChange} />
+                  <DatePicker
+                    value={form.fecha_inicio}
+                    onChange={v => setForm(f => ({ ...f, fecha_inicio: v }))}
+                    placeholder="Seleccionar fecha"
+                  />
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Fecha vencimiento</span>
-                  <input name="fecha_vencimiento" type="date" className={styles.editInput} value={form.fecha_vencimiento} onChange={handleChange} />
+                  <DatePicker
+                    value={form.fecha_vencimiento}
+                    onChange={v => setForm(f => ({ ...f, fecha_vencimiento: v }))}
+                    placeholder="Seleccionar fecha"
+                  />
                 </div>
               </>
             )}
@@ -765,17 +1787,84 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
               </div>
             )}
 
+            {!isEditing && item.fecha_completado && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Fecha completado</span>
+                <span className={styles.detailValue}><CalendarDaysIcon width={13} height={13} />{formatDateTime(item.fecha_completado)}</span>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
+  );
 
+  const popups = (
+    <>
       {showTimePopup && (
         <TimeTrackingPopup
+          title="Editar tiempo real"
           currentMinutes={item.tiempo ?? null}
           onSave={handleTimeSave}
           onClose={() => setShowTimePopup(false)}
         />
       )}
+
+      {showDeleteBranchModal && (
+        <div className={styles.timePopupOverlay} onClick={() => { if (!deletingBranch) { setShowDeleteBranchModal(false); setDeleteBranchError(null); } }}>
+          <div className={styles.timePopup} onClick={e => e.stopPropagation()}>
+            <div className={styles.timePopupHeader}>
+              <span className={styles.timePopupTitle}>¿Eliminar la rama?</span>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={() => { setShowDeleteBranchModal(false); setDeleteBranchError(null); }}
+                disabled={deletingBranch}
+                aria-label="Cerrar"
+              >
+                <XMarkIcon width={16} height={16} />
+              </button>
+            </div>
+            <div className={styles.timePopupBody}>
+              <p className={styles.deleteModalText}>
+                ¿Deseas eliminar la rama{' '}
+                <code className={styles.deleteModalCode}>{githubRecord?.branch_name}</code>{' '}
+                de GitHub? Esta acción no se puede deshacer.
+              </p>
+              {deleteBranchError && <span className={styles.timePopupError}>{deleteBranchError}</span>}
+            </div>
+            <div className={styles.timePopupActions}>
+              <button
+                type="button"
+                className={styles.cancelEditBtn}
+                onClick={() => { setShowDeleteBranchModal(false); setDeleteBranchError(null); }}
+                disabled={deletingBranch}
+              >
+                No, mantener
+              </button>
+              <button
+                type="button"
+                className={styles.deleteBranchConfirmBtn}
+                onClick={() => void handleDeleteBranch()}
+                disabled={deletingBranch}
+              >
+                {deletingBranch ? 'Eliminando...' : 'Sí, eliminar rama'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  if (inline) {
+    return <>{panelContent}{popups}</>;
+  }
+
+  return (
+    <div className={styles.overlay}>
+      {panelContent}
+      {popups}
     </div>
   );
 };

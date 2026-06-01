@@ -1,0 +1,748 @@
+.page {
+  background-color: var(--color-clarity-gray-1);
+  width: 100%;
+  min-height: 100vh;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  font-family: 'Poppins', 'Aptos', sans-serif;
+}
+
+.header {
+  margin-bottom: 1.25rem;
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 2px;
+}
+
+.subtitle {
+  font-size: 0.82rem;
+  color: var(--color-anchor-gray-1);
+  margin: 0;
+}
+
+/* ── Weekly report button ────────────────────────────────────────────── */
+.reportActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.reportBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-blueprint-navy);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.reportBtn:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.customizeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  background: transparent;
+  border: 1.5px solid var(--color-blueprint-navy);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.customizeBtn:hover {
+  background: var(--color-clarity-gray-1);
+  transform: translateY(-1px);
+}
+
+.reorganizeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  background: transparent;
+  border: 1.5px solid var(--color-blueprint-navy);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.reorganizeBtn:hover {
+  background: var(--color-clarity-gray-1);
+  transform: translateY(-1px);
+}
+
+.reorganizeBtnActive,
+.reorganizeBtnActive:hover {
+  background: var(--color-blueprint-navy);
+  color: #fff;
+  transform: none;
+}
+
+.reportBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.reportSpinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+.reportErrorMsg {
+  font-size: 0.75rem;
+  color: #E31837;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Summary stat row ────────────────────────────────────────────────── */
+.statRow {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.statsGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  flex: 0 0 auto;
+}
+
+.statCard {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  padding: 14px 20px;
+  min-width: 130px;
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-blueprint-navy);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statValueGreen {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #10b981;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statValueRed {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #E31837;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--color-anchor-gray-1);
+}
+
+/* ── Chart grid — styles live in DashboardGrid/DashboardGrid.module.css ── */
+
+/* ── Loading / error states ──────────────────────────────────────────── */
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 240px;
+  color: var(--color-anchor-gray-1);
+  font-size: 0.9rem;
+}
+
+.errorBox {
+  background: #fff1f2;
+  border: 1px solid var(--color-clarity-red);
+  border-radius: 10px;
+  padding: 16px 20px;
+  color: var(--color-mahindra-red);
+  font-size: 0.85rem;
+}
+
+/* ── Completion bar ──────────────────────────────────────────────────── */
+.completionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-2);
+  padding: 4px 0;
+}
+
+.completionLabel {
+  width: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.completionBarTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.completionBarFill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--color-blueprint-navy);
+  transition: width 0.3s ease;
+}
+
+.completionPct {
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+}
+
+/* ── Overdue list ────────────────────────────────────────────────────── */
+.overdueList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.overdueRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #fff7f7;
+  border: 1px solid #fde8e8;
+}
+
+.overdueRank {
+  width: 18px;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: var(--color-anchor-gray-1);
+  text-align: center;
+}
+
+.overdueName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+}
+
+.overdueBadge {
+  flex-shrink: 0;
+  background: #E31837;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 9px;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* ── Weekly progress card ────────────────────────────────────────────── */
+.weeklyCard {
+  background: var(--color-white);
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  padding: 14px 20px;
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.weeklyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weeklyTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.weeklyPct {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #10b981;
+  line-height: 1;
+}
+
+.weeklyBarWrapper {
+  position: relative;
+}
+
+.weeklyBarTrack {
+  height: 10px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.weeklyBarFill {
+  height: 100%;
+  border-radius: 5px;
+  background: #10b981;
+  transition: width 0.4s ease;
+}
+
+.weeklyDayTick {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.weeklyTodayTick {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 16px;
+  background: var(--color-blueprint-navy);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.weeklySubLabel {
+  font-size: 0.72rem;
+  color: var(--color-anchor-gray-1);
+}
+
+.weeklyProjectList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-clarity-gray-2);
+}
+
+.weeklyProjectRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+
+.weeklyProjectName {
+  width: 130px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+}
+
+.weeklyProjectBarWrapper {
+  position: relative;
+  flex: 1;
+}
+
+.weeklyProjectBarTrack {
+  height: 7px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.weeklyProjectBarFill {
+  height: 100%;
+  border-radius: 4px;
+  background: #10b981;
+  transition: width 0.4s ease;
+}
+
+.weeklyProjectDayTick {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.weeklyProjectTodayTick {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 11px;
+  background: var(--color-blueprint-navy);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.weeklyProjectMeta {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--color-anchor-gray-1);
+  min-width: 32px;
+  text-align: right;
+}
+
+.weeklyProjectPct {
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #10b981;
+}
+
+.completionList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-top: 4px;
+}
+
+/* ── Backlog pressure card ────────────────────────────────────────────── */
+.pressureLegend {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+  justify-content: flex-end;
+}
+
+.pressureLegendDays {
+  font-size: 0.65rem;
+  color: var(--color-anchor-gray-1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pressureLegendDays::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #f59e0b;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.pressureLegendComplexity {
+  font-size: 0.65rem;
+  color: var(--color-anchor-gray-1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pressureLegendComplexity::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #E31837;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.pressureList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-top: 2px;
+}
+
+.pressureRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--color-anchor-gray-2);
+}
+
+.pressureName {
+  width: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-blueprint-navy);
+  font-weight: 500;
+}
+
+.pressureBarTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pressureBarFill {
+  height: 100%;
+  border-radius: 4px;
+  background: #f59e0b;
+  transition: width 0.3s ease;
+}
+
+.pressureDaysBadge {
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: right;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b45309;
+}
+
+.pressureComplexityBadge {
+  flex-shrink: 0;
+  background: #E31837;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+  min-width: 26px;
+  text-align: center;
+}
+
+.pressureSubtitle {
+  font-size: 0.68rem;
+  color: var(--color-anchor-gray-1);
+  margin: -4px 0 6px;
+}
+
+/* ── A: Weighted risk bar ─────────────────────────────────────────────── */
+.weightedBarFill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #fb923c, #dc2626);
+  transition: width 0.3s ease;
+}
+
+.weightedScoreLabel {
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: right;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+/* ── B: Segmented composition bar ────────────────────────────────────── */
+.segmentedTrack {
+  flex: 1;
+  height: 10px;
+  background: var(--color-clarity-gray-2);
+  border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+  gap: 1px;
+}
+
+.segmentedSegment {
+  height: 100%;
+  flex-shrink: 0;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.complexityLegend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-clarity-gray-2);
+  justify-content: flex-end;
+}
+
+.complexityLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: var(--color-anchor-gray-1);
+}
+
+.complexityLegendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* ── Bubble chart dropdown filter ────────────────────────────────────── */
+.bubbleCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.bubbleDropdownWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bubbleDropdownBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-blueprint-navy);
+  background: transparent;
+  border: 1.5px solid var(--color-blueprint-navy);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.bubbleDropdownBtn:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.bubbleDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  padding: 6px 0;
+  z-index: 50;
+}
+
+.bubbleDropdownItemAll {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  user-select: none;
+}
+
+.bubbleDropdownDivider {
+  height: 1px;
+  background: var(--color-clarity-gray-2);
+  margin: 4px 0;
+}
+
+.bubbleDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.bubbleDropdownItem:hover,
+.bubbleDropdownItemAll:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.bubbleDropdownCheckbox {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-blueprint-navy);
+}
