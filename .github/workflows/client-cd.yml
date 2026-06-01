@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ (github.ref == 'refs/heads/staging' && vars.ENABLE_FRONTEND_STAGING_DEPLOY == 'true') ||
       (github.ref == 'refs/heads/main' && vars.ENABLE_FRONTEND_PROD_DEPLOY == 'true')}}
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'Jixology' || 'staging' }}
     
     steps:
       - name: Checkout
@@ -63,6 +63,7 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+            VITE_GEMINI_API_KEY=${{ secrets.VITE_GEMINI_API_KEY }}
           tags: |
             ghcr.io/${{ steps.repo.outputs.owner_lc }}/client:${{ steps.vars.outputs.image_tag }}
             ghcr.io/${{ steps.repo.outputs.owner_lc }}/client:sha-${{ github.sha }}
