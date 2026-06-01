@@ -13,6 +13,7 @@ import type {
   UpdateSprintPayload,
   UpdateBacklogItemPayload,
   BacklogItemBloqueoRecord,
+  ComentarioRecord,
 } from '../types/backlog.types';
 
 export async function fetchBacklogItems(projectId?: number): Promise<BacklogItemRecord[]> {
@@ -265,5 +266,40 @@ export async function acceptSugerencia(itemId: number, userId: number): Promise<
     .update({ aceptada: true, id_usuario_acepto: userId })
     .eq('id', itemId);
 
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchComentarios(backlogItemId: number): Promise<ComentarioRecord[]> {
+  const { data, error } = await supabase
+    .from('comentario')
+    .select('id, cuerpo, id_usuario_creador, id_comentario_padre, id_backlog_item, usuario:id_usuario_creador(id, nombre, apellido)')
+    .eq('id_backlog_item', backlogItemId)
+    .order('id', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as ComentarioRecord[];
+}
+
+export async function createComentario(
+  backlogItemId: number,
+  cuerpo: string,
+  idUsuarioCreador: number,
+  idComentarioPadre: number | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('comentario')
+    .insert({
+      cuerpo,
+      id_usuario_creador: idUsuarioCreador,
+      id_backlog_item: backlogItemId,
+      id_comentario_padre: idComentarioPadre,
+    });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteComentario(commentId: number): Promise<void> {
+  const { error } = await supabase
+    .from('comentario')
+    .delete()
+    .eq('id', commentId);
   if (error) throw new Error(error.message);
 }

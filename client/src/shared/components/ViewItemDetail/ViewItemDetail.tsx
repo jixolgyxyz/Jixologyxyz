@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   XMarkIcon,
   UserIcon,
@@ -14,11 +14,12 @@ import {
   PencilIcon,
   CheckIcon,
   ClipboardDocumentIcon,
+  ArrowUturnLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
 import { Select } from '@/shared/components/Select/Select';
 import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
-import { updateBacklogItem, fetchItemBlockers, fetchItemBlocking, addBacklogItemBlock, removeBacklogItemBlock } from '@/features/project/Backlog/services/backlog.service';
+import { updateBacklogItem, fetchItemBlockers, fetchItemBlocking, addBacklogItemBlock, removeBacklogItemBlock, fetchComentarios, createComentario, deleteComentario } from '@/features/project/Backlog/services/backlog.service';
 import { fetchBacklogItemGithub, fetchGithubConfig, createGithubBranch, createGithubPR, deleteGithubBranch, type BacklogItemGithubRecord, type GithubConfigRecord } from '@/features/project/projectConfig/services/projectConfig.service';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import { useUser } from '@/core/auth/userContext';
@@ -27,6 +28,7 @@ import type {
   BacklogMeta,
   BacklogStatusRecord,
   UpdateBacklogItemPayload,
+  ComentarioRecord,
 } from '@/features/project/Backlog/types/backlog.types';
 import styles from './ViewItemDetail.module.css';
 
@@ -526,6 +528,300 @@ function BlocksSection({ linkedItems, meta, emptyText, excludeIds, isEditing, on
           </div>
         )}
       </div>}
+    </div>
+  );
+}
+
+// ── Comments ──────────────────────────────────────────────────────────
+const MAX_COMMENT_LENGTH = 50;
+
+function commentAuthorName(comment: ComentarioRecord): string {
+  return [comment.usuario?.nombre, comment.usuario?.apellido].filter(Boolean).join(' ') || 'Usuario';
+}
+
+function CommentAvatar({ userId, small }: { userId: number; small?: boolean }) {
+  const { avatarSvg } = useUserAvatarSvg(userId);
+  return (
+    <div className={`${styles.commentAvatar}${small ? ` ${styles.commentAvatarSmall}` : ''}`}>
+      {avatarSvg
+        ? <div className={styles.avatarSvg} dangerouslySetInnerHTML={{ __html: avatarSvg }} />
+        : <UserIcon width={small ? 10 : 12} height={small ? 10 : 12} />
+      }
+    </div>
+  );
+}
+
+interface CommentBubbleProps {
+  comment:       ComentarioRecord;
+  replies:       ComentarioRecord[];
+  allComments:   ComentarioRecord[];
+  currentUserId: number;
+  onReply:       (parentId: number, text: string) => Promise<void>;
+  onDelete:      (commentId: number) => Promise<void>;
+}
+
+function CommentBubble({ comment, replies, allComments, currentUserId, onReply, onDelete }: CommentBubbleProps) {
+  const [replyingToId,  setReplyingToId]  = useState<number | null>(null);
+  const [collapsed,     setCollapsed]     = useState(false);
+  const [replyText,     setReplyText]     = useState('');
+  const [submitting,    setSubmitting]    = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [deleting,      setDeleting]      = useState(false);
+
+  const toggleReply = (id: number) => {
+    setReplyingToId(prev => (prev === id ? null : id));
+    setReplyText('');
+  };
+
+  const handleSubmitReply = async () => {
+    if (!replyText.trim() || replyingToId === null) return;
+    setSubmitting(true);
+    try {
+      await onReply(replyingToId, replyText.trim());
+      setReplyText('');
+      setReplyingToId(null);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeleting(true);
+    try { await onDelete(id); }
+    finally { setDeleting(false); setConfirmDelete(null); }
+  };
+
+  // How many hops from the top-level comment — drives left indentation
+  const depthOf = (r: ComentarioRecord): number => {
+    let depth = 0;
+    let parentId = r.id_comentario_padre;
+    while (parentId !== null && parentId !== comment.id) {
+      const parent = allComments.find(c => c.id === parentId);
+      if (!parent) break;
+      parentId = parent.id_comentario_padre;
+      depth++;
+    }
+    return depth;
+  };
+
+  // Name of the comment being replied to (shown in compose box header)
+  const replyTargetName = replyingToId !== null && replyingToId !== comment.id
+    ? commentAuthorName(allComments.find(c => c.id === replyingToId) ?? { usuario: null } as ComentarioRecord)
+    : null;
+
+  const renderReplyCompose = (indentRem: number) => (
+    <div className={styles.replyBox} style={{ marginLeft: `${indentRem}rem` }}>
+      {replyTargetName && (
+        <p className={styles.replyingToChip}>Respondiendo a <strong>{replyTargetName}</strong></p>
+      )}
+      <textarea
+        className={styles.commentTextarea}
+        rows={2}
+        placeholder="Escribe una respuesta…"
+        value={replyText}
+        onChange={e => setReplyText(e.target.value)}
+        disabled={submitting}
+        maxLength={MAX_COMMENT_LENGTH}
+        autoFocus
+      />
+      <span className={`${styles.charCount}${replyText.length >= MAX_COMMENT_LENGTH ? ` ${styles.charCountMax}` : replyText.length >= MAX_COMMENT_LENGTH * 0.8 ? ` ${styles.charCountWarn}` : ''}`}>
+        {replyText.length} / {MAX_COMMENT_LENGTH}
+      </span>
+      <div className={styles.commentActions}>
+        <button
+          type="button"
+          className={styles.commentSubmitBtn}
+          onClick={() => void handleSubmitReply()}
+          disabled={submitting || !replyText.trim()}
+        >
+          {submitting ? 'Enviando…' : 'Enviar'}
+        </button>
+        <button
+          type="button"
+          className={styles.commentCancelBtn}
+          onClick={() => { setReplyingToId(null); setReplyText(''); }}
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+
+  const BASE_INDENT = 2.25; // rem — aligns with avatar width
+  const LEVEL_STEP  = 1.5;  // rem per depth level
+
+  return (
+    <div className={styles.commentThread}>
+      {/* Top-level comment */}
+      <div className={styles.comment}>
+        <CommentAvatar userId={comment.id_usuario_creador} />
+        <div className={styles.commentBody}>
+          <span className={styles.commentAuthor}>{commentAuthorName(comment)}</span>
+          <p className={styles.commentText}>{comment.cuerpo}</p>
+          <div className={styles.commentMeta}>
+            <button type="button" className={styles.replyIconBtn} title="Responder" onClick={() => toggleReply(comment.id)}>
+              <ArrowUturnLeftIcon width={13} height={13} />
+            </button>
+            {replies.length > 0 && (
+              <button type="button" className={styles.collapseBtn} onClick={() => setCollapsed(c => !c)}>
+                {collapsed ? `▶ ${replies.length} respuesta${replies.length !== 1 ? 's' : ''}` : '▼ Ocultar'}
+              </button>
+            )}
+            {comment.id_usuario_creador === currentUserId && (
+              confirmDelete === comment.id ? (
+                <span className={styles.deleteConfirm}>
+                  ¿Eliminar?
+                  <button type="button" className={styles.deleteYesBtn} onClick={() => void handleDelete(comment.id)} disabled={deleting}>Sí</button>
+                  <button type="button" className={styles.deleteCancelBtn} onClick={() => setConfirmDelete(null)}>No</button>
+                </span>
+              ) : (
+                <button type="button" className={styles.commentDeleteBtn} onClick={() => setConfirmDelete(comment.id)}>×</button>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+
+      {replyingToId === comment.id && renderReplyCompose(BASE_INDENT)}
+
+      {!collapsed && replies.map(r => {
+        const depth      = depthOf(r);
+        const indentRem  = BASE_INDENT + depth * LEVEL_STEP;
+        return (
+          <React.Fragment key={r.id}>
+            <div className={styles.commentReply} style={{ marginLeft: `${indentRem}rem` }}>
+              <CommentAvatar userId={r.id_usuario_creador} small />
+              <div className={styles.commentBody}>
+                <span className={styles.commentAuthor}>{commentAuthorName(r)}</span>
+                <p className={styles.commentText}>{r.cuerpo}</p>
+                <div className={styles.commentMeta}>
+                  <button type="button" className={styles.replyIconBtn} title="Responder" onClick={() => toggleReply(r.id)}>
+                    <ArrowUturnLeftIcon width={13} height={13} />
+                  </button>
+                  {r.id_usuario_creador === currentUserId && (
+                    confirmDelete === r.id ? (
+                      <span className={styles.deleteConfirm}>
+                        ¿Eliminar?
+                        <button type="button" className={styles.deleteYesBtn} onClick={() => void handleDelete(r.id)} disabled={deleting}>Sí</button>
+                        <button type="button" className={styles.deleteCancelBtn} onClick={() => setConfirmDelete(null)}>No</button>
+                      </span>
+                    ) : (
+                      <button type="button" className={styles.commentDeleteBtn} onClick={() => setConfirmDelete(r.id)}>×</button>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+            {replyingToId === r.id && renderReplyCompose(indentRem)}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+interface CommentsSectionProps {
+  backlogItemId:  number;
+  currentUserId:  number;
+}
+
+function CommentsSection({ backlogItemId, currentUserId }: CommentsSectionProps) {
+  const [comments,   setComments]   = useState<ComentarioRecord[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [newText,    setNewText]    = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setComments(await fetchComentarios(backlogItemId)); }
+    catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [backlogItemId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const handleNew = async () => {
+    if (!newText.trim()) return;
+    setSubmitting(true);
+    try {
+      await createComentario(backlogItemId, newText.trim(), currentUserId, null);
+      setNewText('');
+      await load();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReply = async (parentId: number, text: string) => {
+    await createComentario(backlogItemId, text, currentUserId, parentId);
+    await load();
+  };
+
+  const handleDelete = async (commentId: number) => {
+    await deleteComentario(commentId);
+    await load();
+  };
+
+  const topLevel = comments.filter(c => !c.id_comentario_padre);
+
+  // DFS: each child appears immediately after its parent
+  const repliesFor = (topLevelId: number): ComentarioRecord[] => {
+    const result: ComentarioRecord[] = [];
+    const visit = (id: number) => {
+      const children = comments.filter(c => c.id_comentario_padre === id);
+      for (const child of children) {
+        result.push(child);
+        visit(child.id);
+      }
+    };
+    visit(topLevelId);
+    return result;
+  };
+
+  return (
+    <div className={styles.commentsSection}>
+      {loading ? (
+        <p className={styles.commentsLoading}>Cargando comentarios…</p>
+      ) : topLevel.length === 0 ? (
+        <p className={styles.noComments}>Sin comentarios aún.</p>
+      ) : (
+        topLevel.map(c => (
+          <CommentBubble
+            key={c.id}
+            comment={c}
+            replies={repliesFor(c.id)}
+            allComments={comments}
+            currentUserId={currentUserId}
+            onReply={handleReply}
+            onDelete={handleDelete}
+          />
+        ))
+      )}
+
+      <div className={styles.newCommentBox}>
+        <textarea
+          className={styles.commentTextarea}
+          rows={2}
+          placeholder="Añadir un comentario…"
+          value={newText}
+          onChange={e => setNewText(e.target.value)}
+          disabled={submitting}
+          maxLength={MAX_COMMENT_LENGTH}
+        />
+        <span className={`${styles.charCount}${newText.length >= MAX_COMMENT_LENGTH ? ` ${styles.charCountMax}` : newText.length >= MAX_COMMENT_LENGTH * 0.8 ? ` ${styles.charCountWarn}` : ''}`}>
+          {newText.length} / {MAX_COMMENT_LENGTH}
+        </span>
+        <div className={styles.commentActions}>
+          <button
+            type="button"
+            className={styles.commentSubmitBtn}
+            onClick={() => void handleNew()}
+            disabled={submitting || !newText.trim()}
+          >
+            {submitting ? 'Enviando…' : 'Comentar'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1229,6 +1525,14 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
 
                   <p className={styles.githubDisclaimer}>Los PRs se aceptan/rechazan desde GitHub.</p>
                 </div>
+              )}
+            </div>
+
+            {/* Comentarios */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>Comentarios</span>
+              {user && (
+                <CommentsSection backlogItemId={item.id} currentUserId={user.id} />
               )}
             </div>
           </div>
