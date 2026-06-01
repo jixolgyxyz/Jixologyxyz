@@ -15,7 +15,89 @@ import { CircleStackIcon } from '@heroicons/react/24/outline';
 
 import { useUser } from '@/core/auth/userContext';
 
-import cofreEspecial from '../resources/cofreEspecial.png';
+// ── Chest icons per style + feature ───────────────────────────────────────
+import pixelGeneral     from '../resources/Pixel_General.png';
+import pixelAccesories  from '../resources/Pixel_Accesories.png';
+import pixelBeard       from '../resources/Pixel_Beard.png';
+import pixelClothing    from '../resources/Pixel_Clothing.png';
+import pixelEyes        from '../resources/Pixel_Eyes.png';
+import pixelGlasses     from '../resources/Pixel_Glasses.png';
+import pixelHair        from '../resources/Pixel_Hair.png';
+import pixelHat         from '../resources/Pixel_Hat.png';
+import pixelMouth       from '../resources/Pixel_Mouth.png';
+import pixelSkin        from '../resources/Pixel_Skin_Colour.png';
+
+import notionistGeneral        from '../resources/Notionist_General.png';
+import notionistBackground     from '../resources/Notionist_Background.png';
+import notionistBeard          from '../resources/Notionist_Beard.png';
+import notionistClothes        from '../resources/Notionist_Clothes.png';
+import notionistClothesGraphic from '../resources/Notionist_Clothes_Graphic.png';
+import notionistEyebrows       from '../resources/Notionist_Eyebrows.png';
+import notionistEyes           from '../resources/Notionist_Eyes.png';
+import notionistGesture        from '../resources/Notionist_Gesture.png';
+import notionistGlasses        from '../resources/Notionist_Glasses.png';
+import notionistHair           from '../resources/Notionist_Hair.png';
+import notionistHead           from '../resources/Notionist_Head.png';
+import notionistMouth          from '../resources/Notionist_Mouth.png';
+import notionistNose           from '../resources/Notionist_Nose.png';
+
+import miniavsGeneral  from '../resources/Miniavs_General.png';
+import miniavsBlush    from '../resources/Miniavs_Blush.png';
+import miniavsBody     from '../resources/Miniavs_Body.png';
+import miniavsEyes     from '../resources/Miniavs_Eyes.png';
+import miniavsHair     from '../resources/Miniavs_Hair.png';
+import miniavsHead     from '../resources/Miniavs_Head.png';
+import miniavsMouth    from '../resources/Miniavs_Mouth.png';
+import miniavsMustache from '../resources/Miniavs_Mustache.png';
+
+// Per-style image lookup: [styleName][featureKey] → png url.
+// 'general' is the per-style fallback used by the general chest and any
+// feature that doesn't have its own dedicated icon.
+const CHEST_IMAGES: Record<string, Record<string, string>> = {
+  pixelArt: {
+    general:     pixelGeneral,
+    accessories: pixelAccesories,
+    beard:       pixelBeard,
+    clothing:    pixelClothing,
+    eyes:        pixelEyes,
+    glasses:     pixelGlasses,
+    hair:        pixelHair,
+    hat:         pixelHat,
+    mouth:       pixelMouth,
+    skinColor:   pixelSkin,
+  },
+  notionist: {
+    general:         notionistGeneral,
+    backgroundColor: notionistBackground,
+    beard:           notionistBeard,
+    clothing:        notionistClothes,
+    clothingGraphic: notionistClothesGraphic,
+    eyebrows:        notionistEyebrows,
+    eyes:            notionistEyes,
+    gesture:         notionistGesture,
+    glasses:         notionistGlasses,
+    hair:            notionistHair,
+    head:            notionistHead,
+    mouth:           notionistMouth,
+    nose:            notionistNose,
+  },
+  miniavs: {
+    general:  miniavsGeneral,
+    blush:    miniavsBlush,
+    body:     miniavsBody,
+    eyes:     miniavsEyes,
+    hair:     miniavsHair,
+    head:     miniavsHead,
+    mouth:    miniavsMouth,
+    mustache: miniavsMustache,
+  },
+};
+
+function pickChestImage(styleName: string, featureKey: string): string {
+  return CHEST_IMAGES[styleName]?.[featureKey]
+      ?? CHEST_IMAGES[styleName]?.general
+      ?? pixelGeneral;
+}
 
 // Snapshot handed to AvatarLootBox — built atomically in the click handler.
 interface LootboxSession {
@@ -31,6 +113,7 @@ interface Chest {
   title:        string;
   description:  string;
   costo:        number;
+  image:        string;
   attributoIds: number[] | null; // null = all attributes of the style (general chest)
 }
 
@@ -67,6 +150,7 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
         title:        `Cofre ${styleName}`,
         description:  `Una colección variada de elementos de ${styleName}.`,
         costo:        40,
+        image:        pickChestImage(styleName, 'general'),
         attributoIds: null,
       },
     ];
@@ -89,6 +173,7 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
         title:        `Cofre de ${feature.label}`,
         description:  `Solo elementos de ${feature.label.toLowerCase()}.`,
         costo:        10,
+        image:        pickChestImage(styleName, feature.key),
         attributoIds: ids,
       });
     }
@@ -190,7 +275,7 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
                 <div key={chest.id} className="shop-item">
                   <div className="shop-item-image">
                     <img
-                      src={cofreEspecial}
+                      src={chest.image}
                       alt={chest.title}
                       style={{ height: '90px', transform: 'translateY(-0.7rem)' }}
                     />
