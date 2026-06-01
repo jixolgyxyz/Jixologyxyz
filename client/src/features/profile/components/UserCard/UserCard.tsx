@@ -63,7 +63,7 @@ const UserCard: React.FC<UserCardProps> = ({
   formValues,
   onFieldChange,
 }) => {
-  const { avatarSvg: dbSvg } = useUserAvatarSvg(userId);
+  const { avatarSvg: dbSvg, loading: avatarLoading } = useUserAvatarSvg(userId);
   const avatarSvg = avatarSvgProp ?? dbSvg;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -128,7 +128,7 @@ const UserCard: React.FC<UserCardProps> = ({
 
       <div className={styles.avatarWrapper}>
         <div
-          className={styles.avatarCircle}
+          className={`${styles.avatarCircle}${avatarLoading ? ` ${styles.avatarCircleLoading}` : ''}`}
           dangerouslySetInnerHTML={{ __html: avatarSvg }}
         />
         {onEditAvatar && !isEditing && (

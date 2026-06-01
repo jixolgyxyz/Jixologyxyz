@@ -304,7 +304,12 @@ export async function saveUserActiveAvatar(
 ): Promise<void> {
   const { supabase } = await import('../../../core/supabase/supabase.client');
 
-  const attrByName = new Map(atributos.map(a => [a.nombre, a]));
+  // Filter to only this style's atributos before building the lookup map.
+  // Without this, shared attribute names (e.g. 'hair', 'eyes', 'mouth') across
+  // styles would be overwritten by the highest-id style (miniavs), causing
+  // element lookups to silently fail and those features to go unsaved.
+  const styleAtributos = atributos.filter(a => a.id_avatar_style === styleId);
+  const attrByName = new Map(styleAtributos.map(a => [a.nombre, a]));
   const elementIds: number[] = [];
 
   for (const [key, val] of Object.entries(features)) {
@@ -354,7 +359,13 @@ export function filterCatalogByInventory(
   allElements: ElementoInventarioAvatar[],
   atributos:   AtributoAvatar[],
 ): AvatarCatalog {
-  const attrByNombre = new Map(atributos.map(a => [a.nombre, a]));
+  // Filter to this style's atributos before building the lookup map. Attribute
+  // names (hair, eyes, mouth, glasses, head) are shared across styles, so a map
+  // over all atributos would let the highest-id style (miniavs) win and the
+  // notionist/pixelArt variants would resolve to the wrong attribute id —
+  // filtering every owned variant out and dropping the tab entirely.
+  const styleAtributos = atributos.filter(a => a.id_avatar_style === catalog.styleId);
+  const attrByNombre = new Map(styleAtributos.map(a => [a.nombre, a]));
 
   // Build owned element names per atributo id
   const ownedByAttrId = new Map<number, Set<string>>();
@@ -420,11 +431,60 @@ const STYLE_COLLECTIONS: Record<string, Parameters<typeof createAvatar>[0]> = {
   miniavs,
 };
 
+// Our catalogue models some notionist attributes with names that don't match
+// DiceBear's actual option keys (clothing → body, eyebrows → brows, mouth → lips,
+// head → base, clothingGraphic → bodyIcon). DiceBear silently ignores unknown
+// keys, which would make every tile render the same default body. Remap to the
+// real option names right before generating. Keyed by style so other styles
+// (pixelArt, miniavs) — whose names already match — pass through untouched.
+const STYLE_KEY_ALIASES: Record<string, Record<string, string>> = {
+  notionist: {
+    clothing:                   'body',
+    clothingGraphic:            'bodyIcon',
+    clothingGraphicProbability: 'bodyIconProbability',
+    eyebrows:                   'brows',
+    mouth:                      'lips',
+    head:                       'base',
+  },
+};
+
+function applyKeyAliases(features: DynamicFeatures, styleName: string): DynamicFeatures {
+  const aliases = STYLE_KEY_ALIASES[styleName];
+  if (!aliases) return features;
+
+  const remapped: DynamicFeatures = {};
+  for (const [key, value] of Object.entries(features)) {
+    remapped[aliases[key] ?? key] = value;
+  }
+  return remapped;
+}
+
+// DiceBear emits a fixed, non-seed-dependent id="viewboxMask" (and references it
+// via mask="url(#viewboxMask)") in every avatar. When several avatars are inlined
+// on the same page, those ids collide and the browser resolves every url(#…) to
+// the FIRST matching element in document order — so one avatar gets clipped by
+// another avatar's mask (e.g. miniavs' 64×64 canvas masked by pixelArt's 16×16
+// rect, hiding 75% of it). Namespacing each SVG's internal ids per render makes
+// every avatar reference its own definitions, eliminating the collision.
+let svgIdCounter = 0;
+
+function uniquifySvgIds(svg: string): string {
+  const prefix = `av${(svgIdCounter++).toString(36)}-`;
+  return svg
+    // id="x" / id='x' definitions
+    .replace(/(\bid=["'])/g, `$1${prefix}`)
+    // url(#x) references (with or without quotes)
+    .replace(/url\((["']?)#/g, `url($1#${prefix}`)
+    // href="#x" / xlink:href="#x" references (only same-document anchors)
+    .replace(/(\b(?:xlink:)?href=["'])#/g, `$1#${prefix}`);
+}
+
 export function makeAvatarSvg(features: DynamicFeatures, styleName = 'pixelArt'): string {
   const collection = STYLE_COLLECTIONS[styleName] ?? pixelArt;
-  const svg = createAvatar(collection, { seed: SEED, ...features } as Parameters<typeof createAvatar>[1]).toString();
+  const mapped = applyKeyAliases(features, styleName);
+  const svg = createAvatar(collection, { seed: SEED, ...mapped } as Parameters<typeof createAvatar>[1]).toString();
 
-  return svg;
+  return uniquifySvgIds(svg);
 }
 
 export function makeVariantTileSvg(

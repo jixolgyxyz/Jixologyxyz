@@ -166,6 +166,22 @@
 }
 
 /* ── Clickable avatar ────────────────────────────────────────── */
+@keyframes avatarShimmer {
+  0%   { background-position: -144px 0; }
+  100% { background-position: 144px 0; }
+}
+
+.avatarLoading {
+  background: linear-gradient(
+    90deg,
+    var(--color-clarity-gray-1) 25%,
+    var(--color-clarity-gray-2) 50%,
+    var(--color-clarity-gray-1) 75%
+  );
+  background-size: 144px 100%;
+  animation: avatarShimmer 1.4s ease-in-out infinite;
+}
+
 .avatarClickable {
   cursor: pointer;
   transition: opacity 0.15s ease, transform 0.15s ease;

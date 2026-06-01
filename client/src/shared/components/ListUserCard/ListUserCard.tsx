@@ -34,7 +34,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
   onAvatarEnter,
   onAvatarLeave,
 }) => {
-  const { avatarSvg: dbSvg } = useUserAvatarSvg(userId);
+  const { avatarSvg: dbSvg, loading: avatarLoading } = useUserAvatarSvg(userId);
   const avatarSvg = avatarSvgProp ?? dbSvg;
 
   const rolesContainerRef = useRef<HTMLDivElement>(null);
@@ -84,7 +84,7 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
     <div className={styles.rowContainer}>
     <div className={`${styles.row}${spread ? ` ${styles.rowSpread}` : ''}`}>
       <div
-        className={`${styles.avatar}${onAvatarEnter ? ` ${styles.avatarClickable}` : ''}`}
+        className={`${styles.avatar}${onAvatarEnter ? ` ${styles.avatarClickable}` : ''}${avatarLoading ? ` ${styles.avatarLoading}` : ''}`}
         onMouseEnter={
           onAvatarEnter
             ? (e) => onAvatarEnter((e.currentTarget as HTMLElement).getBoundingClientRect())
