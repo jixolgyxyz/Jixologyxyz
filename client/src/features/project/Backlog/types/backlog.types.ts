@@ -134,3 +134,16 @@ export interface BacklogItemBloqueoRecord {
   fecha_creacion:     string;
   id_usuario_creador: number;
 }
+
+export interface ComentarioRecord {
+  id:                  number;
+  cuerpo:              string;
+  id_usuario_creador:  number;
+  id_comentario_padre: number | null;
+  id_backlog_item:     number;
+  usuario: {
+    id:       number;
+    nombre:   string | null;
+    apellido: string | null;
+  } | null;
+}
