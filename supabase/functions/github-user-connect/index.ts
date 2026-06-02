@@ -12,7 +12,7 @@ Deno.serve(async (req: Request) => {
 
   if (!code || !rawState) {
     return new Response('Missing code or state', { status: 400 });
-  }
+  } 
 
   let state: ConnectState;
   try {

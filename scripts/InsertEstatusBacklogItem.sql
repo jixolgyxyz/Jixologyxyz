@@ -9,4 +9,4 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval(
   pg_get_serial_sequence('estatus_backlog_item', 'id'),
   (SELECT MAX(id) FROM estatus_backlog_item)
-);
+); 

@@ -11,7 +11,7 @@ CREATE TABLE "usuario" (
   "id_creador" INT,
   "id_zona_horaria" SMALLINT NOT NULL,
   "id_rol_global" SMALLINT NOT NULL
-);
+); 
 
 CREATE TABLE "contrasena_usuario" (
   "id_usuario" INT UNIQUE PRIMARY KEY,

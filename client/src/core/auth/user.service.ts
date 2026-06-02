@@ -11,7 +11,7 @@ export interface UserProfile {
   idRolGlobal: number | null;
   rol: string | null;
   activo: boolean;
-}
+} 
 
 async function fetchUserRow(authId: string) {
   return supabase
