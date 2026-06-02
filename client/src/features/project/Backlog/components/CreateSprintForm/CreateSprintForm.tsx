@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import FormPopUp from '@/shared/components/FormPopUp';
 import styles from './CreateSprintForm.module.css';
 import { useCreateSprint } from '../../hooks/useCreateSprint';
@@ -55,6 +55,13 @@ const CreateSprintForm: React.FC<CreateSprintFormProps> = ({
 
   const [form, setForm] = useState<SprintFormState>(() => initialForm(sprintToEdit));
   const [nombreTouched, setNombreTouched] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setForm(initialForm(sprintToEdit));
+      setNombreTouched(false);
+    }
+  }, [isOpen, sprintToEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

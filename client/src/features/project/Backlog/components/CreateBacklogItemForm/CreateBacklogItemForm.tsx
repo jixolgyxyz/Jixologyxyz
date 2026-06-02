@@ -435,6 +435,17 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
   const [estatusTouched, setEstatusTouched] = useState(false);
   const [tipoTouched,    setTipoTouched]    = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setForm(EMPTY_FORM);
+      setBloqueadores([]);
+      setNombreTouched(false);
+      setEstatusTouched(false);
+      setTipoTouched(false);
+      setLocalError(null);
+    }
+  }, [isOpen]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
