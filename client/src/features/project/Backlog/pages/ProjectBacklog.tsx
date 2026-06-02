@@ -199,7 +199,7 @@ const ProjectBacklog: React.FC = () => {
       .filter(item => filterUser   === null || item.id_usuario_responsable === filterUser)
       .filter(item => filterSprint === null || item.id_sprint              === filterSprint)
       .filter(item => item.nombre.toLowerCase().includes(search.toLowerCase()));
-  }, [items, meta.sugerencias, isPM, search, filterStatus, filterType, filterUser, filterSprint]);
+  }, [items, meta.sugerencias, isPM, user?.id, search, filterStatus, filterType, filterUser, filterSprint]);
 
   const sprintGroups = useMemo<{ sprint: SprintRecord | null; items: BacklogItemRecord[] }[]>(() => {
     const map = new Map<number | null, BacklogItemRecord[]>();
