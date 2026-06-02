@@ -193,7 +193,7 @@ const ProjectBacklog: React.FC = () => {
       meta.sugerencias.filter(s => !s.aceptada).map(s => s.id),
     );
     return items
-      .filter(item => isPM || !suggestionIds.has(item.id))
+      .filter(item => isPM || !suggestionIds.has(item.id) || item.id_usuario_creador === user?.id)
       .filter(item => filterStatus === null || item.id_estatus             === filterStatus)
       .filter(item => filterType   === null || item.id_tipo                === filterType)
       .filter(item => filterUser   === null || item.id_usuario_responsable === filterUser)
@@ -267,6 +267,7 @@ const ProjectBacklog: React.FC = () => {
       : { label: 'Sin estatus', color: '#F3F4F6', textColor: '#6B7280' };
     const sugerencia   = meta.sugerencias.find(s => s.id === item.id);
     const isSuggestion = !!sugerencia && !sugerencia.aceptada;
+    const isCreator    = item.id_usuario_creador === user?.id;
     const children     = childrenMap.get(item.id) ?? [];
     const isExpanded   = expandedItems.has(item.id);
 
@@ -302,7 +303,7 @@ const ProjectBacklog: React.FC = () => {
                 console.error('Error actualizando responsable:', err);
               }
             }}
-            isSuggestion={isSuggestion && isPM}
+            isSuggestion={isSuggestion && (isPM || isCreator)}
             hasChildren={filterType !== null && children.length > 0}
             isExpanded={isExpanded}
             onToggle={() => toggleExpanded(item.id)}
@@ -354,12 +355,14 @@ const ProjectBacklog: React.FC = () => {
   const detailPanel = viewingItem && (() => {
     const sugerencia   = meta.sugerencias.find(s => s.id === viewingItem.id);
     const isSuggestion = !!sugerencia && !sugerencia.aceptada;
+    const isCreator    = viewingItem.id_usuario_creador === user?.id;
     return (
       <ViewItemDetail
         inline
         item={viewingItem}
         meta={meta}
-        isSuggestion={isSuggestion && isPM}
+        isSuggestion={isSuggestion && (isPM || isCreator)}
+        isPM={isPM}
         initialEditing={openInEditMode}
         onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
         onUpdated={() => refreshAll()}
