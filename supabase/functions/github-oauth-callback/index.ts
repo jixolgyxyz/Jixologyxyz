@@ -55,5 +55,4 @@ Deno.serve(async (req: Request) => {
   );
 });
 
-// http para comprobar: http://127.0.0.1:54321/functions/v1/github-oauth-callback?installation_id=12345&state
-  =eyJwcm9qZWN0SWQiOjEsIm9yZyI6Im1pLWVtcHJlc2EiLCJyZXBvIjoibWktcmVwbyJ9
+// http para comprobar: http://127.0.0.1:54321/functions/v1/github-oauth-callback?installation_id=12345&state=eyJwcm9qZWN0SWQiOjEsIm9yZyI6Im1pLWVtcHJlc2EiLCJyZXBvIjoibWktcmVwbyJ9
