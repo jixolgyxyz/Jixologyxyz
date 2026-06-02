@@ -17,7 +17,6 @@ import { Select } from '@/shared/components/Select/Select';
 import styles from './CreateBacklogItemForm.module.css';
 import { useCreateBacklogItem } from '../../hooks/useCreateBacklogItem';
 import { createSugerencia, addBacklogItemBlock } from '../../services/backlog.service';
-import { useUser } from '@/core/auth/userContext';
 import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload, BacklogMeta, BacklogItemRecord, BacklogTypeRecord } from '../../types/backlog.types';
 
 // ── Type prefix map ───────────────────────────────────────────────
@@ -426,19 +425,33 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
   projectId, userId, meta, isOpen, onClose, onCreated,
 }) => {
   const { submit, loading: submitting, error } = useCreateBacklogItem();
-  const { user } = useUser();
-  const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
+  const isPM = meta.etiquetas.some(
+    e => e.id_usuario === userId && e.id_etiqueta_proyecto_predeterminada === 1,
+  );
+  const [localError, setLocalError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [bloqueadores,   setBloqueadores]   = useState<number[]>([]);
   const [nombreTouched,  setNombreTouched]  = useState(false);
   const [estatusTouched, setEstatusTouched] = useState(false);
   const [tipoTouched,    setTipoTouched]    = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setForm(EMPTY_FORM);
+      setBloqueadores([]);
+      setNombreTouched(false);
+      setEstatusTouched(false);
+      setTipoTouched(false);
+      setLocalError(null);
+    }
+  }, [isOpen]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
     setNombreTouched(true);
     setEstatusTouched(true);
     setTipoTouched(true);
@@ -470,7 +483,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
     try {
       const newItem = await submit(payload);
       if (newItem?.id) {
-        if (!isAdmin) {
+        if (!isPM) {
           await createSugerencia(newItem.id);
         }
         if (bloqueadores.length > 0) {
@@ -484,7 +497,9 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       setBloqueadores([]);
       onCreated?.();
       onClose();
-    } catch { /* shown via error state */ }
+    } catch (err) {
+      setLocalError(friendlyError(err instanceof Error ? err.message : String(err)));
+    }
   };
 
   return (
@@ -699,7 +714,9 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             />
           </div>
 
-          {error && <p className={styles.error}>{friendlyError(error)}</p>}
+          {(error || localError) && (
+            <p className={styles.error}>{localError ?? friendlyError(error!)}</p>
+          )}
 
           <div className={styles.actions}>
             <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
