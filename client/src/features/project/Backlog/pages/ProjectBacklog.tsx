@@ -91,6 +91,10 @@ function FilterBubble({ label, selectedLabel, elements }: FilterBubbleProps) {
   );
 }
 
+const TYPE_ORDER: Record<string, number> = {
+  'Épica': 0, 'Historia de Usuario': 1, 'Tarea': 2, 'Subtarea': 3, 'Bug': 4,
+};
+
 function formatSprintDate(iso: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('es-MX', {
@@ -103,7 +107,7 @@ function formatSprintDate(iso: string | null): string {
 const ProjectBacklog: React.FC = () => {
   const { id } = useParams();
   const PROJECT_ID = Number(id);
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const { items, loading: itemsLoading, refresh } = useBacklogItems(PROJECT_ID);
   const { meta, loading: metaLoading, refresh: refreshMeta } = useBacklogMeta(PROJECT_ID);
   const isPM = user != null && meta.etiquetas.some(
@@ -198,8 +202,14 @@ const ProjectBacklog: React.FC = () => {
       .filter(item => filterType   === null || item.id_tipo                === filterType)
       .filter(item => filterUser   === null || item.id_usuario_responsable === filterUser)
       .filter(item => filterSprint === null || item.id_sprint              === filterSprint)
-      .filter(item => item.nombre.toLowerCase().includes(search.toLowerCase()));
-  }, [items, meta.sugerencias, isPM, user?.id, search, filterStatus, filterType, filterUser, filterSprint]);
+      .filter(item => item.nombre.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => {
+        const typeA = meta.types.find(t => t.id === a.id_tipo)?.nombre ?? '';
+        const typeB = meta.types.find(t => t.id === b.id_tipo)?.nombre ?? '';
+        const orderDiff = (TYPE_ORDER[typeA] ?? 99) - (TYPE_ORDER[typeB] ?? 99);
+        return orderDiff !== 0 ? orderDiff : a.id - b.id;
+      });
+  }, [items, meta.sugerencias, meta.types, isPM, user?.id, search, filterStatus, filterType, filterUser, filterSprint]);
 
   const sprintGroups = useMemo<{ sprint: SprintRecord | null; items: BacklogItemRecord[] }[]>(() => {
     const map = new Map<number | null, BacklogItemRecord[]>();
@@ -325,6 +335,7 @@ const ProjectBacklog: React.FC = () => {
                   complejidad:            item.complejidad,
                 });
                 refreshAll();
+                void refreshUser();
               } catch (err) {
                 console.error('Error actualizando estado:', err);
               }
