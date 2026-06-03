@@ -14,8 +14,12 @@ import {
   markNotificationAsRead,
   markNotificationAsUnread,
 } from '../services/notificationsService';
-import { subscribeToNotificationChanges } from '../services/notificationsRealtimeService';
+import {
+  subscribeToNotificationChanges,
+  type NotificationRealtimeSubscription,
+} from '../services/notificationsRealtimeService';
 import type {
+  NotificationRealtimeStatus,
   NotificationRecord,
   NotificationsContextValue,
   NotificationsState,
@@ -23,6 +27,7 @@ import type {
 } from '../types/notification.types';
 import { NotificationsContext } from './NotificationsContext';
 import { useUser } from '@/core/auth/userContext';
+import { supabase } from '@/core/supabase/supabase.client';
 
 type Props = {
   children: ReactNode;
@@ -39,13 +44,21 @@ type NotificationsAction =
   | { type: 'LOAD_ERROR'; error: string }
   | { type: 'UPSERT_NOTIFICATION'; notification: NotificationRecord }
   | { type: 'REMOVE_NOTIFICATION'; notificationId: number }
-  | { type: 'SET_ERROR'; error: string | null };
+  | {
+      type: 'SET_REALTIME_STATE';
+      status: NotificationRealtimeStatus;
+      error?: string | null;
+    }
+  | { type: 'SET_REALTIME_ERROR'; error: string | null };
 
 const initialState: NotificationsState = {
   notifications: [],
   userContext: null,
   isLoading: false,
+  hasLoadedInitialData: false,
   error: null,
+  realtimeError: null,
+  realtimeStatus: 'idle',
 };
 
 function sortNotifications(notifications: NotificationRecord[]): NotificationRecord[] {
@@ -80,7 +93,9 @@ function notificationsReducer(
       return {
         ...state,
         isLoading: false,
+        hasLoadedInitialData: true,
         error: null,
+        realtimeError: null,
         userContext: action.userContext,
         notifications: sortNotifications(action.notifications),
       };
@@ -114,10 +129,18 @@ function notificationsReducer(
         ),
       };
 
-    case 'SET_ERROR':
+    case 'SET_REALTIME_STATE':
       return {
         ...state,
-        error: action.error,
+        realtimeStatus: action.status,
+        realtimeError:
+          action.error === undefined ? state.realtimeError : action.error,
+      };
+
+    case 'SET_REALTIME_ERROR':
+      return {
+        ...state,
+        realtimeError: action.error,
       };
 
     default:
@@ -128,10 +151,15 @@ function notificationsReducer(
 export function NotificationsProvider({ children }: Props) {
   const { user, loading: userLoading } = useUser();
   const loadedUserIdRef = useRef<number | null>(null);
+  const notificationUserIdRef = useRef<number | null>(null);
+  const realtimeSubscriptionRef =
+    useRef<NotificationRealtimeSubscription | null>(null);
+  const silentRefreshTimeoutRef = useRef<number | null>(null);
   const silentRetryTimeoutRef = useRef<number | null>(null);
+  const realtimeReconnectTimeoutRef = useRef<number | null>(null);
   const userId = user?.id ?? null;
   const [state, dispatch] = useReducer(notificationsReducer, initialState);
-  
+
   const loadInitialData = useCallback(
     async (options?: { silent?: boolean }): Promise<boolean> => {
       const isSilent = options?.silent === true;
@@ -172,51 +200,185 @@ export function NotificationsProvider({ children }: Props) {
     [],
   );
 
+  const clearSilentRetry = useCallback(() => {
+    if (silentRetryTimeoutRef.current === null) return;
+
+    window.clearTimeout(silentRetryTimeoutRef.current);
+    silentRetryTimeoutRef.current = null;
+  }, []);
+
+  const clearScheduledRealtimeWork = useCallback(() => {
+    if (silentRefreshTimeoutRef.current !== null) {
+      window.clearTimeout(silentRefreshTimeoutRef.current);
+      silentRefreshTimeoutRef.current = null;
+    }
+
+    clearSilentRetry();
+
+    if (realtimeReconnectTimeoutRef.current !== null) {
+      window.clearTimeout(realtimeReconnectTimeoutRef.current);
+      realtimeReconnectTimeoutRef.current = null;
+    }
+  }, [clearSilentRetry]);
+
+  const scheduleSilentRetry = useCallback(() => {
+    if (silentRetryTimeoutRef.current !== null) return;
+
+    silentRetryTimeoutRef.current = window.setTimeout(() => {
+      silentRetryTimeoutRef.current = null;
+
+      void loadInitialData({ silent: true }).then((success) => {
+        if (success) {
+          dispatch({ type: 'SET_REALTIME_ERROR', error: null });
+        }
+      });
+    }, 3000);
+  }, [loadInitialData]);
+
+  const queueSilentRefetch = useCallback(
+    (options?: { delayMs?: number; retryOnFailure?: boolean }) => {
+      if (silentRefreshTimeoutRef.current !== null) return;
+
+      silentRefreshTimeoutRef.current = window.setTimeout(() => {
+        silentRefreshTimeoutRef.current = null;
+
+        void loadInitialData({ silent: true }).then((success) => {
+          if (success) {
+            clearSilentRetry();
+            dispatch({ type: 'SET_REALTIME_ERROR', error: null });
+            return;
+          }
+
+          if (options?.retryOnFailure) {
+            scheduleSilentRetry();
+          }
+        });
+      }, options?.delayMs ?? 0);
+    },
+    [clearSilentRetry, loadInitialData, scheduleSilentRetry],
+  );
+
+  const queueRealtimeReconnect = useCallback(() => {
+    if (realtimeReconnectTimeoutRef.current !== null) return;
+
+    realtimeReconnectTimeoutRef.current = window.setTimeout(() => {
+      realtimeReconnectTimeoutRef.current = null;
+      realtimeSubscriptionRef.current?.reconnect();
+    }, 150);
+  }, []);
+
   useEffect(() => {
     if (userLoading || !userId) {
       return;
     }
 
-    const clearSilentRetry = () => {
-      if (silentRetryTimeoutRef.current) {
-        window.clearTimeout(silentRetryTimeoutRef.current);
-        silentRetryTimeoutRef.current = null;
-      }
-    };
-
-    const scheduleSilentRetry = () => {
-      if (silentRetryTimeoutRef.current) {
-        return;
-      }
-
-      silentRetryTimeoutRef.current = window.setTimeout(() => {
-        silentRetryTimeoutRef.current = null;
-        void loadInitialData({ silent: true });
-      }, 3000);
-    };
-
-    const handleVisibilityChange = () => {
+    const recoverVisibleSession = () => {
       if (document.visibilityState !== 'visible') {
         return;
       }
 
-      void loadInitialData({ silent: true }).then((success) => {
-        if (success) {
-          clearSilentRetry();
-          return;
-        }
+      queueSilentRefetch({ retryOnFailure: true });
+      queueRealtimeReconnect();
+    };
 
-        scheduleSilentRetry();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        recoverVisibleSession();
+      }
+    };
+
+    const handleOnline = () => {
+      dispatch({
+        type: 'SET_REALTIME_STATE',
+        status: 'reconnecting',
+        error: null,
+      });
+      recoverVisibleSession();
+    };
+
+    const handleOffline = () => {
+      dispatch({
+        type: 'SET_REALTIME_STATE',
+        status: 'error',
+        error: 'La conexión de red se perdió temporalmente.',
       });
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', recoverVisibleSession);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearSilentRetry();
+      window.removeEventListener('focus', recoverVisibleSession);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
-  }, [userLoading, userId, loadInitialData]);
+  }, [
+    userLoading,
+    userId,
+    queueSilentRefetch,
+    queueRealtimeReconnect,
+  ]);
+
+  useEffect(() => {
+    notificationUserIdRef.current = state.userContext?.idUsuario ?? null;
+  }, [state.userContext?.idUsuario]);
+
+  useEffect(
+    () => () => {
+      clearScheduledRealtimeWork();
+
+      realtimeSubscriptionRef.current?.unsubscribe();
+      realtimeSubscriptionRef.current = null;
+    },
+    [clearScheduledRealtimeWork],
+  );
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const token = session?.access_token ?? null;
+
+      void supabase.realtime
+        .setAuth(token)
+        .then(() => {
+          if (!token) {
+            realtimeSubscriptionRef.current?.unsubscribe();
+            realtimeSubscriptionRef.current = null;
+            dispatch({
+              type: 'SET_REALTIME_STATE',
+              status: 'disabled',
+              error: null,
+            });
+            return;
+          }
+
+          if (notificationUserIdRef.current !== null) {
+            dispatch({
+              type: 'SET_REALTIME_STATE',
+              status: 'reconnecting',
+              error: null,
+            });
+            queueRealtimeReconnect();
+          }
+        })
+        .catch((error) => {
+          console.error('[notifications realtime] auth refresh error:', error);
+          dispatch({
+            type: 'SET_REALTIME_STATE',
+            status: 'error',
+            error: 'No se pudo actualizar la sesion de Realtime.',
+          });
+        });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [queueRealtimeReconnect]);
 
   useEffect(() => {
     if (userLoading) {
@@ -224,7 +386,11 @@ export function NotificationsProvider({ children }: Props) {
     }
 
     if (!userId) {
+      clearScheduledRealtimeWork();
       loadedUserIdRef.current = null;
+      notificationUserIdRef.current = null;
+      realtimeSubscriptionRef.current?.unsubscribe();
+      realtimeSubscriptionRef.current = null;
       dispatch({ type: 'RESET' });
       return;
     }
@@ -233,16 +399,25 @@ export function NotificationsProvider({ children }: Props) {
       return;
     }
 
+    clearScheduledRealtimeWork();
     loadedUserIdRef.current = userId;
     void loadInitialData();
-  }, [userLoading, userId, loadInitialData]);
+  }, [userLoading, userId, loadInitialData, clearScheduledRealtimeWork]);
 
   useEffect(() => {
     if (userLoading || !userId || !state.userContext?.idUsuario) {
       return;
     }
 
-    const unsubscribe = subscribeToNotificationChanges({
+    realtimeSubscriptionRef.current?.unsubscribe();
+
+    dispatch({
+      type: 'SET_REALTIME_STATE',
+      status: 'connecting',
+      error: null,
+    });
+
+    const subscription = subscribeToNotificationChanges({
       userId: state.userContext.idUsuario,
       onInsert: (notification) => {
         dispatch({
@@ -262,18 +437,41 @@ export function NotificationsProvider({ children }: Props) {
           notificationId,
         });
       },
+      onStatusChange: (status) => {
+        dispatch({
+          type: 'SET_REALTIME_STATE',
+          status,
+          error: status === 'subscribed' ? null : undefined,
+        });
+      },
       onError: (message) => {
         dispatch({
-          type: 'SET_ERROR',
+          type: 'SET_REALTIME_ERROR',
           error: message,
         });
       },
+      onSubscribed: () => {
+        queueSilentRefetch({ retryOnFailure: false });
+      },
+      onRefreshNeeded: () => {
+        queueSilentRefetch({ delayMs: 250, retryOnFailure: true });
+      },
     });
+    realtimeSubscriptionRef.current = subscription;
 
     return () => {
-      unsubscribe();
+      if (realtimeSubscriptionRef.current === subscription) {
+        realtimeSubscriptionRef.current = null;
+      }
+
+      subscription.unsubscribe();
     };
-  }, [userLoading, userId, state.userContext?.idUsuario]);
+  }, [
+    userLoading,
+    userId,
+    state.userContext?.idUsuario,
+    queueSilentRefetch,
+  ]);
 
   const getNotificationById = useCallback(
     (id: number) =>
@@ -418,13 +616,17 @@ export function NotificationsProvider({ children }: Props) {
     }
 
     if (!userId) {
+      clearScheduledRealtimeWork();
       loadedUserIdRef.current = null;
+      notificationUserIdRef.current = null;
+      realtimeSubscriptionRef.current?.unsubscribe();
+      realtimeSubscriptionRef.current = null;
       dispatch({ type: 'RESET' });
       return;
     }
 
     await loadInitialData();
-  }, [userLoading, userId, loadInitialData]);
+  }, [userLoading, userId, loadInitialData, clearScheduledRealtimeWork]);
 
   const value = useMemo<NotificationsContextValue>(
     () => ({

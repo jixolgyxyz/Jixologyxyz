@@ -16,7 +16,7 @@ import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
 import { Select } from '@/shared/components/Select/Select';
 import styles from './CreateBacklogItemForm.module.css';
 import { useCreateBacklogItem } from '../../hooks/useCreateBacklogItem';
-import { createSugerencia, addBacklogItemBlock } from '../../services/backlog.service';
+import { addBacklogItemBlock } from '../../services/backlog.service';
 import { useUser } from '@/core/auth/userContext';
 import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload, BacklogMeta, BacklogItemRecord, BacklogTypeRecord } from '../../types/backlog.types';
 
@@ -468,11 +468,8 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       tiempo_estimado:        tiempoEstimadoMin,
     };
     try {
-      const newItem = await submit(payload);
+      const newItem = await submit(payload, { asSuggestion: !isAdmin });
       if (newItem?.id) {
-        if (!isAdmin) {
-          await createSugerencia(newItem.id);
-        }
         if (bloqueadores.length > 0) {
           await Promise.all(
             bloqueadores.map(blockerItemId =>

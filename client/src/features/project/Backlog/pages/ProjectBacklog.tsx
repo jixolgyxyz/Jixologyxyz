@@ -12,7 +12,12 @@ import ContextMenu from '@/shared/components/ContextMenu';
 import type { MenuComponent } from '@/shared/components/ContextMenu';
 import { useBacklogItems } from '@/features/project/Backlog/hooks/useBacklogItems';
 import { useBacklogMeta } from '@/features/project/Backlog/hooks/useBacklogMeta';
-import { acceptSugerencia, updateBacklogItem, deleteBacklogItem } from '@/features/project/Backlog/services/backlog.service';
+import { updateBacklogItem, deleteBacklogItem } from '@/features/project/Backlog/services/backlog.service';
+import {
+  acceptBacklogItemSuggestion,
+  getBacklogItemSuggestionNotificationId,
+  rejectBacklogItemSuggestion,
+} from '@/features/notifications/services/notificationsService';
 import { useUser } from '@/core/auth/userContext';
 import type { BacklogItemRecord, BacklogStatusRecord, BacklogPriorityRecord, SprintRecord } from '@/features/project/Backlog/types/backlog.types';
 import styles from './ProjectBacklog.module.css';
@@ -188,6 +193,34 @@ const ProjectBacklog: React.FC = () => {
   const loading = itemsLoading || metaLoading;
   const allStatuses = meta.statuses.map(toBacklogStatus);
 
+  const resolveSuggestionNotificationId = async (itemId: number) => {
+    const notificationId = await getBacklogItemSuggestionNotificationId(itemId);
+
+    if (notificationId == null) {
+      throw new Error(
+        'No se encontró una notificación pendiente para responder esta sugerencia. Se necesita una RPC segura por id_backlog_item para resolverla desde el proyecto.',
+      );
+    }
+
+    return notificationId;
+  };
+
+  const handleAcceptProjectSuggestion = async (item: BacklogItemRecord) => {
+    const notificationId = await resolveSuggestionNotificationId(item.id);
+    await acceptBacklogItemSuggestion(notificationId);
+    refreshAll();
+  };
+
+  const handleRejectProjectSuggestion = async (item: BacklogItemRecord) => {
+    const notificationId = await resolveSuggestionNotificationId(item.id);
+    await rejectBacklogItemSuggestion(notificationId);
+    if (viewingId === item.id) {
+      setViewingItem(null);
+      setOpenInEditMode(false);
+    }
+    refreshAll();
+  };
+
   const filteredItems = useMemo(() => {
     const suggestionIds = new Set(
       meta.sugerencias.filter(s => !s.aceptada).map(s => s.id),
@@ -274,6 +307,7 @@ const ProjectBacklog: React.FC = () => {
       <React.Fragment key={item.id}>
         <div style={depth > 0 ? { paddingLeft: depth * 24 } : undefined}>
           <BacklogListItem
+            itemId={item.id}
             code={`${TYPE_PREFIX[typeRecord?.nombre ?? ''] ?? 'IT'}-${String(item.id).padStart(2, '0')}`}
             title={item.nombre}
             status={status}
@@ -340,9 +374,10 @@ const ProjectBacklog: React.FC = () => {
                 console.error('Error eliminando ítem:', err);
               }
             }}
-            onAcceptSuggestion={isPM && isSuggestion ? async () => {
-              await acceptSugerencia(item.id, user!.id);
-              refreshAll();
+            onAcceptSuggestion={isPM && isSuggestion ? () => {
+              void handleAcceptProjectSuggestion(item).catch(err => {
+                console.error('Error aceptando sugerencia:', err);
+              });
             } : undefined}
           />
         </div>
@@ -365,8 +400,10 @@ const ProjectBacklog: React.FC = () => {
         onUpdated={() => refreshAll()}
         onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}
         onAcceptSuggestion={isPM && isSuggestion ? async () => {
-          await acceptSugerencia(viewingItem.id, user!.id);
-          refreshAll();
+          await handleAcceptProjectSuggestion(viewingItem);
+        } : undefined}
+        onRejectSuggestion={isPM && isSuggestion ? async () => {
+          await handleRejectProjectSuggestion(viewingItem);
         } : undefined}
       />
     );

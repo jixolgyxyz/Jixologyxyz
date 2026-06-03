@@ -121,6 +121,28 @@ export async function createBacklogItem(payload: CreateBacklogItemPayload): Prom
   return data;
 }
 
+export async function createSuggestedBacklogItem(payload: CreateBacklogItemPayload): Promise<BacklogItemRecord> {
+  const { data, error } = await supabase.rpc('crear_sugerencia_creacion_backlog_item', {
+    p_nombre:                 payload.nombre,
+    p_id_proyecto:            payload.id_proyecto,
+    p_id_estatus:             payload.id_estatus,
+    p_id_tipo:                payload.id_tipo,
+    p_descripcion:            payload.descripcion ?? null,
+    p_id_prioridad:           payload.id_prioridad ?? null,
+    p_id_sprint:              payload.id_sprint ?? null,
+    p_id_usuario_responsable: payload.id_usuario_responsable ?? null,
+    p_fecha_inicio:           payload.fecha_inicio ?? null,
+    p_fecha_vencimiento:      payload.fecha_vencimiento ?? null,
+    p_id_backlog_item_padre:  payload.id_backlog_item_padre ?? null,
+    p_complejidad:            payload.complejidad ?? null,
+    p_tiempo_estimado:        payload.tiempo_estimado ?? null,
+  });
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('No se pudo crear la sugerencia.');
+  return data as BacklogItemRecord;
+}
+
 export async function createSprint(payload: CreateSprintPayload): Promise<void> {
   const { error } = await supabase
     .from('sprint')
@@ -249,23 +271,6 @@ export async function removeBacklogItemBlock(idBloqueado: number, idBloqueador: 
     .delete()
     .eq('id_bloqueado', idBloqueado)
     .eq('id_bloqueador', idBloqueador);
-  if (error) throw new Error(error.message);
-}
-
-export async function createSugerencia(itemId: number): Promise<void> {
-  const { error } = await supabase
-    .from('backlog_item_sugerencia_creacion')
-    .insert({ id: itemId, aceptada: false, id_usuario_acepto: null });
-
-  if (error) throw new Error(error.message);
-}
-
-export async function acceptSugerencia(itemId: number, userId: number): Promise<void> {
-  const { error } = await supabase
-    .from('backlog_item_sugerencia_creacion')
-    .update({ aceptada: true, id_usuario_acepto: userId })
-    .eq('id', itemId);
-
   if (error) throw new Error(error.message);
 }
 
