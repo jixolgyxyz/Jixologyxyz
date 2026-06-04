@@ -127,6 +127,7 @@ interface BacklogListItemProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onAcceptSuggestion?: () => void;
+  isLocked?: boolean;
 }
 
 const BacklogListItem: React.FC<BacklogListItemProps> = ({
@@ -149,6 +150,7 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
   onEdit,
   onDelete,
   onAcceptSuggestion,
+  isLocked = false,
 }) => {
   const [open, setOpen]                       = useState<OpenDropdown>(null);
   const [currentStatus, setCurrentStatus]     = useState<BacklogStatus>(status);
@@ -169,12 +171,14 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
 
   const currentPriorityOption = PRIORITY_OPTIONS.find(o => o.value === currentPriority) ?? PRIORITY_OPTIONS[2];
 
-  const menuItems = [
-    { text: 'Ver Detalles', onClick: () => { setOpen(null); onViewDetails?.(); } },
-    { text: 'Editar',       onClick: () => { setOpen(null); onEdit?.();        } },
-    ...(isSuggestion && onAcceptSuggestion ? [{ text: 'Aceptar sugerencia', onClick: () => { setOpen(null); onAcceptSuggestion(); } }] : []),
-    { text: 'Eliminar',     onClick: () => { setOpen(null); onDelete?.();      } },
-  ];
+  const menuItems = isLocked
+    ? [{ text: 'Ver Detalles', onClick: () => { setOpen(null); onViewDetails?.(); } }]
+    : [
+        { text: 'Ver Detalles', onClick: () => { setOpen(null); onViewDetails?.(); } },
+        { text: 'Editar',       onClick: () => { setOpen(null); onEdit?.();        } },
+        ...(isSuggestion && onAcceptSuggestion ? [{ text: 'Aceptar sugerencia', onClick: () => { setOpen(null); onAcceptSuggestion(); } }] : []),
+        { text: 'Eliminar',     onClick: () => { setOpen(null); onDelete?.();      } },
+      ];
 
   return (
     <div className={`${styles.row} ${!hasChildren ? styles.rowCompact : ''} ${isSuggestion ? styles.rowSuggestion : ''}`} ref={rowRef}>
@@ -217,16 +221,17 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
         <button
           className={styles.statusBtn}
           style={{ backgroundColor: currentStatus.color, color: currentStatus.textColor }}
-          onClick={() => setOpen(o => o === 'status' ? null : 'status')}
+          onClick={isLocked ? undefined : () => setOpen(o => o === 'status' ? null : 'status')}
           type="button"
           aria-label={`Estado: ${currentStatus.label}`}
           aria-expanded={open === 'status'}
+          disabled={isLocked}
         >
           <span className={styles.statusLabel}>{currentStatus.label}</span>
-          <ChevronDownIcon width={12} height={12} />
+          {!isLocked && <ChevronDownIcon width={12} height={12} />}
         </button>
 
-        {open === 'status' && statuses.length > 0 && (
+        {!isLocked && open === 'status' && statuses.length > 0 && (
           <div className={styles.statusDropdown} role="menu">
             {statuses.map(s => (
               <button
@@ -251,13 +256,14 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
           type="button"
           aria-label={`Prioridad: ${currentPriorityOption.label}`}
           aria-expanded={open === 'priority'}
-          style={{ color: currentPriorityOption.color }}
-          onClick={() => setOpen(o => o === 'priority' ? null : 'priority')}
+          style={{ color: currentPriorityOption.color, opacity: isLocked ? 0.5 : 1 }}
+          onClick={isLocked ? undefined : () => setOpen(o => o === 'priority' ? null : 'priority')}
+          disabled={isLocked}
         >
           {currentPriorityOption.icon}
         </button>
 
-        {open === 'priority' && (
+        {!isLocked && open === 'priority' && (
           <div className={styles.dropdown} role="menu">
             {PRIORITY_OPTIONS.map(option => (
               <button
@@ -282,24 +288,28 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
           ? <button
               type="button"
               className={`${styles.avatarBtn} ${open === 'assignee' ? styles.avatarBtnActive : ''}`}
-              onClick={() => setOpen(o => o === 'assignee' ? null : 'assignee')}
+              onClick={isLocked ? undefined : () => setOpen(o => o === 'assignee' ? null : 'assignee')}
               aria-label="Cambiar responsable"
               aria-expanded={open === 'assignee'}
+              disabled={isLocked}
+              style={{ opacity: isLocked ? 0.7 : 1, cursor: isLocked ? 'default' : 'pointer' }}
             >
               <UserAvatar userId={responsibleUserId} />
             </button>
-          : <button
-              type="button"
-              className={`${styles.iconBtn} ${open === 'assignee' ? styles.iconBtnActive : ''}`}
-              onClick={() => setOpen(o => o === 'assignee' ? null : 'assignee')}
-              aria-label="Asignar responsable"
-              aria-expanded={open === 'assignee'}
-            >
-              <UserIcon width={16} height={16} />
-            </button>
+          : !isLocked
+            ? <button
+                type="button"
+                className={`${styles.iconBtn} ${open === 'assignee' ? styles.iconBtnActive : ''}`}
+                onClick={() => setOpen(o => o === 'assignee' ? null : 'assignee')}
+                aria-label="Asignar responsable"
+                aria-expanded={open === 'assignee'}
+              >
+                <UserIcon width={16} height={16} />
+              </button>
+            : <span className={styles.iconBtn} style={{ opacity: 0.35, cursor: 'default' }}><UserIcon width={16} height={16} /></span>
         }
 
-        {open === 'assignee' && (
+        {!isLocked && open === 'assignee' && (
           <div className={styles.assigneePickerMenu} role="menu">
             <button
               type="button"

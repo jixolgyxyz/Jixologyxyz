@@ -1,6 +1,6 @@
 import { supabase } from '@/core/supabase/supabase.client';
 import { callGemini } from '@/shared/services/gemini.service';
-import type { BitacoraSprintRecord, BitacoraSprintSummary } from '../types/bitacora.types';
+import type { BitacoraSprintRecord, BitacoraSprintSummary, ImpedimentoRecord, ImpedimentoSimpleRecord, ProyectoPresupuestoInfo } from '../types/bitacora.types';
 
 const PROMPT = `Eres un Scrum Master experimentado y analista de proyectos ágiles. Tu tarea es generar un reporte retrospectivo estructurado y profesional en español a partir de datos de un sprint.
 
@@ -113,4 +113,67 @@ export async function fetchBitacoraById(id: number): Promise<BitacoraSprintRecor
 
   if (error) throw new Error(error.message);
   return data as BitacoraSprintRecord;
+}
+
+export async function fetchImpedimentosBySprint(sprintId: number): Promise<ImpedimentoRecord[]> {
+  const { data, error } = await supabase
+    .from('impedimento_backlog_item')
+    .select('id, nombre, descripcion, resuelto, costo, id_backlog_item, id_usuario_creador, backlog_item:id_backlog_item!inner(id, nombre, id_sprint)')
+    .eq('backlog_item.id_sprint', sprintId);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as ImpedimentoRecord[];
+}
+
+export async function createImpedimento(
+  nombre: string,
+  descripcion: string | null,
+  idBacklogItem: number,
+  idUsuarioCreador: number,
+  costo: number | null = null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('impedimento_backlog_item')
+    .insert({ nombre, descripcion, id_backlog_item: idBacklogItem, id_usuario_creador: idUsuarioCreador, costo });
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchImpedimentosByItem(itemId: number): Promise<ImpedimentoSimpleRecord[]> {
+  const { data, error } = await supabase
+    .from('impedimento_backlog_item')
+    .select('id, nombre, descripcion, resuelto, costo')
+    .eq('id_backlog_item', itemId)
+    .order('id', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ImpedimentoSimpleRecord[];
+}
+
+export async function updateImpedimentoResuelto(id: number, resuelto: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('impedimento_backlog_item')
+    .update({ resuelto })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchProyectoPresupuesto(projectId: number): Promise<ProyectoPresupuestoInfo> {
+  const { data, error } = await supabase
+    .from('proyecto')
+    .select('presupuesto, costo_mensual, tolerancia_desviacion, divisa:id_divisa_presupuesto(abreviatura)')
+    .eq('id', projectId)
+    .single();
+  if (error) throw new Error(error.message);
+  const raw = data as unknown as {
+    presupuesto: number | null;
+    costo_mensual: number | null;
+    tolerancia_desviacion: number | null;
+    divisa: { abreviatura: string }[] | { abreviatura: string } | null;
+  };
+  const div = raw.divisa;
+  const abreviatura = Array.isArray(div) ? (div[0]?.abreviatura ?? null) : (div?.abreviatura ?? null);
+  return {
+    presupuesto: raw.presupuesto,
+    costo_mensual: raw.costo_mensual,
+    tolerancia_desviacion: raw.tolerancia_desviacion,
+    abreviatura,
+  };
 }

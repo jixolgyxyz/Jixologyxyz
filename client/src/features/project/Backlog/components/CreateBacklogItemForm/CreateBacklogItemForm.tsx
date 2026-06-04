@@ -564,7 +564,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             <div className={styles.field}>
               <label className={styles.label}>Sprint</label>
               <Select
-                options={meta.sprints.map(s => ({ value: String(s.id), label: s.nombre }))}
+                options={meta.sprints.filter(s => s.id_estatus !== 3 && s.id_estatus !== 4).map(s => ({ value: String(s.id), label: s.nombre }))}
                 value={form.id_sprint}
                 onChange={v => setForm(f => ({ ...f, id_sprint: v }))}
                 placeholder="Sin sprint"
