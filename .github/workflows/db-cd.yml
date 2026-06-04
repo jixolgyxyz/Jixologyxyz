@@ -47,7 +47,7 @@ jobs:
         (github.ref == 'refs/heads/main' && vars.ENABLE_DB_PROD_DEPLOY == 'true')
       )}}
 
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'Jixology' || 'staging' }}
 
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

@@ -3,6 +3,7 @@ import {
   PencilSquareIcon,
   CheckIcon,
   XMarkIcon,
+  SwatchIcon,
 } from '@heroicons/react/24/outline';
 import styles from './UserCard.module.css';
 import { useUserAvatarSvg } from '../../hooks/useUserAvatarSvg';
@@ -35,6 +36,7 @@ interface UserCardProps {
   editScope?: EditScope;
   saving?: boolean;
   zonaHorariaOptions?: ZonaHorariaOption[];
+  onEditAvatar?: () => void;
   onSaveAboutMe?: (sobreMi: string) => Promise<void>;
   onSubmitFullEdit?: () => Promise<void>;
   formValues?: UserCardEditValues;
@@ -55,12 +57,13 @@ const UserCard: React.FC<UserCardProps> = ({
   editScope = 'none',
   saving = false,
   zonaHorariaOptions = [],
+  onEditAvatar,
   onSaveAboutMe,
   onSubmitFullEdit,
   formValues,
   onFieldChange,
 }) => {
-  const { avatarSvg: dbSvg } = useUserAvatarSvg(userId);
+  const { avatarSvg: dbSvg, loading: avatarLoading } = useUserAvatarSvg(userId);
   const avatarSvg = avatarSvgProp ?? dbSvg;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -125,9 +128,19 @@ const UserCard: React.FC<UserCardProps> = ({
 
       <div className={styles.avatarWrapper}>
         <div
-          className={styles.avatarCircle}
+          className={`${styles.avatarCircle}${avatarLoading ? ` ${styles.avatarCircleLoading}` : ''}`}
           dangerouslySetInnerHTML={{ __html: avatarSvg }}
         />
+        {onEditAvatar && !isEditing && (
+          <button
+            className={styles.editAvatarBtn}
+            onClick={onEditAvatar}
+            type="button"
+          >
+            <SwatchIcon width={13} height={13} />
+            Editar avatar
+          </button>
+        )}
       </div>
 
       {(isSelfEdit || isFullEdit) && isEditing && formValues && onFieldChange ? (

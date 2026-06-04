@@ -62,6 +62,7 @@ const CreateSprintForm: React.FC<CreateSprintFormProps> = ({
   };
 
   const handleClose = () => {
+    setForm(initialForm(sprintToEdit));
     setNombreTouched(false);
     onClose();
   };
@@ -105,7 +106,7 @@ const CreateSprintForm: React.FC<CreateSprintFormProps> = ({
         await create(payload);
       }
       onCreated?.();
-      onClose();
+      handleClose();
     } catch { /* shown via hookError */ }
   };
 

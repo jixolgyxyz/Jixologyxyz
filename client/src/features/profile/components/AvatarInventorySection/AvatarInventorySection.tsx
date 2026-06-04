@@ -1,9 +1,10 @@
 import React from 'react';
+import { XCircleIcon } from '@heroicons/react/24/outline';
 
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import InventoryCard from '../InventoryCard';
 import SkeletonAvatarTile from '../SkeletonAvatarTile';
-import type { FeatureMeta } from '../../types/avatar.types';
+import type { AvatarStyle, FeatureMeta } from '../../types/avatar.types';
 
 const SKELETON_TILE_COUNT = 10;
 
@@ -32,6 +33,12 @@ interface AvatarInventorySectionProps {
 
   canEditAvatar: boolean;
   addingItem: boolean;
+
+  onClose?: () => void;
+
+  styles?:          AvatarStyle[];
+  selectedStyleId?: number;
+  onStyleChange?:   (styleId: number) => void;
 }
 
 const AvatarInventorySection: React.FC<AvatarInventorySectionProps> = ({
@@ -45,10 +52,41 @@ const AvatarInventorySection: React.FC<AvatarInventorySectionProps> = ({
   handleSaveAvatar,
   canEditAvatar,
   addingItem,
+  onClose,
+  styles,
+  selectedStyleId,
+  onStyleChange,
 }) => {
   return (
     <div className="profile-section profile-section--inventory">
-      <div className="section-tab">Cosméticos</div>
+      <div className="inventory-header">
+        <span className="section-tab">Cosméticos</span>
+        {onClose && (
+          <button
+            type="button"
+            className="inventory-close"
+            onClick={onClose}
+            aria-label="Cerrar inventario"
+          >
+            <XCircleIcon width={26} height={26} />
+          </button>
+        )}
+      </div>
+
+      {styles && styles.length > 1 && onStyleChange && (
+        <div className="inventory-style-nav">
+          {styles.map(s => (
+            <button
+              key={s.id}
+              type="button"
+              className={`inventory-style-nav__btn${selectedStyleId === s.id ? ' inventory-style-nav__btn--active' : ''}`}
+              onClick={() => onStyleChange(s.id)}
+            >
+              {s.nombre}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="section-body section-body--flush">
         {showInventory && filteredCatalog ?(

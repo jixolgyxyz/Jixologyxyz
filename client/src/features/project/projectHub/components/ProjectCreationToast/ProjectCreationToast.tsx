@@ -35,7 +35,7 @@ export default function ProjectCreationToast({
         </div>
 
         <div className="project-creation-toast__text">
-          <p className="project-creation-toast__title">Proyecto creado</p>
+          <p className="project-creation-toast__title">Operación exitosa</p>
           <p className="project-creation-toast__message">{message}</p>
         </div>
 

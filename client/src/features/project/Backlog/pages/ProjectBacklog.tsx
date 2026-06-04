@@ -14,7 +14,12 @@ import ContextMenu from '@/shared/components/ContextMenu';
 import type { MenuComponent } from '@/shared/components/ContextMenu';
 import { useBacklogItems } from '@/features/project/Backlog/hooks/useBacklogItems';
 import { useBacklogMeta } from '@/features/project/Backlog/hooks/useBacklogMeta';
-import { acceptSugerencia, updateBacklogItem, deleteBacklogItem, updateSprintStatus } from '@/features/project/Backlog/services/backlog.service';
+import {updateBacklogItem, deleteBacklogItem, updateSprintStatus } from '@/features/project/Backlog/services/backlog.service';
+import {
+  acceptBacklogItemSuggestion,
+  getBacklogItemSuggestionNotificationId,
+  rejectBacklogItemSuggestion,
+} from '@/features/notifications/services/notificationsService';
 import { generateSprintReport, createImpedimento } from '@/features/project/Bitacora/services/bitacora.service';
 import { useUser } from '@/core/auth/userContext';
 import type { BacklogItemRecord, BacklogStatusRecord, BacklogPriorityRecord, SprintRecord } from '@/features/project/Backlog/types/backlog.types';
@@ -94,6 +99,10 @@ function FilterBubble({ label, selectedLabel, elements }: FilterBubbleProps) {
   );
 }
 
+const TYPE_ORDER: Record<string, number> = {
+  'Épica': 0, 'Historia de Usuario': 1, 'Tarea': 2, 'Subtarea': 3, 'Bug': 4,
+};
+
 function formatSprintDate(iso: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('es-MX', {
@@ -106,7 +115,7 @@ function formatSprintDate(iso: string | null): string {
 const ProjectBacklog: React.FC = () => {
   const { id } = useParams();
   const PROJECT_ID = Number(id);
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const { items, loading: itemsLoading, refresh } = useBacklogItems(PROJECT_ID);
   const { meta, loading: metaLoading, refresh: refreshMeta } = useBacklogMeta(PROJECT_ID);
   const isPM = user != null && meta.etiquetas.some(
@@ -251,18 +260,52 @@ const ProjectBacklog: React.FC = () => {
   const loading = itemsLoading || metaLoading;
   const allStatuses = meta.statuses.map(toBacklogStatus);
 
+  const resolveSuggestionNotificationId = async (itemId: number) => {
+    const notificationId = await getBacklogItemSuggestionNotificationId(itemId);
+
+    if (notificationId == null) {
+      throw new Error(
+        'No se encontró una notificación pendiente para responder esta sugerencia. Se necesita una RPC segura por id_backlog_item para resolverla desde el proyecto.',
+      );
+    }
+
+    return notificationId;
+  };
+
+  const handleAcceptProjectSuggestion = async (item: BacklogItemRecord) => {
+    const notificationId = await resolveSuggestionNotificationId(item.id);
+    await acceptBacklogItemSuggestion(notificationId);
+    refreshAll();
+  };
+
+  const handleRejectProjectSuggestion = async (item: BacklogItemRecord) => {
+    const notificationId = await resolveSuggestionNotificationId(item.id);
+    await rejectBacklogItemSuggestion(notificationId);
+    if (viewingId === item.id) {
+      setViewingItem(null);
+      setOpenInEditMode(false);
+    }
+    refreshAll();
+  };
+
   const filteredItems = useMemo(() => {
     const suggestionIds = new Set(
       meta.sugerencias.filter(s => !s.aceptada).map(s => s.id),
     );
     return items
-      .filter(item => isPM || !suggestionIds.has(item.id))
+      .filter(item => isPM || !suggestionIds.has(item.id) || item.id_usuario_creador === user?.id)
       .filter(item => filterStatus === null || item.id_estatus             === filterStatus)
       .filter(item => filterType   === null || item.id_tipo                === filterType)
       .filter(item => filterUser   === null || item.id_usuario_responsable === filterUser)
       .filter(item => filterSprint === null || item.id_sprint              === filterSprint)
-      .filter(item => item.nombre.toLowerCase().includes(search.toLowerCase()));
-  }, [items, meta.sugerencias, isPM, search, filterStatus, filterType, filterUser, filterSprint]);
+      .filter(item => item.nombre.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => {
+        const typeA = meta.types.find(t => t.id === a.id_tipo)?.nombre ?? '';
+        const typeB = meta.types.find(t => t.id === b.id_tipo)?.nombre ?? '';
+        const orderDiff = (TYPE_ORDER[typeA] ?? 99) - (TYPE_ORDER[typeB] ?? 99);
+        return orderDiff !== 0 ? orderDiff : a.id - b.id;
+      });
+  }, [items, meta.sugerencias, meta.types, isPM, user?.id, search, filterStatus, filterType, filterUser, filterSprint]);
 
   const sprintGroups = useMemo<{ sprint: SprintRecord | null; items: BacklogItemRecord[] }[]>(() => {
     const map = new Map<number | null, BacklogItemRecord[]>();
@@ -330,6 +373,7 @@ const ProjectBacklog: React.FC = () => {
       : { label: 'Sin estatus', color: '#F3F4F6', textColor: '#6B7280' };
     const sugerencia   = meta.sugerencias.find(s => s.id === item.id);
     const isSuggestion = !!sugerencia && !sugerencia.aceptada;
+    const isCreator    = item.id_usuario_creador === user?.id;
     const children     = childrenMap.get(item.id) ?? [];
     const isExpanded   = expandedItems.has(item.id);
     const sprintRecord = item.id_sprint != null ? meta.sprints.find(s => s.id === item.id_sprint) : undefined;
@@ -339,6 +383,7 @@ const ProjectBacklog: React.FC = () => {
       <React.Fragment key={item.id}>
         <div style={depth > 0 ? { paddingLeft: depth * 24 } : undefined}>
           <BacklogListItem
+            itemId={item.id}
             code={`${TYPE_PREFIX[typeRecord?.nombre ?? ''] ?? 'IT'}-${String(item.id).padStart(2, '0')}`}
             title={item.nombre}
             status={status}
@@ -367,7 +412,7 @@ const ProjectBacklog: React.FC = () => {
                 console.error('Error actualizando responsable:', err);
               }
             }}
-            isSuggestion={isSuggestion && isPM}
+            isSuggestion={isSuggestion && (isPM || isCreator)}
             hasChildren={filterType !== null && children.length > 0}
             isExpanded={isExpanded}
             onToggle={() => toggleExpanded(item.id)}
@@ -389,6 +434,7 @@ const ProjectBacklog: React.FC = () => {
                   complejidad:            item.complejidad,
                 });
                 refreshAll();
+                void refreshUser();
               } catch (err) {
                 console.error('Error actualizando estado:', err);
               }
@@ -405,9 +451,10 @@ const ProjectBacklog: React.FC = () => {
                 console.error('Error eliminando ítem:', err);
               }
             }}
-            onAcceptSuggestion={isPM && isSuggestion ? async () => {
-              await acceptSugerencia(item.id, user!.id);
-              refreshAll();
+            onAcceptSuggestion={isPM && isSuggestion ? () => {
+              void handleAcceptProjectSuggestion(item).catch(err => {
+                console.error('Error aceptando sugerencia:', err);
+              });
             } : undefined}
             isLocked={isLocked}
           />
@@ -418,8 +465,9 @@ const ProjectBacklog: React.FC = () => {
   };
 
   const detailPanel = viewingItem && (() => {
-    const sugerencia      = meta.sugerencias.find(s => s.id === viewingItem.id);
-    const isSuggestion    = !!sugerencia && !sugerencia.aceptada;
+    const sugerencia   = meta.sugerencias.find(s => s.id === viewingItem.id);
+    const isSuggestion = !!sugerencia && !sugerencia.aceptada;
+    const isCreator    = viewingItem.id_usuario_creador === user?.id;
     const viewingSprint   = viewingItem.id_sprint != null ? meta.sprints.find(s => s.id === viewingItem.id_sprint) : undefined;
     const viewingIsLocked = viewingSprint != null && (viewingSprint.id_estatus === 3 || viewingSprint.id_estatus === 4);
     return (
@@ -427,15 +475,18 @@ const ProjectBacklog: React.FC = () => {
         inline
         item={viewingItem}
         meta={meta}
-        isSuggestion={isSuggestion && isPM}
+        isSuggestion={isSuggestion && (isPM || isCreator)}
+        isPM={isPM}
         initialEditing={openInEditMode}
         isLocked={viewingIsLocked}
         onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
         onUpdated={() => refreshAll()}
         onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}
         onAcceptSuggestion={isPM && isSuggestion ? async () => {
-          await acceptSugerencia(viewingItem.id, user!.id);
-          refreshAll();
+          await handleAcceptProjectSuggestion(viewingItem);
+        } : undefined}
+        onRejectSuggestion={isPM && isSuggestion ? async () => {
+          await handleRejectProjectSuggestion(viewingItem);
         } : undefined}
       />
     );

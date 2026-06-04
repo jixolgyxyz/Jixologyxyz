@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ (github.ref == 'refs/heads/staging' && vars.ENABLE_API_STAGING_DEPLOY == 'true') ||
       (github.ref == 'refs/heads/main' && vars.ENABLE_API_PROD_DEPLOY == 'true')}}
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'Jixology' || 'staging' }}
 
     steps:
       - name: Checkout

@@ -11,16 +11,28 @@ export interface UserProfile {
   idRolGlobal: number | null;
   rol: string | null;
   activo: boolean;
+  dinero: number;
+} 
+
+async function fetchUserRow(authId: string) {
+  return supabase
+    .from("usuario")
+    .select("id, auth_id, nombre, apellido, email, id_zona_horaria, id_rol_global, activo, dinero, rol_global(nombre), zona_horaria(nombre)")
+    .eq("auth_id", authId)
+    .maybeSingle();
 }
 
 export async function fetchCurrentUser(authId: string): Promise<UserProfile | null> {
-  const { data, error } = await supabase
-    .from("usuario")
-    .select("id, auth_id, nombre, apellido, email, id_zona_horaria, id_rol_global, activo, rol_global(nombre), zona_horaria(nombre)")
-    .eq("auth_id", authId)
-    .maybeSingle();
+  // Retry transient network failures (e.g. Windows ERR_NO_BUFFER_SPACE under
+  // heavy parallel test load, brief Wi-Fi drops, dev-server restarts).
+  let res = await fetchUserRow(authId).catch(err => ({ data: null, error: err }));
+  for (let attempt = 1; attempt < 3 && res.error; attempt++) {
+    await new Promise(r => setTimeout(r, 150 * attempt));
+    res = await fetchUserRow(authId).catch(err => ({ data: null, error: err }));
+  }
 
-  if (error) throw new Error(`${error.message}, ${error.code}`);
+  const { data, error } = res;
+  if (error) throw new Error(`${error.message ?? error}, ${error.code ?? 'unknown'}`);
   if (!data) return null;
 
   const rolGlobal   = data.rol_global   as unknown as { nombre: string } | null;
@@ -37,7 +49,13 @@ export async function fetchCurrentUser(authId: string): Promise<UserProfile | nu
     idRolGlobal: data.id_rol_global,
     rol: rolGlobal?.nombre ?? null,
     activo: data.activo,
+    dinero: data.dinero ?? 0,
   };
+}
+
+export async function deductCoins(userId: number, amount: number): Promise<void> {
+  const { error } = await supabase.rpc('deduct_coins', { p_user_id: userId, p_amount: amount });
+  if (error) throw new Error(error.message);
 }
 
 export async function hasAdminRole(userId: number): Promise<boolean> {

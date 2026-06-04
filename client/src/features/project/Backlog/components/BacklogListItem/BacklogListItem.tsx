@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import ContextMenu from '@/shared/components/ContextMenu';
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
+import { useBacklogItemSubscription } from '../../hooks/useBacklogItemSubscription';
 import styles from './BacklogListItem.module.css';
 
 export type BacklogItemType = 'Bug' | 'Tarea' | 'Subtarea' | 'Historia de Usuario' | 'Épica';
@@ -107,6 +108,7 @@ function UserPickerOption({ user, displayName }: { user: { id: number }; display
 type OpenDropdown = 'status' | 'priority' | 'menu' | 'assignee' | null;
 
 interface BacklogListItemProps {
+  itemId: number;
   code: string;
   title: string;
   status: BacklogStatus;
@@ -131,6 +133,7 @@ interface BacklogListItemProps {
 }
 
 const BacklogListItem: React.FC<BacklogListItemProps> = ({
+  itemId,
   code,
   title,
   status,
@@ -156,6 +159,14 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
   const [currentStatus, setCurrentStatus]     = useState<BacklogStatus>(status);
   const [currentPriority, setCurrentPriority] = useState<Priority>(priority ?? 'medium');
   const rowRef = useRef<HTMLDivElement>(null);
+  const {
+    isSubscribed,
+    isLoading: subscriptionLoading,
+    isToggling: subscriptionToggling,
+    error: subscriptionError,
+    canSubscribe,
+    toggle: toggleSubscription,
+  } = useBacklogItemSubscription(itemId);
 
   // Close any open dropdown/menu on outside click
   useEffect(() => {
@@ -170,15 +181,27 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
   }, [open]);
 
   const currentPriorityOption = PRIORITY_OPTIONS.find(o => o.value === currentPriority) ?? PRIORITY_OPTIONS[2];
+  const subscriptionMenuDisabled = subscriptionLoading || subscriptionToggling;
+  const subscriptionMenuText = isSubscribed ? 'Desuscribirse' : 'Suscribirse';
 
   const menuItems = isLocked
-    ? [{ text: 'Ver Detalles', onClick: () => { setOpen(null); onViewDetails?.(); } }]
-    : [
-        { text: 'Ver Detalles', onClick: () => { setOpen(null); onViewDetails?.(); } },
-        { text: 'Editar',       onClick: () => { setOpen(null); onEdit?.();        } },
-        ...(isSuggestion && onAcceptSuggestion ? [{ text: 'Aceptar sugerencia', onClick: () => { setOpen(null); onAcceptSuggestion(); } }] : []),
-        { text: 'Eliminar',     onClick: () => { setOpen(null); onDelete?.();      } },
-      ];
+   ?[ { text: 'Ver Detalles', onClick: () => { setOpen(null); onViewDetails?.(); } }, ]
+   :[
+    { text: 'Ver Detalles', onClick: () => { setOpen(null); onViewDetails?.(); } },
+    { text: 'Editar',       onClick: () => { setOpen(null); onEdit?.();        } },
+    ...(isSuggestion && onAcceptSuggestion ? [{ text: 'Aceptar sugerencia', onClick: () => { setOpen(null); onAcceptSuggestion(); } }] : []),
+    ...(canSubscribe ? [{
+      text: subscriptionToggling ? 'Actualizando...' : subscriptionMenuText,
+      title: subscriptionError ?? undefined,
+      disabled: subscriptionMenuDisabled,
+      onClick: () => {
+        if (subscriptionMenuDisabled) return;
+        setOpen(null);
+        void toggleSubscription();
+      },
+    }] : []),
+    { text: 'Eliminar',     onClick: () => { setOpen(null); onDelete?.();      } },
+  ];
 
   return (
     <div className={`${styles.row} ${!hasChildren ? styles.rowCompact : ''} ${isSuggestion ? styles.rowSuggestion : ''}`} ref={rowRef}>

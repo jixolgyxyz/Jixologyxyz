@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import './Profile.css';
-import { CircleStackIcon } from '@heroicons/react/24/outline';
 
-import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import UserCard from '../components/UserCard';
 import AvatarInventorySection from '../components/AvatarInventorySection';
 import AvatarShop from '../../store/pages'
@@ -13,6 +11,7 @@ import { AvatarLootBox } from '../components/AvatarLootBox';
 import MessagePopUp from '../../../shared/components/MessagePopUp';
 import type { MessagePopUpType } from '../../../shared/components/MessagePopUp';
 import { useAvatarCatalog } from '../hooks/useAvatarCatalog';
+import { fetchUserActiveAvatar } from '../services/avatar.service';
 import { useAvatarFeatures } from '../hooks/useAvatarFeatures';
 import { useUserAvatar } from '../hooks/useUserAvatar';
 import { useUserProfile } from '@/features/user/services/user.service';
@@ -95,6 +94,14 @@ function ProfileContent({
 
   const [showOptions, setShowOptions] = useState(false);
   const [showLootbox, setShowLootbox] = useState(false);
+  // Restore from localStorage immediately to avoid a flash of pixelArt on refresh.
+  // The DB-dominant style sync below will correct it if localStorage is stale.
+  const [selectedStyleId, setSelectedStyleId] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1;
+    const stored = window.localStorage.getItem(`profile:selectedStyleId:${userId}`);
+    const parsed = stored ? Number(stored) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  });
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [passiveDismissed, setPassiveDismissed] = useState(false);
 
@@ -110,9 +117,10 @@ function ProfileContent({
     catalog,
     allElements,
     atributos,
+    styles: avatarStyles,
     loading: loadingCatalog,
     error: catalogError,
-  } = useAvatarCatalog();
+  } = useAvatarCatalog(selectedStyleId);
 
   const {
     userProfile,
@@ -153,6 +161,26 @@ function ProfileContent({
   useEffect(() => {
     console.log('filteredCatalog updated', filteredCatalog);
   }, [filteredCatalog]);
+
+  // Persist the selected style across refreshes
+  useEffect(() => {
+    if (typeof window === 'undefined' || !userId) return;
+    window.localStorage.setItem(`profile:selectedStyleId:${userId}`, String(selectedStyleId));
+  }, [selectedStyleId, userId]);
+
+  // On first load, if there's no stored preference yet, fall back to whichever
+  // style the user has actually saved most elements for in the DB.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !userId) return;
+    if (window.localStorage.getItem(`profile:selectedStyleId:${userId}`)) return;
+    if (allElements.length === 0 || atributos.length === 0) return;
+
+    fetchUserActiveAvatar(userId, allElements, atributos)
+      .then(result => {
+        if (result?.styleId) setSelectedStyleId(result.styleId);
+      })
+      .catch(() => { /* keep default */ });
+  }, [userId, allElements, atributos]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [githubData, setGithubData]       = useState<GithubUsuarioRecord | null>(null);
@@ -480,6 +508,7 @@ function ProfileContent({
             aboutMe={sobreMi}
             editScope={editScope}
             saving={formSaving}
+            onEditAvatar={canEditAvatar ? () => setRightPanelMode('inventory') : undefined}
             formValues={formValues}
             onFieldChange={
               canUseFormEdit
@@ -524,7 +553,7 @@ function ProfileContent({
           />
         )}
         <div className="profile-right">
-          {isOwnProfile && (
+          {isOwnProfile && rightPanelMode !== 'inventory' && (
             <div className="profile-section profile-section--github">
               {githubData && (
                 <div
@@ -588,22 +617,7 @@ function ProfileContent({
             </div>
           )}
   
-          <div className="upperBar">
-            <div className="upperBarButtons">
-              <ButtonComponent
-                label="Tienda"
-                onClick={() => setRightPanelMode('shop')}
-              />
 
-              <ButtonComponent
-                label="Inventario"
-                onClick={() => setRightPanelMode('inventory')}
-              />
-            </div>
-            <div className="upperBarCoins">
-              <label>Monedas: 20 <CircleStackIcon style={{ width: '20px', height: '20px', transform: 'translateY(4px)' }} /></label>
-            </div>
-          </div>
   
           {rightPanelMode === 'inventory' ? (
             <AvatarInventorySection
@@ -618,9 +632,17 @@ function ProfileContent({
               handleSaveAvatar={handleSaveAvatar}
               canEditAvatar={canEditAvatar}
               addingItem={addingItem}
+              onClose={() => setRightPanelMode('shop')}
+              styles={avatarStyles}
+              selectedStyleId={selectedStyleId}
+              onStyleChange={setSelectedStyleId}
             />
           ) : (
-            <AvatarShop key={shopKey}/>
+            <AvatarShop
+              key={`${shopKey}-${selectedStyleId}`}
+              styleId={selectedStyleId}
+              onStyleChange={setSelectedStyleId}
+            />
           )}
         </div>
       </div>
