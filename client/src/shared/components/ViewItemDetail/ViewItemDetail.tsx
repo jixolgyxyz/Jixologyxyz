@@ -876,6 +876,7 @@ interface ViewItemDetailProps {
   item: BacklogItemRecord;
   meta: BacklogMeta;
   isSuggestion?: boolean;
+  isPM?: boolean;
   onClose: () => void;
   onUpdated?: () => void | Promise<void>;
   onNavigate?: (item: BacklogItemRecord) => void;
@@ -894,6 +895,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   item,
   meta,
   isSuggestion = false,
+  isPM = true,
   onClose,
   onUpdated,
   onNavigate,
@@ -905,10 +907,10 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   onNavigateToProject,
   navigateToProjectLabel = 'Ir al proyecto',
 }) => {
-  const { user } = useUser();
-  const canEdit = !readOnly;
+  const { user, refreshUser } = useUser();
+  const canEdit = !readOnly && isPM;
   const canEditTime = !readOnly;
-  const [isEditing, setIsEditing]                 = useState(initialEditing && !readOnly);
+  const [isEditing, setIsEditing]                 = useState(initialEditing && !readOnly && isPM);
   const [form, setForm]                           = useState<FormState>(() => itemToForm(item));
   const [submitting, setSubmitting]               = useState(false);
   const [accepting, setAccepting]                 = useState(false);
@@ -940,10 +942,10 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
 
   useEffect(() => {
     setForm(itemToForm(item));
-    setIsEditing(initialEditing && !readOnly);
+    setIsEditing(initialEditing && !readOnly && isPM);
     setBranchSuffix(slugifyClient(item.nombre));
     setSuggestionActionError(null);
-  }, [item, initialEditing, readOnly]);
+  }, [item, initialEditing, readOnly, isPM]);
 
   useEffect(() => {
     setGithubLoading(true);
@@ -1148,7 +1150,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   };
 
   const handleCreatePR = async () => {
-    if (readOnly) return;
+    if (!canEdit) return;
     setPrCreating(true);
     setPrError(null);
     try {
@@ -1171,7 +1173,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   };
 
   const handleCreateBranch = async () => {
-    if (readOnly) return;
+    if (!canEdit) return;
     const branchPrefix = PREFIX_MAP_CLIENT[typeName] ?? 'task';
     const fullBranchName = `${branchPrefix}/JIX-${item.id}-${branchSuffix}`;
     setBranchCreating(true);
@@ -1190,7 +1192,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   };
 
   const handleDeleteBranch = async () => {
-    if (readOnly) return;
+    if (!canEdit) return;
     setDeletingBranch(true);
     setDeleteBranchError(null);
     try {
@@ -1205,7 +1207,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   };
 
   const handleCompleteFromMerge = async () => {
-    if (readOnly) return;
+    if (!canEdit) return;
     const terminalStatus = meta.statuses.find(s => s.es_terminal);
     if (!terminalStatus) return;
     setSubmitting(true);
@@ -1225,6 +1227,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
         complejidad:            item.complejidad,
       });
       await onUpdated?.();
+      void refreshUser();
       if (githubRecord?.branch_name) {
         setShowDeleteBranchModal(true);
       }
@@ -1236,7 +1239,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   };
 
   const handleSave = async () => {
-    if (readOnly) return;
+    if (!canEdit) return;
     if (!form.nombre.trim() || !form.id_estatus) return;
     setSubmitting(true);
     setError(null);
@@ -1258,6 +1261,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
     try {
       await updateBacklogItem(item.id, payload);
       await onUpdated?.();
+      void refreshUser();
       setIsEditing(false);
       if (becomingTerminal && githubRecord?.branch_name) {
         setShowDeleteBranchModal(true);
@@ -1537,38 +1541,42 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
                 </div>
               ) : !githubRecord?.branch_name ? (
                 <div className={styles.githubCard}>
-                  <p className={styles.githubNoBranchText}>
-                    {readOnly ? 'Sin rama asociada.' : 'Sin rama asociada. Personaliza el nombre y crea una.'}
-                  </p>
-                  <div className={styles.branchNameBuilder}>
-                    <span className={styles.branchPrefixBadge}>
-                      {PREFIX_MAP_CLIENT[typeName] ?? 'task'}/JIX-{item.id}-
-                    </span>
-                    <input
-                      type="text"
-                      className={styles.branchSuffixInput}
-                      value={branchSuffix}
-                      onChange={e => setBranchSuffix(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50))}
-                      placeholder="nombre-rama"
-                      disabled={branchCreating || readOnly}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className={styles.createBranchBtn}
-                    onClick={() => void handleCreateBranch()}
-                    disabled={branchCreating || readOnly || !branchSuffix.trim()}
-                  >
-                    {branchCreating ? 'Creando rama…' : 'Crear rama'}
-                  </button>
-                  {branchError && <span className={styles.inlineError}>{branchError}</span>}
+                  {canEdit ? (
+                    <>
+                      <p className={styles.githubNoBranchText}>Sin rama asociada. Personaliza el nombre y crea una.</p>
+                      <div className={styles.branchNameBuilder}>
+                        <span className={styles.branchPrefixBadge}>
+                          {PREFIX_MAP_CLIENT[typeName] ?? 'task'}/JIX-{item.id}-
+                        </span>
+                        <input
+                          type="text"
+                          className={styles.branchSuffixInput}
+                          value={branchSuffix}
+                          onChange={e => setBranchSuffix(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50))}
+                          placeholder="nombre-rama"
+                          disabled={branchCreating}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.createBranchBtn}
+                        onClick={() => void handleCreateBranch()}
+                        disabled={branchCreating || !branchSuffix.trim()}
+                      >
+                        {branchCreating ? 'Creando rama…' : 'Crear rama'}
+                      </button>
+                      {branchError && <span className={styles.inlineError}>{branchError}</span>}
+                    </>
+                  ) : (
+                    <p className={styles.githubNoBranchText}>Sin rama asociada.</p>
+                )}
                 </div>
               ) : (
                 <div className={styles.githubCard}>
                   <div className={styles.githubBranchLine}>
                     <span className={styles.githubMetaLabel}>Rama</span>
                     <span className={styles.branchChip}>{githubRecord.branch_name}</span>
-                    {!readOnly && (
+                    {canEdit && (
                       <button
                         type="button"
                         className={styles.deleteBranchBtn}
@@ -1615,32 +1623,32 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
                   <div className={styles.githubPrLine}>
                     <span className={styles.githubMetaLabel}>PR</span>
                     {!githubRecord.pr_number ? (
-                      readOnly ? (
-                        <span className={styles.detailEmpty}>Sin PR</span>
-                      ) : (
-                      <div className={styles.githubPrCreate}>
-                        <textarea
-                          className={styles.prBodyInput}
-                          placeholder="Descripción del PR (opcional)…"
-                          value={prBody}
-                          onChange={e => setPrBody(e.target.value)}
-                          rows={2}
-                          disabled={prCreating}
-                        />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className={styles.createPrBtn}
-                            onClick={() => void handleCreatePR()}
+                      canEdit ? (
+                        <div className={styles.githubPrCreate}>
+                          <textarea
+                            className={styles.prBodyInput}
+                            placeholder="Descripción del PR (opcional)…"
+                            value={prBody}
+                            onChange={e => setPrBody(e.target.value)}
+                            rows={2}
                             disabled={prCreating}
-                          >
-                            {prCreating ? 'Creando PR…' : 'Crear PR'}
-                          </button>
-                          {prError && <span className={styles.inlineError}>{prError}</span>}
+                          />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className={styles.createPrBtn}
+                              onClick={() => void handleCreatePR()}
+                              disabled={prCreating}
+                            >
+                              {prCreating ? 'Creando PR…' : 'Crear PR'}
+                            </button>
+                            {prError && <span className={styles.inlineError}>{prError}</span>}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <span className={styles.detailEmpty}>Sin PR</span>
                       )
-                    ) : (
+                     ) : (
                       <>
                         <span className={`${styles.prStatusBadge} ${styles[`prStatus_${githubRecord.pr_status ?? 'open'}`]}`}>
                           {githubRecord.pr_status}
@@ -1987,7 +1995,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
         />
       )}
 
-      {showDeleteBranchModal && !readOnly && (
+      {showDeleteBranchModal && canEdit && (
         <div className={styles.timePopupOverlay} onClick={() => { if (!deletingBranch) { setShowDeleteBranchModal(false); setDeleteBranchError(null); } }}>
           <div className={styles.timePopup} onClick={e => e.stopPropagation()}>
             <div className={styles.timePopupHeader}>

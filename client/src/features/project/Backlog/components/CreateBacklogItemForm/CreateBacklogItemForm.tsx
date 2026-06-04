@@ -427,18 +427,35 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
 }) => {
   const { submit, loading: submitting, error } = useCreateBacklogItem();
   const { user } = useUser();
+  const isPM = meta.etiquetas.some(
+    e => e.id_usuario === userId && e.id_etiqueta_proyecto_predeterminada === 1,
+  );
   const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
+  const canCreateDirectly = isPM || isAdmin;
+  const [localError, setLocalError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [bloqueadores,   setBloqueadores]   = useState<number[]>([]);
   const [nombreTouched,  setNombreTouched]  = useState(false);
   const [estatusTouched, setEstatusTouched] = useState(false);
   const [tipoTouched,    setTipoTouched]    = useState(false);
 
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setBloqueadores([]);
+    setNombreTouched(false);
+    setEstatusTouched(false);
+    setTipoTouched(false);
+    setLocalError(null);
+  };
+
+  const handleClose = () => { resetForm(); onClose(); };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
     setNombreTouched(true);
     setEstatusTouched(true);
     setTipoTouched(true);
@@ -468,7 +485,8 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       tiempo_estimado:        tiempoEstimadoMin,
     };
     try {
-      const newItem = await submit(payload, { asSuggestion: !isAdmin });
+      const newItem = await submit(payload, { asSuggestion: !canCreateDirectly });
+
       if (newItem?.id) {
         if (bloqueadores.length > 0) {
           await Promise.all(
@@ -478,10 +496,12 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
           );
         }
       }
-      setBloqueadores([]);
+
       onCreated?.();
-      onClose();
-    } catch { /* shown via error state */ }
+      handleClose();
+    } catch (err) {
+      setLocalError(friendlyError(err instanceof Error ? err.message : String(err)));
+    }
   };
 
   return (
@@ -490,7 +510,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       title="Nuevo ítem de backlog"
       subtitle="Completa los campos para agregar un nuevo ítem."
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
     >
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
 
@@ -696,10 +716,12 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
             />
           </div>
 
-          {error && <p className={styles.error}>{friendlyError(error)}</p>}
+          {(error || localError) && (
+            <p className={styles.error}>{localError ?? friendlyError(error!)}</p>
+          )}
 
           <div className={styles.actions}>
-            <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
+            <button type="button" className={styles.cancelBtn} onClick={handleClose} disabled={submitting}>
               Cancelar
             </button>
             <button type="submit" className={styles.submitBtn}
