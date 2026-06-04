@@ -435,16 +435,16 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
   const [estatusTouched, setEstatusTouched] = useState(false);
   const [tipoTouched,    setTipoTouched]    = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      setForm(EMPTY_FORM);
-      setBloqueadores([]);
-      setNombreTouched(false);
-      setEstatusTouched(false);
-      setTipoTouched(false);
-      setLocalError(null);
-    }
-  }, [isOpen]);
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setBloqueadores([]);
+    setNombreTouched(false);
+    setEstatusTouched(false);
+    setTipoTouched(false);
+    setLocalError(null);
+  };
+
+  const handleClose = () => { resetForm(); onClose(); };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -494,9 +494,8 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
           );
         }
       }
-      setBloqueadores([]);
       onCreated?.();
-      onClose();
+      handleClose();
     } catch (err) {
       setLocalError(friendlyError(err instanceof Error ? err.message : String(err)));
     }
@@ -508,7 +507,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       title="Nuevo ítem de backlog"
       subtitle="Completa los campos para agregar un nuevo ítem."
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
     >
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
 
@@ -719,7 +718,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
           )}
 
           <div className={styles.actions}>
-            <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
+            <button type="button" className={styles.cancelBtn} onClick={handleClose} disabled={submitting}>
               Cancelar
             </button>
             <button type="submit" className={styles.submitBtn}

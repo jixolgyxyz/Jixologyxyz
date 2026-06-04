@@ -874,7 +874,7 @@ interface ViewItemDetailProps {
 
 // ── Component ─────────────────────────────────────────────────────────
 const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestion = false, isPM = true, onClose, onUpdated, onNavigate, onAcceptSuggestion, initialEditing = false, inline = false }) => {
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const [isEditing, setIsEditing]                 = useState(initialEditing);
   const [form, setForm]                           = useState<FormState>(() => itemToForm(item));
   const [submitting, setSubmitting]               = useState(false);
@@ -1127,6 +1127,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
         complejidad:            item.complejidad,
       });
       onUpdated?.();
+      void refreshUser();
       if (githubRecord?.branch_name) {
         setShowDeleteBranchModal(true);
       }
@@ -1159,6 +1160,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({ item, meta, isSuggestio
     try {
       await updateBacklogItem(item.id, payload);
       onUpdated?.();
+      void refreshUser();
       setIsEditing(false);
       if (becomingTerminal && githubRecord?.branch_name) {
         setShowDeleteBranchModal(true);
