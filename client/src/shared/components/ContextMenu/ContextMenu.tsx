@@ -9,12 +9,16 @@ export interface SubMenuItem {
   text: string;
   statusId?: number;
   onClick: () => void;
+  disabled?: boolean;
+  title?: string;
 }
 
 export interface MenuComponent {
   text: string;
   onClick: () => void;
   subMenu?: SubMenuItem[];
+  disabled?: boolean;
+  title?: string;
 }
 
 interface IContextMenuProps {
@@ -40,10 +44,12 @@ const ContextMenu: React.FC<IContextMenuProps> = ({ elements }) => {
       {elements!.map((element, index) => (
         <React.Fragment key={element.text}>
           <div
-            className={`${styles.element} ${element.subMenu ? styles.hasSubMenu : ''}`}
-            onClick={element.subMenu ? undefined : element.onClick}
-            onMouseEnter={() => element.subMenu ? setOpenSubMenu(element.text) : setOpenSubMenu(null)}
+            className={`${styles.element} ${element.subMenu ? styles.hasSubMenu : ''} ${element.disabled ? styles.disabled : ''}`}
+            onClick={element.subMenu || element.disabled ? undefined : element.onClick}
+            onMouseEnter={() => element.subMenu && !element.disabled ? setOpenSubMenu(element.text) : setOpenSubMenu(null)}
             onMouseLeave={() => element.subMenu ? undefined : setOpenSubMenu(null)}
+            aria-disabled={element.disabled || undefined}
+            title={element.title}
           >
             {element.text}
             {element.subMenu && <span className={styles.arrow}>›</span>}
@@ -58,8 +64,10 @@ const ContextMenu: React.FC<IContextMenuProps> = ({ elements }) => {
                 {element.subMenu.map((sub) => (
                   <div
                     key={sub.text}
-                    className={styles.subMenuItem}
-                    onClick={sub.onClick}
+                    className={`${styles.subMenuItem} ${sub.disabled ? styles.disabled : ''}`}
+                    onClick={sub.disabled ? undefined : sub.onClick}
+                    aria-disabled={sub.disabled || undefined}
+                    title={sub.title}
                   >
                     {sub.statusId !== undefined
                       ? <span className={`${styles.statusPill} status-${getStatusClass(sub.statusId)}`}>{sub.text}</span>

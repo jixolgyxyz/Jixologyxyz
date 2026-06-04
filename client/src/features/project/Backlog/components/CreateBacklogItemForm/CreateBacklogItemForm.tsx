@@ -16,7 +16,8 @@ import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
 import { Select } from '@/shared/components/Select/Select';
 import styles from './CreateBacklogItemForm.module.css';
 import { useCreateBacklogItem } from '../../hooks/useCreateBacklogItem';
-import { createSugerencia, addBacklogItemBlock } from '../../services/backlog.service';
+import { addBacklogItemBlock } from '../../services/backlog.service';
+import { useUser } from '@/core/auth/userContext';
 import type { BacklogStatusRecord, BacklogPriorityRecord, CreateBacklogItemPayload, BacklogMeta, BacklogItemRecord, BacklogTypeRecord } from '../../types/backlog.types';
 
 // ── Type prefix map ───────────────────────────────────────────────
@@ -425,9 +426,12 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
   projectId, userId, meta, isOpen, onClose, onCreated,
 }) => {
   const { submit, loading: submitting, error } = useCreateBacklogItem();
+  const { user } = useUser();
   const isPM = meta.etiquetas.some(
     e => e.id_usuario === userId && e.id_etiqueta_proyecto_predeterminada === 1,
   );
+  const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
+  const canCreateDirectly = isPM || isAdmin;
   const [localError, setLocalError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [bloqueadores,   setBloqueadores]   = useState<number[]>([]);
@@ -481,11 +485,9 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
       tiempo_estimado:        tiempoEstimadoMin,
     };
     try {
-      const newItem = await submit(payload);
+      const newItem = await submit(payload, { asSuggestion: !canCreateDirectly });
+
       if (newItem?.id) {
-        if (!isPM) {
-          await createSugerencia(newItem.id);
-        }
         if (bloqueadores.length > 0) {
           await Promise.all(
             bloqueadores.map(blockerItemId =>
@@ -494,6 +496,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
           );
         }
       }
+
       onCreated?.();
       handleClose();
     } catch (err) {

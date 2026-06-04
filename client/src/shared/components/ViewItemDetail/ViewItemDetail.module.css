@@ -908,6 +908,60 @@
   color: #fff;
 }
 
+.navigateProjectBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--color-clarity-gray-2);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-blueprint-navy);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.navigateProjectBtn:hover {
+  background: var(--color-clarity-gray-1);
+  border-color: rgba(10, 8, 56, 0.18);
+}
+
+.suggestionActionsRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  order: -1;
+  padding: 0.85rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid rgba(10, 8, 56, 0.08);
+  border-radius: 12px;
+  background: var(--color-white);
+  box-shadow:
+    0 6px 16px rgba(10, 8, 56, 0.05),
+    0 2px 6px rgba(10, 8, 56, 0.03);
+}
+
+.suggestionActionsRow :global(.button-component) {
+  justify-content: center;
+  min-height: 2.25rem;
+  width: 100%;
+  border-radius: 999px;
+}
+
+.suggestionActionsRow :global(.button-component--primary) {
+  border: 1px solid rgba(31, 136, 61, 0.32);
+  background: #1f883d;
+  color: #fff;
+}
+
 /* ── GitHub section (sidebar, kept for any remaining usages) ──────── */
 .githubSection {
   display: flex;
@@ -1736,4 +1790,40 @@
 }
 
 .deleteCancelBtn:hover { background: var(--color-clarity-gray-1); }
+
+.rejectSuggestionAction {
+  width: 100%;
+}
+
+.rejectSuggestionAction :global(.button-component--secondary) {
+  border: 1px solid rgba(180, 35, 24, 0.28);
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.rejectSuggestionAction :global(.button-component--secondary:hover:not(:disabled)) {
+  background: #fee4e2;
+  opacity: 1;
+}
+
+.suggestionActionError {
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--color-mahindra-red);
+  line-height: 1.35;
+  text-align: center;
+  font-family: 'Poppins', sans-serif;
+}
+
+.suggestionResponseBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.suggestionResponseCaption {
+  font-size: 0.72rem;
+  color: var(--color-anchor-gray-1);
+  font-family: 'Poppins', sans-serif;
+}
 
