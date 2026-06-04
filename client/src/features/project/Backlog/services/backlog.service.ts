@@ -173,6 +173,15 @@ export async function updateSprint(id: number, payload: UpdateSprintPayload): Pr
   if (error) throw new Error(error.message);
 }
 
+export async function updateSprintStatus(id: number, statusId: number): Promise<void> {
+  const { error } = await supabase
+    .from('sprint')
+    .update({ id_estatus: statusId })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
 export async function updateBacklogItem(id: number, payload: UpdateBacklogItemPayload): Promise<BacklogItemRecord> {
   const { data, error } = await supabase
     .from('backlog_item')

@@ -15,11 +15,15 @@ import {
   CheckIcon,
   ClipboardDocumentIcon,
   ArrowUturnLeftIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
 import { Select } from '@/shared/components/Select/Select';
 import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
 import { updateBacklogItem, fetchItemBlockers, fetchItemBlocking, addBacklogItemBlock, removeBacklogItemBlock, fetchComentarios, createComentario, deleteComentario } from '@/features/project/Backlog/services/backlog.service';
+import { fetchImpedimentosByItem, createImpedimento, updateImpedimentoResuelto } from '@/features/project/Bitacora/services/bitacora.service';
+import FormPopUp from '@/shared/components/FormPopUp/FormPopUp';
+import type { ImpedimentoSimpleRecord } from '@/features/project/Bitacora/types/bitacora.types';
 import { fetchBacklogItemGithub, fetchGithubConfig, createGithubBranch, createGithubPR, deleteGithubBranch, type BacklogItemGithubRecord, type GithubConfigRecord } from '@/features/project/projectConfig/services/projectConfig.service';
 import ButtonComponent from '@/shared/components/ButtonComponent/ButtonComponent';
 import { useUser } from '@/core/auth/userContext';
@@ -840,6 +844,171 @@ function CommentsSection({ backlogItemId, currentUserId, readOnly = false }: Com
   );
 }
 
+// ── Impedimentos section ──────────────────────────────────────────────
+function ImpedimentosSection({ itemId, currentUserId, isLocked }: { itemId: number; currentUserId: number; isLocked?: boolean }) {
+  const [impedimentos, setImpedimentos] = useState<ImpedimentoSimpleRecord[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [showPopup,    setShowPopup]    = useState(false);
+  const [nombre,       setNombre]       = useState('');
+  const [desc,         setDesc]         = useState('');
+  const [costo,        setCosto]        = useState('');
+  const [saving,       setSaving]       = useState(false);
+  const [togglingId,   setTogglingId]   = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setImpedimentos(await fetchImpedimentosByItem(itemId)); }
+    catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [itemId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const handleCreate = async () => {
+    if (!nombre.trim()) return;
+    setSaving(true);
+    try {
+      await createImpedimento(nombre.trim(), desc.trim() || null, itemId, currentUserId, costo.trim() ? Number(costo) : null);
+      setNombre('');
+      setDesc('');
+      setCosto('');
+      setShowPopup(false);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleResuelto = async (imp: ImpedimentoSimpleRecord) => {
+    setTogglingId(imp.id);
+    try {
+      await updateImpedimentoResuelto(imp.id, !imp.resuelto);
+      await load();
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const closePopup = () => { setShowPopup(false); setNombre(''); setDesc(''); setCosto(''); };
+
+  return (
+    <div className={styles.impedimentosBlock}>
+      {loading ? (
+        <p className={styles.impedimentosEmpty}>Cargando…</p>
+      ) : impedimentos.length === 0 ? (
+        <p className={styles.impedimentosEmpty}>Sin impedimentos registrados.</p>
+      ) : (
+        <div className={styles.impedimentosList}>
+          {impedimentos.map(imp => (
+            <div key={imp.id} className={`${styles.impedimentoItem}${imp.resuelto ? ` ${styles.impedimentoItemResuelto}` : ''}`}>
+              <button
+                type="button"
+                className={`${styles.impedimentoCheckBtn}${imp.resuelto ? ` ${styles.impedimentoCheckBtnDone}` : ''}`}
+                title={imp.resuelto ? 'Marcar como pendiente' : 'Marcar como resuelto'}
+                onClick={() => void handleToggleResuelto(imp)}
+                disabled={togglingId === imp.id}
+              >
+                <CheckCircleIcon width={16} height={16} />
+              </button>
+              <div className={styles.impedimentoItemBody}>
+                <div className={styles.impedimentoItemTitleRow}>
+                  <span className={styles.impedimentoItemNombre}>{imp.nombre}</span>
+                  {imp.costo != null && (
+                    <span className={styles.impedimentoItemCosto}>{imp.costo.toLocaleString()}</span>
+                  )}
+                </div>
+                {imp.descripcion && <p className={styles.impedimentoItemDesc}>{imp.descripcion}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLocked && (
+        <button type="button" className={styles.impedimentosAddBtn} onClick={() => setShowPopup(true)}>
+          + Nuevo impedimento
+        </button>
+      )}
+
+      <FormPopUp
+        title="Nuevo impedimento"
+        isOpen={showPopup}
+        onClose={closePopup}
+      >
+        <div className={styles.impedimentosPopupForm}>
+          <div className={styles.impedimentosPopupField}>
+            <label className={styles.impedimentosPopupLabel}>
+              Nombre <span className={styles.impedimentosPopupRequired}>*</span>
+            </label>
+            <input
+              className={styles.impedimentosPopupInput}
+              type="text"
+              maxLength={100}
+              placeholder="Describe el impedimento…"
+              value={nombre}
+              onChange={e => setNombre(e.target.value)}
+              disabled={saving}
+              autoFocus
+            />
+            <span className={styles.impedimentosPopupCount}>{nombre.length} / 100</span>
+          </div>
+
+          <div className={styles.impedimentosPopupField}>
+            <label className={styles.impedimentosPopupLabel}>
+              Descripción <span className={styles.impedimentosPopupOptional}>(opcional)</span>
+            </label>
+            <textarea
+              className={styles.impedimentosPopupTextarea}
+              maxLength={250}
+              rows={3}
+              placeholder="Detalla el impacto o contexto…"
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              disabled={saving}
+            />
+            <span className={styles.impedimentosPopupCount}>{desc.length} / 250</span>
+          </div>
+
+          <div className={styles.impedimentosPopupField}>
+            <label className={styles.impedimentosPopupLabel}>
+              Costo estimado <span className={styles.impedimentosPopupOptional}>(opcional)</span>
+            </label>
+            <input
+              className={styles.impedimentosPopupInput}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={costo}
+              onChange={e => setCosto(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+
+          <div className={styles.impedimentosPopupActions}>
+            <button
+              type="button"
+              className={styles.impedimentosPopupPrimaryBtn}
+              onClick={() => void handleCreate()}
+              disabled={saving || !nombre.trim()}
+            >
+              {saving ? 'Guardando…' : 'Guardar impedimento'}
+            </button>
+            <button
+              type="button"
+              className={styles.impedimentosPopupSecondaryBtn}
+              onClick={closePopup}
+              disabled={saving}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </FormPopUp>
+    </div>
+  );
+}
+
 // ── Form state ────────────────────────────────────────────────────────
 interface FormState {
   nombre: string;
@@ -885,6 +1054,8 @@ interface ViewItemDetailProps {
   initialEditing?: boolean;
   /** When true the panel renders inline (no fixed overlay) — parent controls sizing */
   inline?: boolean;
+  /** When true the sprint is completed — editing is disabled, only comments are allowed */
+  isLocked?: boolean;
   readOnly?: boolean;
   onNavigateToProject?: () => void;
   navigateToProjectLabel?: string;
@@ -903,6 +1074,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   onRejectSuggestion,
   initialEditing = false,
   inline = false,
+  isLocked = false,
   readOnly = false,
   onNavigateToProject,
   navigateToProjectLabel = 'Ir al proyecto',
@@ -910,7 +1082,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   const { user, refreshUser } = useUser();
   const canEdit = !readOnly && isPM;
   const canEditTime = !readOnly;
-  const [isEditing, setIsEditing]                 = useState(initialEditing && !readOnly && isPM);
+  const [isEditing, setIsEditing]                 = useState(initialEditing && !readOnly && isPM && !isLocked);
   const [form, setForm]                           = useState<FormState>(() => itemToForm(item));
   const [submitting, setSubmitting]               = useState(false);
   const [accepting, setAccepting]                 = useState(false);
@@ -921,6 +1093,8 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   const [showEstimatedPopup, setShowEstimatedPopup] = useState(false);
   const isEditable = isEditing && canEdit;
   const canShowSuggestionActions = isSuggestion && !isEditing;
+
+  const [relatedExpanded, setRelatedExpanded] = useState(false);
 
   // ── Block relationships ──
   const [blockerIds,  setBlockerIds]  = useState<Set<number>>(new Set());
@@ -1372,7 +1546,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
                     {navigateToProjectLabel}
                   </button>
                 )}
-                {canEdit && (
+                {!isLocked && canEdit && (
                   <button type="button" className={styles.editBtn} onClick={() => setIsEditing(true)} aria-label="Editar">
                     <PencilIcon width={15} height={15} />
                     Editar
@@ -1440,95 +1614,104 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
               }
             </div>
 
-            {/* Subtasks */}
+            {/* ── Relaciones (collapsible) ── */}
             <div className={styles.section}>
-              <span className={styles.sectionTitle}>Subtareas</span>
-              <div ref={subtaskPickerRef}>
-                {subtasks.length === 0 && (
-                  <span className={styles.noSubtasks}>Sin subtareas.</span>
-                )}
-                {subtasks.length > 0 && (
-                  <div className={styles.subtaskList}>
-                    {subtasks.map(sub => (
-                      <SubtaskNode key={sub.id} item={sub} allItems={meta.items} meta={meta} depth={0} onSelect={i => onNavigate?.(i)} onRemove={isEditable ? id => void handleRemoveSubtask(id) : undefined} />
-                    ))}
-                  </div>
-                )}
+              <button
+                type="button"
+                className={styles.relatedGroupHeader}
+                onClick={() => setRelatedExpanded(e => !e)}
+              >
+                <span className={styles.sectionTitle}>Relaciones</span>
+                <ChevronDownIcon
+                  width={12} height={12}
+                  className={`${styles.relatedChevron}${relatedExpanded ? ` ${styles.relatedChevronOpen}` : ''}`}
+                />
+              </button>
 
-                {isEditable && (
-                  <div className={styles.blockAddWrapper}>
-                    <button type="button" className={styles.blockAddBtn} onClick={() => setSubtaskPickerOpen(o => !o)}>
-                      + Añadir
-                    </button>
+              {relatedExpanded && (
+                <div className={styles.relatedGroupContent}>
+                  <span className={styles.sectionTitle}>Subtareas</span>
+                  <div ref={subtaskPickerRef}>
+                    {subtasks.length === 0 && (
+                      <span className={styles.noSubtasks}>Sin subtareas.</span>
+                    )}
+                    {subtasks.length > 0 && (
+                      <div className={styles.subtaskList}>
+                        {subtasks.map(sub => (
+                          <SubtaskNode key={sub.id} item={sub} allItems={meta.items} meta={meta} depth={0} onSelect={i => onNavigate?.(i)} onRemove={isEditable ? id => void handleRemoveSubtask(id) : undefined} />
+                        ))}
+                      </div>
+                    )}
 
-                    {subtaskPickerOpen && (
-                      <div className={styles.blockPickerDropdown}>
-                        <input
-                          autoFocus
-                          type="text"
-                          className={styles.blockPickerSearch}
-                          placeholder="Buscar ítem..."
-                          value={subtaskSearch}
-                          onChange={e => setSubtaskSearch(e.target.value)}
-                        />
-                        <div className={styles.blockPickerList}>
-                          {subtaskPickerFiltered.length === 0
-                            ? <span className={styles.blockPickerEmpty}>Sin resultados.</span>
-                            : subtaskPickerFiltered.slice(0, 20).map(i => {
-                                const type   = meta.types.find(t => t.id === i.id_tipo);
-                                const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
-                                const code   = `${prefix}-${String(i.id).padStart(2, '0')}`;
-                                return (
-                                  <button
-                                    key={i.id}
-                                    type="button"
-                                    className={styles.blockPickerOption}
-                                    onClick={() => { void handleAddSubtask(i.id); setSubtaskPickerOpen(false); setSubtaskSearch(''); }}
-                                  >
-                                    {type && <span className={styles.blockTypeIcon}>{TYPE_ICONS[type.nombre]}</span>}
-                                    <span className={styles.blockPickerCode}>{code}</span>
-                                    <span className={styles.blockPickerName}>{i.nombre}</span>
-                                  </button>
-                                );
-                              })
-                          }
-                        </div>
+                    {isEditable && (
+                      <div className={styles.blockAddWrapper}>
+                        <button type="button" className={styles.blockAddBtn} onClick={() => setSubtaskPickerOpen(o => !o)}>
+                          + Añadir
+                        </button>
+                        {subtaskPickerOpen && (
+                          <div className={styles.blockPickerDropdown}>
+                            <input
+                              autoFocus
+                              type="text"
+                              className={styles.blockPickerSearch}
+                              placeholder="Buscar ítem..."
+                              value={subtaskSearch}
+                              onChange={e => setSubtaskSearch(e.target.value)}
+                            />
+                            <div className={styles.blockPickerList}>
+                              {subtaskPickerFiltered.length === 0
+                                ? <span className={styles.blockPickerEmpty}>Sin resultados.</span>
+                                : subtaskPickerFiltered.slice(0, 20).map(i => {
+                                    const type   = meta.types.find(t => t.id === i.id_tipo);
+                                    const prefix = TYPE_PREFIX[type?.nombre ?? ''] ?? 'IT';
+                                    const code   = `${prefix}-${String(i.id).padStart(2, '0')}`;
+                                    return (
+                                      <button
+                                        key={i.id}
+                                        type="button"
+                                        className={styles.blockPickerOption}
+                                        onClick={() => { void handleAddSubtask(i.id); setSubtaskPickerOpen(false); setSubtaskSearch(''); }}
+                                      >
+                                        {type && <span className={styles.blockTypeIcon}>{TYPE_ICONS[type.nombre]}</span>}
+                                        <span className={styles.blockPickerCode}>{code}</span>
+                                        <span className={styles.blockPickerName}>{i.nombre}</span>
+                                      </button>
+                                    );
+                                  })
+                              }
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            </div>
 
-            {/* Bloqueado por — items that block THIS item */}
-            <div className={styles.section}>
-              <span className={styles.sectionTitle}>Bloqueado por</span>
-              <BlocksSection
-                linkedItems={blockerItems}
-                meta={meta}
-                emptyText="Sin bloqueadores."
-                excludeIds={new Set([item.id, ...blockerIds])}
-                isEditing={isEditable}
-                onSelect={i => onNavigate?.(i)}
-                onRemove={id => void handleRemoveBlocker(id)}
-                onAdd={id => void handleAddBlocker(id)}
-              />
-            </div>
+                  <span className={styles.sectionTitle}>Bloqueado por</span>
+                  <BlocksSection
+                    linkedItems={blockerItems}
+                    meta={meta}
+                    emptyText="Sin bloqueadores."
+                    excludeIds={new Set([item.id, ...blockerIds])}
+                    isEditing={isEditable}
+                    onSelect={i => onNavigate?.(i)}
+                    onRemove={id => void handleRemoveBlocker(id)}
+                    onAdd={id => void handleAddBlocker(id)}
+                  />
 
-            {/* Bloqueando a — items THIS item is blocking */}
-            <div className={styles.section}>
-              <span className={styles.sectionTitle}>Bloqueando a</span>
-              <BlocksSection
-                linkedItems={blockingItems}
-                meta={meta}
-                emptyText="No bloquea ningún ítem."
-                excludeIds={new Set([item.id, ...blockingIds])}
-                isEditing={isEditable}
-                onSelect={i => onNavigate?.(i)}
-                onRemove={id => void handleRemoveBlocking(id)}
-                onAdd={id => void handleAddBlocking(id)}
-              />
-            </div>
+                  <span className={styles.sectionTitle}>Bloqueando a</span>
+                  <BlocksSection
+                    linkedItems={blockingItems}
+                    meta={meta}
+                    emptyText="No bloquea ningún ítem."
+                    excludeIds={new Set([item.id, ...blockingIds])}
+                    isEditing={isEditable}
+                    onSelect={i => onNavigate?.(i)}
+                    onRemove={id => void handleRemoveBlocking(id)}
+                    onAdd={id => void handleAddBlocking(id)}
+                  />
+                </div>
+              )}
+            </div>{/* end Relaciones section */}
 
             {/* GitHub */}
             <div className={styles.section}>
@@ -1665,6 +1848,14 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
               )}
             </div>
 
+            {/* Impedimentos */}
+            <div className={styles.section}>
+              <span className={styles.sectionTitle}>Impedimentos</span>
+              {user && (
+                <ImpedimentosSection itemId={item.id} currentUserId={user.id} isLocked={isLocked} />
+              )}
+            </div>
+
             {/* Comentarios */}
             <div className={styles.section}>
               <span className={styles.sectionTitle}>Comentarios</span>
@@ -1762,7 +1953,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
             <div className={styles.detailRow}>
               <div className={styles.detailLabelRow}>
                 <span className={styles.detailLabel}>Tiempo real</span>
-                {canEditTime && (
+                {!isLocked && canEditTime && (
                   <button type="button" className={styles.timEditBtn} onClick={() => setShowTimePopup(true)} aria-label="Editar tiempo real">
                     <PencilIcon width={11} height={11} />
                   </button>
