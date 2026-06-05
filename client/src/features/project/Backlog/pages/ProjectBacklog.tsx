@@ -50,7 +50,7 @@ const PRIORITY_MAP: Record<string, Priority> = {
 
 function toBacklogStatus(record: BacklogStatusRecord): BacklogStatus {
   const colors = STATUS_COLORS[record.orden] ?? { color: '#F3F4F6', textColor: '#6B7280' };
-  return { label: record.nombre, ...colors };
+  return { label: record.nombre, ...colors, isTerminal: record.es_terminal };
 }
 
 function toPriority(record: BacklogPriorityRecord | undefined): Priority {
@@ -416,9 +416,11 @@ const ProjectBacklog: React.FC = () => {
             hasChildren={filterType !== null && children.length > 0}
             isExpanded={isExpanded}
             onToggle={() => toggleExpanded(item.id)}
+            canSetTerminalStatus={isPM || isAdmin}
             onStatusChange={async (newStatus) => {
               const statusRecord = meta.statuses.find(s => s.nombre === newStatus.label);
               if (!statusRecord) return;
+              if (statusRecord.es_terminal && !(isPM || isAdmin)) return;
               try {
                 await updateBacklogItem(item.id, {
                   nombre:                 item.nombre,

@@ -57,6 +57,7 @@ export interface BacklogStatus {
   label: string;
   color: string;
   textColor: string;
+  isTerminal?: boolean;
 }
 
 export type Priority = 'critical' | 'high' | 'medium' | 'low' | 'minimal';
@@ -130,6 +131,7 @@ interface BacklogListItemProps {
   onDelete?: () => void;
   onAcceptSuggestion?: () => void;
   isLocked?: boolean;
+  canSetTerminalStatus?: boolean;
 }
 
 const BacklogListItem: React.FC<BacklogListItemProps> = ({
@@ -154,6 +156,7 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
   onDelete,
   onAcceptSuggestion,
   isLocked = false,
+  canSetTerminalStatus = false,
 }) => {
   const [open, setOpen]                       = useState<OpenDropdown>(null);
   const [currentStatus, setCurrentStatus]     = useState<BacklogStatus>(status);
@@ -256,18 +259,20 @@ const BacklogListItem: React.FC<BacklogListItemProps> = ({
 
         {!isLocked && open === 'status' && statuses.length > 0 && (
           <div className={styles.statusDropdown} role="menu">
-            {statuses.map(s => (
-              <button
-                key={s.label}
-                className={`${styles.statusOption} ${s.label === currentStatus.label ? styles.statusOptionActive : ''}`}
-                type="button"
-                role="menuitem"
-                onClick={() => { setCurrentStatus(s); onStatusChange?.(s); setOpen(null); }}
-                style={{ backgroundColor: s.color, color: s.textColor }}
-              >
-                {s.label}
-              </button>
-            ))}
+            {statuses
+              .filter(s => canSetTerminalStatus || !s.isTerminal)
+              .map(s => (
+                <button
+                  key={s.label}
+                  className={`${styles.statusOption} ${s.label === currentStatus.label ? styles.statusOptionActive : ''}`}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { setCurrentStatus(s); onStatusChange?.(s); setOpen(null); }}
+                  style={{ backgroundColor: s.color, color: s.textColor }}
+                >
+                  {s.label}
+                </button>
+              ))}
           </div>
         )}
       </div>
