@@ -14,6 +14,8 @@ export type RegisterUserPayload = {
 export type RegisterUserResponse = {
   message: string;
   auth_id?: string;
+  emailVerificationRequired: boolean;
+  verificationEmailSent: boolean;
 };
 
 export type RegisterUserFormValues = {

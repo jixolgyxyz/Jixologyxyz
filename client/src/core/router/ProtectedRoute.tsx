@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom';
+import { env } from '@/core/config/env';
 import { useUser } from '@/core/auth/userContext';
 
 type Props = {
@@ -6,9 +7,13 @@ type Props = {
 };
 
 export function ProtectedRoute({ allowedRoles }: Props) {
-  const { user, loading } = useUser();
+  const { user, loading, requiresEmailVerification } = useUser();
 
   if (loading) return null;
+  if (env.emailVerificationEnabled && requiresEmailVerification) {
+    return <Navigate to="/correo-verificacion" replace />;
+  }
+
   if (!user) return <Navigate to="/inicio-sesion" replace />;
 
   if (user.activo === false) {

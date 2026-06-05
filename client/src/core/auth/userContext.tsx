@@ -1,10 +1,14 @@
 import { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { env } from '@/core/config/env';
 import { fetchCurrentUser, type UserProfile } from './user.service';
 import { supabase } from '../supabase/supabase.client';
+import { clearPendingVerificationEmail, storePendingVerificationEmail } from '@/features/verification/services/verification.service';
 
 interface UserContextValue {
   user: UserProfile | null;
   loading: boolean;
+  authEmail: string | null;
+  requiresEmailVerification: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -14,6 +18,9 @@ const UserContext = createContext<UserContextValue | null>(null);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [requiresEmailVerification, setRequiresEmailVerification] =
+    useState(false);
 
   const syncUser = useCallback(async (
     session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']
@@ -22,14 +29,47 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       if (!session) {
         setUser(null);
+        setAuthEmail(null);
+        setRequiresEmailVerification(false);
         return;
       }
 
-      const profile = await fetchCurrentUser(session.user.id);
+      const {
+        data: { user: authUser },
+        error: authUserError,
+      } = await supabase.auth.getUser();
+
+      if (authUserError || !authUser) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setAuthEmail(null);
+        setRequiresEmailVerification(false);
+        return;
+      }
+
+      const sessionEmail = authUser.email ?? null;
+      setAuthEmail(sessionEmail);
+
+      if (env.emailVerificationEnabled && !authUser.email_confirmed_at) {
+        if (sessionEmail) {
+          storePendingVerificationEmail(sessionEmail);
+        }
+
+        setRequiresEmailVerification(true);
+        setUser(null);
+        return;
+      }
+
+      clearPendingVerificationEmail();
+      setRequiresEmailVerification(false);
+
+      const profile = await fetchCurrentUser(authUser.id);
 
       if (!profile || profile.activo === false) {
         await supabase.auth.signOut();
         setUser(null);
+        setAuthEmail(null);
+        setRequiresEmailVerification(false);
         return;
       }
 
@@ -37,6 +77,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error loading current user:', error);
       setUser(null);
+      setRequiresEmailVerification(false);
     } finally {
       setLoading(false);
     }
@@ -69,15 +110,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     setLoading(true);
     try {
+      clearPendingVerificationEmail();
       await supabase.auth.signOut();
       setUser(null);
+      setAuthEmail(null);
+      setRequiresEmailVerification(false);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, logout, refreshUser }}>
+    <UserContext.Provider
+      value={{
+        user,
+        loading,
+        authEmail,
+        requiresEmailVerification,
+        logout,
+        refreshUser,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

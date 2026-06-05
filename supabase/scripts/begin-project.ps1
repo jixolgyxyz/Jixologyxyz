@@ -134,7 +134,11 @@ $repoRoot = Find-RepoRoot -StartDir $scriptDir
 $bootstrapPath = Join-Path $repoRoot 'scripts\bootstrap-users.ps1'
 $postBootstrapSeedPath = Join-Path $repoRoot 'client\scripts\post-bootstrap-seed.mjs'
 $SupabaseCmd = Join-Path $scriptDir '..\node_modules\.bin\supabase.cmd'
+$envFilePath = Join-Path $repoRoot 'supabase\.env'
 
+if (-not (Test-Path $envFilePath)) {
+  throw "No se encontró el archivo .env en: $envFilePath"
+}
 
 if (-not (Test-Path $bootstrapPath)) {
   throw "No existe bootstrap-users.ps1 en: $bootstrapPath"
@@ -188,9 +192,15 @@ try {
   }
 
   Write-Host "== Levantando Edge Functions locales =="
+  Write-Host "Cargando variables desde: $envFilePath"
   $functionProcess = Start-Process `
     -FilePath $SupabaseCmd `
-    -ArgumentList @("functions", "serve") `
+    -ArgumentList @(
+      "functions",
+      "serve",
+      "--env-file",
+      $envFilePath
+    ) `
     -WorkingDirectory $repoRoot `
     -PassThru `
     -RedirectStandardOutput $stdoutLog `

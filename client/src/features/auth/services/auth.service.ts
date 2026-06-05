@@ -1,20 +1,49 @@
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import { env } from '@/core/config/env';
 import { supabase } from '@/core/supabase/supabase.client';
 import type { SignInPayload, SignInResult } from '@/features/auth/types/auth.types';
 import { normalizeEmail } from '@/features/auth/utils/auth.utils';
+import { isEmailNotConfirmedMessage } from '@/features/verification/services/verification.service';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Credenciales inválidas.';
+const EMAIL_VERIFICATION_CONFIG_MISMATCH_MESSAGE = 'Supabase exige verificar el correo, pero esta aplicación tiene la verificación deshabilitada. Revisa que EMAIL_VERIFICATION_ENABLED y VITE_EMAIL_VERIFICATION_ENABLED tengan valores consistentes.';
 
 export async function signInWithPasswordService(
   payload: SignInPayload
 ): Promise<SignInResult> {
+  const normalizedEmail = normalizeEmail(payload.email);
+
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: normalizeEmail(payload.email),
+    email: normalizedEmail,
     password: payload.password,
   });
 
-  if (error || !data.session || !data.user) {
+  if (error) {
+    if (isEmailNotConfirmedMessage(error.message)) {
+      if (!env.emailVerificationEnabled) {
+        throw new Error(EMAIL_VERIFICATION_CONFIG_MISMATCH_MESSAGE);
+      }
+
+      return {
+        status: 'email_verification_required',
+        email: normalizedEmail,
+      };
+    }
+
     throw new Error(INVALID_CREDENTIALS_MESSAGE);
+  }
+
+  if (!data.session || !data.user) {
+    throw new Error(INVALID_CREDENTIALS_MESSAGE);
+  }
+
+  if (env.emailVerificationEnabled && !data.user.email_confirmed_at) {
+    await supabase.auth.signOut();
+
+    return {
+      status: 'email_verification_required',
+      email: data.user.email ?? normalizedEmail,
+    };
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -29,6 +58,7 @@ export async function signInWithPasswordService(
   }
 
   return {
+    status: 'authenticated',
     session: data.session,
     user: data.user,
   };

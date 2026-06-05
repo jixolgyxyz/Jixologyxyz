@@ -1,4 +1,5 @@
 export type EmailVerificationFeedbackStatus = 'idle' | 'success' | 'error' | 'cooldown';
+export type EmailVerificationCallbackStatus = 'loading' | 'success' | 'error';
 
 export interface VerificationSessionInfo {
   email: string | null;
@@ -26,4 +27,16 @@ export interface EmailVerificationCardProps {
   canResend: boolean;
   onResend: () => Promise<void>;
   onExit: () => Promise<void>;
+}
+
+export interface EmailVerificationCallbackState {
+  status: EmailVerificationCallbackStatus;
+  title: string;
+  description: string;
+  email: string | null;
+}
+
+export interface EmailVerificationCallbackCardProps extends EmailVerificationCallbackState {
+  isRedirecting: boolean;
+  onGoToLogin: () => void;
 }
