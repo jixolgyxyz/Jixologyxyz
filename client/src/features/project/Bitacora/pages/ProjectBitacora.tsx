@@ -40,12 +40,24 @@ const ProjectBitacora: React.FC = () => {
   }, [selectedSprintId, loadList]);
 
   useEffect(() => {
-    if (selectedSprintId == null) { setImpedimentos([]); return; }
-    setImpedimentosLoading(true);
-    fetchImpedimentosBySprint(selectedSprintId)
-      .then(data => setImpedimentos(data))
-      .catch(() => setImpedimentos([]))
-      .finally(() => setImpedimentosLoading(false));
+    let cancelled = false;
+    async function load() {
+      if (selectedSprintId == null) {
+        if (!cancelled) setImpedimentos([]);
+        return;
+      }
+      if (!cancelled) setImpedimentosLoading(true);
+      try {
+        const data = await fetchImpedimentosBySprint(selectedSprintId);
+        if (!cancelled) setImpedimentos(data);
+      } catch {
+        if (!cancelled) setImpedimentos([]);
+      } finally {
+        if (!cancelled) setImpedimentosLoading(false);
+      }
+    }
+    void load();
+    return () => { cancelled = true; };
   }, [selectedSprintId]);
 
   useEffect(() => {
