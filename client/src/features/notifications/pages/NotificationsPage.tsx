@@ -36,7 +36,7 @@ export default function NotificationsPage() {
   } = useNotifications();
 
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<NotificationTabFilter>('all');
+  const [activeTab, setActiveTab] = useState<NotificationTabFilter>('unread');
   const [typeFilter, setTypeFilter] =
     useState<NotificationTypeFilterValue>('all');
 

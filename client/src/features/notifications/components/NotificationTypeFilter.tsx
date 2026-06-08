@@ -30,6 +30,7 @@ const OPTIONS = [
   { value: 'backlog_item_proximo_vencer' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.backlog_item_proximo_vencer, ...typeIcon('backlog_item_proximo_vencer') },
   { value: 'cambio_backlog_item' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.cambio_backlog_item, ...typeIcon('cambio_backlog_item') },
   { value: 'creacion_backlog_item' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.creacion_backlog_item, ...typeIcon('creacion_backlog_item') },
+  { value: 'backlog_item_comment_created' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.backlog_item_comment_created, ...typeIcon('backlog_item_comment_created') },
   { value: 'sprint_proximo_vencer' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.sprint_proximo_vencer, ...typeIcon('sprint_proximo_vencer') },
 ];
 

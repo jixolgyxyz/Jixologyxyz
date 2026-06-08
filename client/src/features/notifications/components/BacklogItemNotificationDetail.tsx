@@ -184,6 +184,7 @@ export default function BacklogItemNotificationDetail({
       onAcceptSuggestion={canRespondSuggestion ? handleAcceptSuggestion : undefined}
       onRejectSuggestion={canRespondSuggestion ? handleRejectSuggestion : undefined}
       initialEditing={false}
+      focusCommentId={notification.id_comentario}
     />
   );
 }

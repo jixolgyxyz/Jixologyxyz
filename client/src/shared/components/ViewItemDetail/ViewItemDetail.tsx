@@ -563,10 +563,20 @@ interface CommentBubbleProps {
   currentUserId: number;
   onReply:       (parentId: number, text: string) => Promise<void>;
   onDelete:      (commentId: number) => Promise<void>;
+  highlightedCommentId?: number | null;
   readOnly?:     boolean;
 }
 
-function CommentBubble({ comment, replies, allComments, currentUserId, onReply, onDelete, readOnly = false }: CommentBubbleProps) {
+function CommentBubble({
+  comment,
+  replies,
+  allComments,
+  currentUserId,
+  onReply,
+  onDelete,
+  highlightedCommentId = null,
+  readOnly = false,
+}: CommentBubbleProps) {
   const [replyingToId,  setReplyingToId]  = useState<number | null>(null);
   const [collapsed,     setCollapsed]     = useState(false);
   const [replyText,     setReplyText]     = useState('');
@@ -661,7 +671,10 @@ function CommentBubble({ comment, replies, allComments, currentUserId, onReply, 
   return (
     <div className={styles.commentThread}>
       {/* Top-level comment */}
-      <div className={styles.comment}>
+      <div
+        className={`${styles.comment}${highlightedCommentId === comment.id ? ` ${styles.commentHighlighted}` : ''}`}
+        data-comment-id={comment.id}
+      >
         <CommentAvatar userId={comment.id_usuario_creador} />
         <div className={styles.commentBody}>
           <span className={styles.commentAuthor}>{commentAuthorName(comment)}</span>
@@ -699,7 +712,11 @@ function CommentBubble({ comment, replies, allComments, currentUserId, onReply, 
         const indentRem  = BASE_INDENT + depth * LEVEL_STEP;
         return (
           <React.Fragment key={r.id}>
-            <div className={styles.commentReply} style={{ marginLeft: `${indentRem}rem` }}>
+            <div
+              className={`${styles.commentReply}${highlightedCommentId === r.id ? ` ${styles.commentHighlighted}` : ''}`}
+              data-comment-id={r.id}
+              style={{ marginLeft: `${indentRem}rem` }}
+            >
               <CommentAvatar userId={r.id_usuario_creador} small />
               <div className={styles.commentBody}>
                 <span className={styles.commentAuthor}>{commentAuthorName(r)}</span>
@@ -735,23 +752,60 @@ function CommentBubble({ comment, replies, allComments, currentUserId, onReply, 
 interface CommentsSectionProps {
   backlogItemId:  number;
   currentUserId:  number;
+  focusCommentId?: number | null;
   readOnly?:      boolean;
 }
 
-function CommentsSection({ backlogItemId, currentUserId, readOnly = false }: CommentsSectionProps) {
+function CommentsSection({
+  backlogItemId,
+  currentUserId,
+  focusCommentId = null,
+  readOnly = false,
+}: CommentsSectionProps) {
   const [comments,   setComments]   = useState<ComentarioRecord[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [newText,    setNewText]    = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
+  const commentsSectionRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try { setComments(await fetchComentarios(backlogItemId)); }
-    catch { /* silent */ }
+    catch (error) { console.error('Error cargando comentarios:', error); }
     finally { setLoading(false); }
   }, [backlogItemId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (loading || focusCommentId === null) {
+      setHighlightedCommentId(null);
+      return;
+    }
+
+    const target = commentsSectionRef.current?.querySelector<HTMLElement>(
+      `[data-comment-id="${focusCommentId}"]`,
+    );
+
+    if (!target) {
+      setHighlightedCommentId(null);
+      return;
+    }
+
+    setHighlightedCommentId(focusCommentId);
+    const frameId = window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    const timeoutId = window.setTimeout(() => {
+      setHighlightedCommentId(null);
+    }, 4000);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [comments, focusCommentId, loading]);
 
   const handleNew = async () => {
     if (readOnly || !newText.trim()) return;
@@ -794,7 +848,7 @@ function CommentsSection({ backlogItemId, currentUserId, readOnly = false }: Com
   };
 
   return (
-    <div className={styles.commentsSection}>
+    <div ref={commentsSectionRef} className={styles.commentsSection}>
       {loading ? (
         <p className={styles.commentsLoading}>Cargando comentarios…</p>
       ) : topLevel.length === 0 ? (
@@ -809,6 +863,7 @@ function CommentsSection({ backlogItemId, currentUserId, readOnly = false }: Com
             currentUserId={currentUserId}
             onReply={handleReply}
             onDelete={handleDelete}
+            highlightedCommentId={highlightedCommentId}
             readOnly={readOnly}
           />
         ))
@@ -1059,6 +1114,7 @@ interface ViewItemDetailProps {
   readOnly?: boolean;
   onNavigateToProject?: () => void;
   navigateToProjectLabel?: string;
+  focusCommentId?: number | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────
@@ -1078,6 +1134,7 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
   readOnly = false,
   onNavigateToProject,
   navigateToProjectLabel = 'Ir al proyecto',
+  focusCommentId = null,
 }) => {
   const { user, refreshUser } = useUser();
   const canEdit = !readOnly && isPM;
@@ -1860,7 +1917,12 @@ const ViewItemDetail: React.FC<ViewItemDetailProps> = ({
             <div className={styles.section}>
               <span className={styles.sectionTitle}>Comentarios</span>
               {user && (
-                <CommentsSection backlogItemId={item.id} currentUserId={user.id} readOnly={readOnly} />
+                <CommentsSection
+                  backlogItemId={item.id}
+                  currentUserId={user.id}
+                  focusCommentId={focusCommentId}
+                  readOnly={readOnly}
+                />
               )}
             </div>
           </div>
