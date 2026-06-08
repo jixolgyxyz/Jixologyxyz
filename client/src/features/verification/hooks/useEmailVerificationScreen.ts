@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { exitVerificationFlow, getVerificationSessionInfo, resendVerificationEmail } from '@/features/verification/services/verification.service';
-import type { EmailVerificationFeedback, ResendVerificationEmailResult } from '@/features/verification/types/verification.types';
-
-const LOGIN_PATH = '/inicio-sesion';
+import { env } from '@/core/config/env';
+import {
+  clearPendingVerificationEmail,
+  exitVerificationFlow,
+  getDisabledEmailVerificationRedirectPath,
+  getVerificationSessionInfo,
+  resendVerificationEmail,
+} from '@/features/verification/services/verification.service';
+import type {
+  EmailVerificationFeedback,
+  ResendVerificationEmailResult,
+} from '@/features/verification/types/verification.types';
 
 function buildFeedback(result: ResendVerificationEmailResult): EmailVerificationFeedback {
   if (result.status === 'success') {
@@ -40,7 +48,11 @@ export function useEmailVerificationScreen() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<EmailVerificationFeedback>({ status: 'idle', title: '', description: '' });
+  const [feedback, setFeedback] = useState<EmailVerificationFeedback>({
+    status: 'idle',
+    title: '',
+    description: '',
+  });
   const [isResending, setIsResending] = useState<boolean>(false);
   const [isExiting, setIsExiting] = useState<boolean>(false);
   const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState<number | null>(null);
@@ -49,6 +61,16 @@ export function useEmailVerificationScreen() {
     let isMounted = true;
 
     const loadSessionInfo = async () => {
+      if (!env.emailVerificationEnabled) {
+        const redirectPath = await getDisabledEmailVerificationRedirectPath();
+
+        if (isMounted) {
+          navigate(redirectPath, { replace: true });
+        }
+
+        return;
+      }
+
       const sessionInfo = await getVerificationSessionInfo();
 
       if (!isMounted) {
@@ -56,14 +78,29 @@ export function useEmailVerificationScreen() {
       }
 
       setEmail(sessionInfo.email);
+
+      if (sessionInfo.isVerified) {
+        clearPendingVerificationEmail();
+        navigate('/perfil', { replace: true });
+        return;
+      }
+
+      if (!sessionInfo.email) {
+        setFeedback({
+          status: 'error',
+          title: 'No encontramos un correo pendiente',
+          description:
+            'Vuelve al inicio de sesión e intenta entrar nuevamente para continuar con la verificación.',
+        });
+      }
     };
 
-    loadSessionInfo();
+    void loadSessionInfo();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (cooldownRemainingSeconds === null || cooldownRemainingSeconds <= 0) {
@@ -123,7 +160,11 @@ export function useEmailVerificationScreen() {
 
       setFeedback(nextFeedback);
 
-      if (result.status === 'cooldown' && typeof result.cooldownSeconds === 'number' && result.cooldownSeconds > 0) {
+      if (
+        result.status === 'cooldown' &&
+        typeof result.cooldownSeconds === 'number' &&
+        result.cooldownSeconds > 0
+      ) {
         setCooldownRemainingSeconds(result.cooldownSeconds);
       }
     } catch {
@@ -136,7 +177,7 @@ export function useEmailVerificationScreen() {
     } finally {
       setIsResending(false);
     }
-  }
+  };
 
   const handleExit = async () => {
     if (isExiting) {
@@ -148,12 +189,12 @@ export function useEmailVerificationScreen() {
     try {
       await exitVerificationFlow();
     } finally {
-      navigate(LOGIN_PATH, { replace: true });
+      navigate('/inicio-sesion', { replace: true });
       setIsExiting(false);
     }
   };
 
-  const canResend = !isResending && cooldownRemainingSeconds === null;
+  const canResend = Boolean(email) && !isResending && cooldownRemainingSeconds === null;
 
   return {
     email,

@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { getBooleanEnv } from '../_shared/env.ts';
 
 type RegisterUserPayload = {
   email: string;
@@ -86,6 +87,10 @@ Deno.serve(async (req) => {
     }
 
     const isBootstrapMode = (count ?? 0) === 0;
+    const emailVerificationEnabled = getBooleanEnv('EMAIL_VERIFICATION_ENABLED', true);
+    const bootstrapUserSkipEmailVerification = getBooleanEnv('BOOTSTRAP_USER_SKIP_EMAIL_VERIFICATION', true);
+    const shouldRequireEmailVerification = emailVerificationEnabled && !(isBootstrapMode && bootstrapUserSkipEmailVerification);
+    const shouldConfirmEmailImmediately = !shouldRequireEmailVerification;
 
     if (!isBootstrapMode) {
       const authHeader = req.headers.get('Authorization');
@@ -216,7 +221,7 @@ Deno.serve(async (req) => {
       await adminClient.auth.admin.createUser({
         email,
         password,
-        email_confirm: true,
+        email_confirm: shouldConfirmEmailImmediately,
       });
 
     if (authError || !authData.user) {
@@ -227,6 +232,35 @@ Deno.serve(async (req) => {
     }
 
     createdAuthUserId = authData.user.id;
+
+    let verificationEmailSent = false;
+
+    if (shouldRequireEmailVerification) {
+      const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:5173';
+
+      const { error: resendError } = await adminClient.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${appUrl}/correo-verificacion/redireccion`,
+        },
+      });
+
+      if (resendError) {
+        await adminClient.auth.admin.deleteUser(createdAuthUserId);
+
+        return Response.json(
+          {
+            error:
+              resendError.message ||
+              'El usuario fue creado, pero no se pudo enviar el correo de verificación.',
+          },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      verificationEmailSent = true;
+    }
 
     const { data: usuarioData, error: usuarioError } = await adminClient
       .from('usuario')
@@ -263,6 +297,8 @@ Deno.serve(async (req) => {
         auth_id: createdAuthUserId,
         usuario: usuarioData,
         bootstrap: isBootstrapMode,
+        emailVerificationRequired: shouldRequireEmailVerification,
+        verificationEmailSent,
       },
       { status: 201, headers: corsHeaders }
     );

@@ -8,6 +8,7 @@ import {
   getErrorMessage,
   normalizeEmail,
 } from '@/features/auth/utils/auth.utils';
+import { storePendingVerificationEmail } from '@/features/verification/services/verification.service';
 
 export function useLogInPage() {
   const navigate = useNavigate();
@@ -31,6 +32,12 @@ export function useLogInPage() {
         email,
         password,
       });
+
+      if (result.status === 'email_verification_required') {
+        storePendingVerificationEmail(result.email);
+        navigate('/correo-verificacion', { replace: true });
+        return;
+      }
 
       if (!result.session?.access_token) {
         throw new Error('No se recibió un token válido.');

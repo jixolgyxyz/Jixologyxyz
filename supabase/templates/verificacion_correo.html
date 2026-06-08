@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verifica tu correo electrónico</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f6f2ea;
+        color: #29251d;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      table {
+        border-collapse: collapse;
+      }
+
+      .email-wrapper {
+        width: 100%;
+        background: #f6f2ea;
+        padding: 32px 16px;
+      }
+
+      .email-card {
+        width: 100%;
+        max-width: 560px;
+        background: #ffffff;
+        border: 1px solid #e5dfd3;
+        border-radius: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+
+      .email-card__content {
+        padding: 48px 40px;
+      }
+
+      .email-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: #fdecef;
+        color: #e31837;
+        font-size: 30px;
+        line-height: 64px;
+        text-align: center;
+        margin: 0 auto 20px;
+      }
+
+      .email-title {
+        margin: 0 0 16px;
+        color: #0a0838;
+        font-size: 30px;
+        line-height: 1.15;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .email-text {
+        margin: 0 0 24px;
+        color: #29251d;
+        font-size: 16px;
+        line-height: 1.6;
+        text-align: center;
+      }
+
+      .email-button {
+        display: inline-block;
+        min-width: 184px;
+        padding: 14px 24px;
+        border-radius: 999px;
+        background: #e31837;
+        color: #ffffff !important;
+        font-size: 16px;
+        line-height: 1;
+        font-weight: 700;
+        text-align: center;
+        text-decoration: none;
+      }
+
+      .email-link-box {
+        margin-top: 28px;
+        padding: 16px;
+        border: 1px solid #e5dfd3;
+        border-radius: 16px;
+        background: #fbfaf8;
+      }
+
+      .email-link-label {
+        margin: 0 0 8px;
+        color: #4a453d;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .email-link {
+        color: #0a0838;
+        font-size: 13px;
+        line-height: 1.5;
+        word-break: break-all;
+      }
+
+      .email-footer {
+        margin: 28px 0 0;
+        color: #4a453d;
+        font-size: 13px;
+        line-height: 1.6;
+        text-align: center;
+      }
+
+      @media screen and (max-width: 480px) {
+        .email-card__content {
+          padding: 36px 24px;
+        }
+
+        .email-title {
+          font-size: 26px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <table role="presentation" class="email-wrapper" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center">
+          <table role="presentation" class="email-card" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td class="email-card__content">
+                <div class="email-icon" aria-hidden="true">&#9993;</div>
+
+                <h1 class="email-title">Verifica tu correo electrónico</h1>
+
+                <p class="email-text">
+                  Un administrador creó o actualizó una cuenta para ti. Para
+                  activar el acceso, confirma tu correo electrónico.
+                </p>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center">
+                      <a class="email-button" href="{{ .ConfirmationURL }}">Verificar correo</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <div class="email-link-box">
+                  <p class="email-link-label">
+                    Si el botón no funciona, copia y pega este enlace en tu navegador:
+                  </p>
+                  <a class="email-link" href="{{ .ConfirmationURL }}">{{ .ConfirmationURL }}</a>
+                </div>
+
+                <p class="email-footer">
+                  Si no esperabas este mensaje, puedes ignorarlo o contactar al
+                  administrador.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

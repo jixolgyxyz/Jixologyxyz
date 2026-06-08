@@ -274,6 +274,27 @@ client/
 > **Important:** The client build bakes environment variables into the JS bundle at build time.  
 > You must pass the real production values via `--build-arg` — the local `.env` file is excluded from Docker builds.
 
+### Email verification policy
+
+Configure these values for local Supabase Edge Functions in `supabase/.env`
+and as production Edge Function secrets:
+
+```env
+EMAIL_VERIFICATION_ENABLED=true
+BOOTSTRAP_USER_SKIP_EMAIL_VERIFICATION=true
+```
+
+Configure the public build-time value in `client/.env` and in the production
+frontend build:
+
+```env
+VITE_EMAIL_VERIFICATION_ENABLED=true
+```
+
+`EMAIL_VERIFICATION_ENABLED` and `VITE_EMAIL_VERIFICATION_ENABLED` must remain
+consistent. The bootstrap flag only affects the first user when backend email
+verification is enabled.
+
 ### 1. Build the images
 Run both commands from the **repo root**:
 
@@ -285,6 +306,7 @@ docker build \
   --build-arg VITE_SUPABASE_ANON_KEY=your-anon-key \
   --build-arg VITE_BUSINESS_API_URL=http://localhost:3000 \
   --build-arg VITE_GEMINI_API_KEY=your-gemini-api-key \
+  --build-arg VITE_EMAIL_VERIFICATION_ENABLED=true \
   -t jixology-client \
   -f client/Dockerfile client/
 
