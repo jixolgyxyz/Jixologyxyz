@@ -229,6 +229,7 @@ const ProjectBacklog: React.FC = () => {
   const filterUser   = searchParams.get('user')   ? Number(searchParams.get('user'))   : null;
   const filterSprint = searchParams.get('sprint') ? Number(searchParams.get('sprint')) : null;
   const viewingId    = searchParams.get('item')   ? Number(searchParams.get('item'))   : null;
+  const focusCommentId = searchParams.get('comment') ? Number(searchParams.get('comment')) : null;
 
   // Derive viewingItem from URL + items list (works across tab switches / refreshes)
   const viewingItem  = viewingId != null ? (meta.items.find(i => i.id === viewingId) ?? null) : null;
@@ -238,6 +239,7 @@ const ProjectBacklog: React.FC = () => {
       const next = new URLSearchParams(prev);
       if (item) next.set('item', String(item.id));
       else next.delete('item');
+      next.delete('comment');
       return next;
     }, { replace: true });
   }, [setSearchParams]);
@@ -481,6 +483,7 @@ const ProjectBacklog: React.FC = () => {
         isPM={isPM}
         initialEditing={openInEditMode}
         isLocked={viewingIsLocked}
+        focusCommentId={focusCommentId}
         onClose={() => { setViewingItem(null); setOpenInEditMode(false); }}
         onUpdated={() => refreshAll()}
         onNavigate={i => { setOpenInEditMode(false); setViewingItem(i); }}

@@ -6,6 +6,7 @@ export type NotificationTypeCode =
   | 'backlog_item_proximo_vencer'
   | 'cambio_backlog_item'
   | 'creacion_backlog_item'
+  | 'backlog_item_comment_created'
   | 'sprint_proximo_vencer';
 
 export type NotificationTabFilter = 'all' | 'unread' | 'read';
@@ -50,6 +51,11 @@ export type NotificationRecord = {
   id_backlog_item_cambio: number | null;
   id_backlog_item_creacion: number | null;
   id_backlog_item_por_vencer: number | null;
+
+  id_comentario: number | null;
+  id_comentario_padre: number | null;
+  id_usuario_actor_comentario: number | null;
+  es_respuesta_comentario: boolean | null;
 
   id_sprint: number | null;
   nombre_sprint: string | null;

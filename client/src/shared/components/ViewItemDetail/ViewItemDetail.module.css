@@ -1913,6 +1913,13 @@
   border-left: 2px solid var(--color-clarity-gray-2);
 }
 
+.commentHighlighted {
+  border-radius: 8px;
+  background: #fff7d6;
+  box-shadow: 0 0 0 3px rgba(202, 138, 4, 0.24);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
 .commentAvatar {
   width: 28px;
   height: 28px;

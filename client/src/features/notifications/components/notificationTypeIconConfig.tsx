@@ -80,6 +80,17 @@ export const NOTIFICATION_TYPE_ICON_CONFIG: Record<
       </svg>
     ),
   },
+  backlog_item_comment_created: {
+    bg: '#ede7f6',
+    color: '#5e35b1',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+        <path d="M8 8h8" />
+        <path d="M8 12h5" />
+      </svg>
+    ),
+  },
   sprint_proximo_vencer: {
     bg: '#fce4ec',
     color: '#b71c1c',

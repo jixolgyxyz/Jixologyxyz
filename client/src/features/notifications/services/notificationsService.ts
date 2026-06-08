@@ -36,6 +36,10 @@ type NotificationFeedRow = {
   id_backlog_item_cambio: number | string | null;
   id_backlog_item_creacion: number | string | null;
   id_backlog_item_por_vencer: number | string | null;
+  id_comentario: number | string | null;
+  id_comentario_padre: number | string | null;
+  id_usuario_actor_comentario: number | string | null;
+  es_respuesta_comentario: boolean | null;
   id_sprint: number | string | null;
   nombre_sprint: string | null;
   id_sprint_por_vencer: number | string | null;
@@ -72,6 +76,10 @@ const NOTIFICATION_FEED_COLUMNS = `
   id_backlog_item_cambio,
   id_backlog_item_creacion,
   id_backlog_item_por_vencer,
+  id_comentario,
+  id_comentario_padre,
+  id_usuario_actor_comentario,
+  es_respuesta_comentario,
   id_sprint,
   nombre_sprint,
   id_sprint_por_vencer,
@@ -87,6 +95,7 @@ const NOTIFICATION_TYPE_CODES: NotificationTypeCode[] = [
   'backlog_item_proximo_vencer',
   'cambio_backlog_item',
   'creacion_backlog_item',
+  'backlog_item_comment_created',
   'sprint_proximo_vencer',
 ];
 
@@ -133,6 +142,11 @@ function normalizeNotification(row: NotificationFeedRow): NotificationRecord {
     id_backlog_item_cambio: asNumberOrNull(row.id_backlog_item_cambio),
     id_backlog_item_creacion: asNumberOrNull(row.id_backlog_item_creacion),
     id_backlog_item_por_vencer: asNumberOrNull(row.id_backlog_item_por_vencer),
+
+    id_comentario: asNumberOrNull(row.id_comentario),
+    id_comentario_padre: asNumberOrNull(row.id_comentario_padre),
+    id_usuario_actor_comentario: asNumberOrNull(row.id_usuario_actor_comentario),
+    es_respuesta_comentario: row.es_respuesta_comentario ?? null,
 
     id_sprint: asNumberOrNull(row.id_sprint),
     nombre_sprint: row.nombre_sprint ?? null,

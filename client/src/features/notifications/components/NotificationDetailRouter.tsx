@@ -63,6 +63,7 @@ export default function NotificationDetailRouter({
     case 'cambio_backlog_item':
     case 'creacion_backlog_item':
     case 'backlog_item_proximo_vencer':
+    case 'backlog_item_comment_created':
       return (
         <BacklogItemNotificationDetail
           notification={notification}
