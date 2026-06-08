@@ -100,6 +100,7 @@ function DebugBacklogList() {
         return (
           <BacklogListItem
             key={item.id}
+            itemId={item.id}
             code={`${prefix}-${String(item.id).padStart(2, '0')}`}
             title={item.nombre}
             status={status}
