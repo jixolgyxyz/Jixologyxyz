@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  const webhookSecret = Deno.env.get('GITHUB_WEBHOOK_SECRET');
+  const webhookSecret = Deno.env.get('WEBHOOK_SECRET_GITHUB');
   if (!webhookSecret) {
     return new Response('Missing webhook secret', { status: 500 });
   }

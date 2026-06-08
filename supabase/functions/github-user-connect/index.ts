@@ -25,8 +25,8 @@ Deno.serve(async (req: Request) => {
     return new Response('Incomplete state', { status: 400 });
   }
 
-  const clientId     = Deno.env.get('GITHUB_CLIENT_ID')!;
-  const clientSecret = Deno.env.get('GITHUB_CLIENT_SECRET')!;
+  const clientId     = Deno.env.get('CLIENT_ID_GITHUB')!;
+  const clientSecret = Deno.env.get('CLIENT_SECRET_GITHUB')!;
   const appUrl       = Deno.env.get('APP_URL') ?? 'http://localhost:5173';
 
   // --- Exchange code for access token ---
