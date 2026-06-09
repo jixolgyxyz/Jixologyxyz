@@ -1,0 +1,10 @@
+.typeFilter {
+  flex: 0 0 15.5rem;
+  min-width: 13rem;
+}
+
+.typeFilterSelect {
+  min-height: 2.5rem;
+  border-radius: 999px;
+  font-weight: 700;
+}

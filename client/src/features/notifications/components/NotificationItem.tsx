@@ -1,7 +1,7 @@
 import type { NotificationRecord } from '../types/notification.types';
 import { formatDateTime } from '@/shared/datetime/formatDateTime';
-import NotificationReadButton from './NotificationReadButton';
 import NotificationDeleteButton from './NotificationDeleteButton';
+import NotificationTypeIcon from './NotificationTypeIcon';
 import './NotificationItem.css';
 
 type Props = {
@@ -20,12 +20,10 @@ type Props = {
 export default function NotificationItem({
   notification,
   userTimeZone,
-  isMarkingAsRead,
   isDeleting,
   isSelected,
   isSelectionMode,
   onToggleSelected,
-  onToggleReadStatus,
   onDelete,
   onOpenDetail,
 }: Props) {
@@ -59,13 +57,13 @@ export default function NotificationItem({
         </div>
       )}
 
+      <div className="notification-item__icon">
+        <NotificationTypeIcon tipo={notification.tipo_codigo} isRead={notification.leida} size={38} />
+      </div>
+
       <div className="notification-item__main">
         <div className="notification-item__header">
           <div className="notification-item__title-group">
-            {!notification.leida && (
-              <span className="notification-item__unread-dot" />
-            )}
-
             <h2 className="notification-item__title">
               {notification.nombre}
             </h2>
@@ -101,12 +99,6 @@ export default function NotificationItem({
         className="notification-item__actions"
         onClick={(event) => event.stopPropagation()}
       >
-        <NotificationReadButton
-          isRead={notification.leida}
-          isLoading={isMarkingAsRead}
-          onToggleReadStatus={onToggleReadStatus}
-        />
-
         <NotificationDeleteButton
           isLoading={isDeleting}
           onDelete={onDelete}

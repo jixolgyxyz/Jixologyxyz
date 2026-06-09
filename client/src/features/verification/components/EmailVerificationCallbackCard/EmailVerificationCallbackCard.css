@@ -1,0 +1,157 @@
+.email-verification-callback-card__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.email-verification-callback-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 1rem;
+  border: 0.0625rem solid rgba(221, 0, 49, 0.05);
+  border-radius: 50%;
+  background-color: rgba(221, 0, 49, 0.05);
+  color: var(--color-mahindra-red);
+}
+
+.email-verification-callback-card--success .email-verification-callback-card__icon {
+  color: #176b3a;
+  background-color: rgba(23, 107, 58, 0.08);
+  border-color: rgba(23, 107, 58, 0.12);
+}
+
+.email-verification-callback-card--error .email-verification-callback-card__icon {
+  color: var(--color-mahindra-red);
+  background-color: rgba(221, 0, 49, 0.06);
+  border-color: rgba(221, 0, 49, 0.16);
+}
+
+.email-verification-callback-card__icon-svg {
+  width: 1.875rem;
+  height: 1.875rem;
+  display: block;
+}
+
+.email-verification-callback-card__spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0.1875rem solid rgba(221, 0, 49, 0.18);
+  border-top-color: var(--color-mahindra-red);
+  border-radius: 50%;
+  animation: email-verification-callback-card-spin 0.8s linear infinite;
+}
+
+.email-verification-callback-card__title {
+  margin: 0 0 1rem;
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--color-blueprint-navy);
+}
+
+.email-verification-callback-card__description {
+  margin: 0;
+  color: var(--color-anchor-gray-2);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.email-verification-callback-card__section {
+  margin-bottom: 1.5rem;
+}
+
+.email-verification-callback-card__label {
+  display: block;
+  margin-bottom: 0.5rem;
+  padding: 0 1.1875rem;
+  color: var(--color-anchor-gray-2);
+  font-size: 1rem;
+}
+
+.email-verification-callback-card__email-box {
+  width: 100%;
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  padding: 0 1.125rem;
+  border: 0.0625rem solid var(--color-clarity-gray-1);
+  border-radius: 999rem;
+  background-color: var(--color-white);
+  box-sizing: border-box;
+}
+
+.email-verification-callback-card__email-value {
+  color: var(--color-blueprint-navy);
+  font-size: 1rem;
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+.email-verification-callback-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.email-verification-callback-card__button {
+  width: 100%;
+  height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  border: none;
+  border-radius: 999rem;
+  background-color: var(--color-mahindra-red);
+  color: var(--color-white);
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.email-verification-callback-card__button:hover:not(:disabled) {
+  background-color: var(--color-impact-red);
+}
+
+.email-verification-callback-card__button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.email-verification-callback-card__button-text {
+  line-height: 1;
+}
+
+.email-verification-callback-card__button-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  display: block;
+  flex-shrink: 0;
+}
+
+.email-verification-callback-card__button-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 0.125rem solid rgba(255, 255, 255, 0.35);
+  border-top-color: var(--color-white);
+  border-radius: 50%;
+  animation: email-verification-callback-card-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes email-verification-callback-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

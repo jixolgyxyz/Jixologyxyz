@@ -58,8 +58,8 @@ export default function EmailVerificationCard({
         </h1>
 
         <p className="email-verification-card__description">
-          Tu cuenta inició sesión correctamente, pero el acceso permanecerá
-          pendiente hasta que confirmes tu correo electrónico.
+          Tu cuenta está pendiente de verificación. Para continuar, confirma tu
+          correo electrónico desde el enlace que te enviamos.
         </p>
       </header>
 
