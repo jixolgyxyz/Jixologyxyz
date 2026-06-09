@@ -52,7 +52,7 @@ export async function disconnectGithub(): Promise<void> {
   if (sessionErr || !session) throw new Error('No autenticado.');
 
   const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/github-user-disconnect`,
+    `${(import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '')}/functions/v1/github-user-disconnect`,
     {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${session.access_token}` },

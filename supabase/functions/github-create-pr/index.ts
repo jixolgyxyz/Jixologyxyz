@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const appId      = Deno.env.get('APP_ID_GITHUB');
-  const privateKey = Deno.env.get('APP_PRIVATE_KEY_GITHUB');
+  const privateKey = Deno.env.get('APP_PRIVATE_KEY_GITHUB')?.replace(/\\n/g, '\n');
 
   if (!appId || !privateKey) {
     return new Response('Missing GitHub App credentials', { status: 500, headers: corsHeaders });
