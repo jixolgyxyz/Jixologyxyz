@@ -21,6 +21,8 @@ async function login(page: Page): Promise<void> {
   }
 
   await page.goto('/inicio-sesion');
+  await page.waitForLoadState('networkidle', { timeout: 20_000 });
+  await page.waitForSelector('#email', { timeout: 15_000 });
   await page.fill('#email', email);
   await page.fill('#password', password);
   await page.click('button[type="submit"]');
