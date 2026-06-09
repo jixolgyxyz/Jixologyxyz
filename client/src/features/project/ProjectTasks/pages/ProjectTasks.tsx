@@ -30,11 +30,11 @@ export interface Column {
 }
 
 const STATUS_COLORS: Record<number, { color: string; textColor: string }> = {
-  1: { color: '#F3F4F6', textColor: '#6B7280' },
-  2: { color: '#DBEAFE', textColor: '#1D4ED8' },
-  3: { color: '#FEF3C7', textColor: '#D97706' },
-  4: { color: '#D1FAE5', textColor: '#065F46' },
-  5: { color: '#FDE68A', textColor: '#92400E' }, // Pendiente
+  1: { color: 'rgba(107, 114, 128, 0.88)', textColor: '#FFFFFF' },
+  2: { color: 'rgba(37,  99,  235, 0.88)', textColor: '#FFFFFF' },
+  3: { color: 'rgba(245, 158,  11, 0.88)', textColor: '#FFFFFF' },
+  4: { color: 'rgba(22,  163,  74, 0.88)', textColor: '#FFFFFF' },
+  5: { color: 'rgba(220,  38,  38, 0.88)', textColor: '#FFFFFF' },
 };
 
 function UserAvatar({ userId, className }: { userId: number; className?: string }) {
@@ -67,13 +67,13 @@ const TaskCard: React.FC<{
       }}
       onClick={onClick}
     >
-      <label>{task.title}</label>
+      <span className={styles.taskTitle}>{task.title}</span>
 
       <div className={styles.TaskData}>
-        <label>{task.date}</label>
+        {task.date && <span className={styles.taskDate}>{task.date}</span>}
 
-        <div>
-          <label>{task.user ?? "No Asignado"}</label>
+        <div className={styles.assigneeChip}>
+          <span className={styles.assigneeName}>{task.user ?? "Sin asignar"}</span>
 
           {task.userId ? (
             <UserAvatar className={styles.pfp} userId={task.userId} />
@@ -113,17 +113,19 @@ const TaskColumn: React.FC<{
           color: colors?.textColor,
         }}
       >
-        <label>{column.title}</label>
-        <label className={styles.Counter}>{column.tasks.length}</label>
+        <span>{column.title}</span>
+        <span className={styles.Counter}>{column.tasks.length}</span>
       </div>
 
-      {column.tasks.map(task => (
-        <TaskCard
-          key={task.id} 
-          task={task} 
-          onClick={() => onViewTask(task.id)}
+      <div className={styles.columnCards}>
+        {column.tasks.map(task => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            onClick={() => onViewTask(task.id)}
           />
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
