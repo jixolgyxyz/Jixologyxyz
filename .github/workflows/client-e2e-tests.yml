@@ -17,6 +17,7 @@ jobs:
   client-e2e-tests:
     name: Run Playwright E2E tests
     runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'Jixology' || 'staging' }}
 
     if: >-
       ${{
@@ -64,6 +65,21 @@ jobs:
             printf 'E2E_PROJECT_ID=%s\n' "$E2E_PROJECT_ID"
             printf 'E2E_TESTER_NAME=%s\n' "$E2E_TESTER_NAME"
           } > .env.e2e
+
+      - name: Create Vite environment file
+        working-directory: client
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_EMAIL_VERIFICATION_ENABLED: ${{ secrets.VITE_EMAIL_VERIFICATION_ENABLED }}
+        run: |
+          {
+            printf 'VITE_SUPABASE_URL=%s\n' "$VITE_SUPABASE_URL"
+            printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$VITE_SUPABASE_ANON_KEY"
+            printf 'VITE_GEMINI_API_KEY=%s\n' "$VITE_GEMINI_API_KEY"
+            printf 'VITE_EMAIL_VERIFICATION_ENABLED=%s\n' "$VITE_EMAIL_VERIFICATION_ENABLED"
+          } > .env
 
       - name: Run Playwright E2E tests and generate report
         id: e2e
