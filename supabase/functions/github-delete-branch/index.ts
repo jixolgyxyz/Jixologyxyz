@@ -99,7 +99,7 @@ Deno.serve(async (req: Request) => {
 
   const { projectId, itemId } = body;
   if (!projectId || !itemId) {
-    return new Response('Missing required fields: projectId, itemId', { status: 400 });
+    return new Response('Missing required fields: projectId, itemId', { status: 400, headers: corsHeaders });
   }
 
   const supabase = createClient(
@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
     .single<GithubConfig>();
 
   if (configErr || !config) {
-    return new Response('GitHub not configured for this project', { status: 404 });
+    return new Response('GitHub not configured for this project', { status: 404, headers: corsHeaders });
   }
 
   const { data: itemGithub, error: itemErr } = await supabase
@@ -124,14 +124,14 @@ Deno.serve(async (req: Request) => {
     .single();
 
   if (itemErr || !itemGithub?.branch_name) {
-    return new Response('No branch found for this item', { status: 404 });
+    return new Response('No branch found for this item', { status: 404, headers: corsHeaders });
   }
 
   const appId      = Deno.env.get('APP_ID_GITHUB');
   const privateKey = Deno.env.get('APP_PRIVATE_KEY_GITHUB');
 
   if (!appId || !privateKey) {
-    return new Response('Missing GitHub App credentials', { status: 500 });
+    return new Response('Missing GitHub App credentials', { status: 500, headers: corsHeaders });
   }
 
   try {
@@ -149,13 +149,13 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ deleted: itemGithub.branch_name }),
-      { headers: { 'Content-Type': 'application/json' } },
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return new Response(
       JSON.stringify({ error: message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });
