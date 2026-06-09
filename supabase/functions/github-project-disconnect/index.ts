@@ -26,18 +26,18 @@ Deno.serve(async (req: Request) => {
 
   const authId = getAuthId(authHeader);
   if (!authId) {
-    return new Response('Unauthorized', { status: 401 });
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
   let body: { projectId: number };
   try {
     body = await req.json() as { projectId: number };
   } catch {
-    return new Response('Invalid JSON body', { status: 400 });
+    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders });
   }
 
   if (!body.projectId) {
-    return new Response('Missing projectId', { status: 400 });
+    return new Response('Missing projectId', { status: 400, headers: corsHeaders });
   }
 
   const adminClient = createClient(
@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
     .single<{ id: number }>();
 
   if (usuarioErr || !usuarioRow) {
-    return new Response('User not found', { status: 404 });
+    return new Response('User not found', { status: 404, headers: corsHeaders });
   }
 
   const { error: deleteErr } = await adminClient
@@ -61,10 +61,10 @@ Deno.serve(async (req: Request) => {
     .eq('id_proyecto', body.projectId);
 
   if (deleteErr) {
-    return new Response(`DB error: ${deleteErr.message}`, { status: 500 });
+    return new Response(`DB error: ${deleteErr.message}`, { status: 500, headers: corsHeaders });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
