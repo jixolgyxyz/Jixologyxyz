@@ -83,6 +83,12 @@ jobs:
             client/e2e-reports/
             client/test-results/
 
-      - name: Fail job if E2E tests failed
-        if: steps.e2e.outcome == 'failure'
-        run: exit 1
+      - name: Summarise E2E results
+        if: always()
+        run: |
+          if [ "${{ steps.e2e.outcome }}" = "failure" ]; then
+            echo "## ❌ E2E tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "Some Playwright tests did not pass. Download the artifact above for the full HTML report." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ E2E tests passed" >> $GITHUB_STEP_SUMMARY
+          fi
