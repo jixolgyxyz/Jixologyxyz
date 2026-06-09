@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function getAuthId(authHeader: string): string | null {
   try {
@@ -12,13 +13,15 @@ function getAuthId(authHeader: string): string | null {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return handleCors();
+
   if (req.method !== 'GET') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
-    return new Response('Missing Authorization header', { status: 401 });
+    return new Response('Missing Authorization header', { status: 401, headers: corsHeaders });
   }
 
   const url = new URL(req.url);
