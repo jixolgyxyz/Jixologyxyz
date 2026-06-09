@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { createSign } from 'node:crypto';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 // --- Types ---
 
@@ -83,15 +84,17 @@ async function deleteBranch(
 // --- Handler ---
 
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return handleCors();
+
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 
   let body: DeleteBranchPayload;
   try {
     body = await req.json() as DeleteBranchPayload;
   } catch {
-    return new Response('Invalid JSON body', { status: 400 });
+    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders });
   }
 
   const { projectId, itemId } = body;
