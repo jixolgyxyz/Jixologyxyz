@@ -1,17 +1,19 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return handleCors();
+
   if (req.method !== 'DELETE') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
-    return new Response('Missing authorization header', { status: 401 });
+    return new Response('Missing authorization header', { status: 401, headers: corsHeaders });
   }
 
-  // Client with the user's JWT to identify who's calling
   const supabaseUser = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -20,10 +22,9 @@ Deno.serve(async (req: Request) => {
 
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
   if (authError || !user) {
-    return new Response('Unauthorized', { status: 401 });
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
-  // Service role client to delete the record
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -36,7 +37,7 @@ Deno.serve(async (req: Request) => {
     .single<{ id: number }>();
 
   if (usuarioErr || !usuarioRow) {
-    return new Response('User not found', { status: 404 });
+    return new Response('User not found', { status: 404, headers: corsHeaders });
   }
 
   const { error: deleteErr } = await supabase
@@ -45,10 +46,10 @@ Deno.serve(async (req: Request) => {
     .eq('id_usuario', usuarioRow.id);
 
   if (deleteErr) {
-    return new Response(`DB error: ${deleteErr.message}`, { status: 500 });
+    return new Response(`DB error: ${deleteErr.message}`, { status: 500, headers: corsHeaders });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
