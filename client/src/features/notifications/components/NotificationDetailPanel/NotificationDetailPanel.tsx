@@ -37,8 +37,7 @@ export default function NotificationDetailPanel({
   }, [onClose]);
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.panel} onClick={e => e.stopPropagation()}>
+    <div className={styles.panel} onClick={(event) => event.stopPropagation()}>
 
         {/* ── Top bar ── */}
         <div className={styles.topBar}>
@@ -135,7 +134,6 @@ export default function NotificationDetailPanel({
 
           </div>
         </div>
-      </div>
     </div>
   );
 }

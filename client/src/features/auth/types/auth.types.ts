@@ -5,7 +5,13 @@ export interface SignInPayload {
   password: string;
 }
 
-export interface SignInResult {
-  session: Session;
-  user: User;
-}
+export type SignInResult =
+  | {
+      status: 'authenticated';
+      session: Session;
+      user: User;
+    }
+  | {
+      status: 'email_verification_required';
+      email: string;
+    };

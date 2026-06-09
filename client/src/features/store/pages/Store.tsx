@@ -14,6 +14,7 @@ import type { DynamicFeatures, ElementoInventarioAvatar } from '../../profile/ty
 import { CircleStackIcon } from '@heroicons/react/24/outline';
 
 import { useUser } from '@/core/auth/userContext';
+import { deductCoins } from '@/core/auth/user.service';
 
 // ── Chest icons per style + feature ───────────────────────────────────────
 import pixelGeneral     from '../resources/Pixel_General.png';
@@ -123,7 +124,7 @@ interface ShopPageProps {
 }
 
 const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const activeStyleId = styleId ?? 1;
 
   const { catalog, allElements, atributos, styles } = useAvatarCatalog(activeStyleId);
@@ -136,6 +137,7 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
 
   const [session, setSession] = useState<LootboxSession | null>(null);
   const [loading, setLoading] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   // ── Build chests dynamically for the currently-selected style ────────────────
   // 1. General chest: random across every attribute of the style
@@ -149,7 +151,7 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
         id:           `general-${activeStyleId}`,
         title:        `Cofre ${styleName}`,
         description:  `Una colección variada de elementos de ${styleName}.`,
-        costo:        40,
+        costo:        100,
         image:        pickChestImage(styleName, 'general'),
         attributoIds: null,
       },
@@ -172,7 +174,7 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
         id:           `${activeStyleId}-${feature.key}`,
         title:        `Cofre de ${feature.label}`,
         description:  `Solo elementos de ${feature.label.toLowerCase()}.`,
-        costo:        10,
+        costo:        200,
         image:        pickChestImage(styleName, feature.key),
         attributoIds: ids,
       });
@@ -187,8 +189,16 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
     if (!userId || !atributos.length || !allElements.length || !catalog) return;
     if (loading) return;
 
+    setPurchaseError(null);
+
+    if ((user?.dinero ?? 0) < chest.costo) {
+      setPurchaseError('No tienes suficientes monedas para abrir este cofre.');
+      return;
+    }
+
     setLoading(true);
     try {
+      // 1. Prepare all lootbox data first — no side effects yet
       const styleAttrIds = new Set(
         atributos.filter(a => a.id_avatar_style === activeStyleId).map(a => a.id),
       );
@@ -208,18 +218,24 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
         baseFeatures = makeDefaultVisibleFeatures(styleCatalog);
       }
 
+      // 2. Only deduct once we know the lootbox is ready to open
+      await deductCoins(userId, chest.costo);
+
+      // 3. Open the lootbox
       setSession({
         styleId:      activeStyleId,
         styleName:    catalog.styleName,
         baseFeatures,
         unownedItems: items,
       });
+    } catch (err) {
+      setPurchaseError(err instanceof Error ? err.message : 'Error al abrir el cofre.');
     } finally {
       setLoading(false);
     }
   };
 
-  const closeLootbox = () => setSession(null);
+  const closeLootbox = () => { setSession(null); void refreshUser(); };
 
   return (
     <>
@@ -250,7 +266,7 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
           <div className="shop-header">
             <h1 className="shop-title">Tienda</h1>
             <div className="shop-coins">
-              <span>Monedas: 20</span>
+              <span>Monedas: {user?.dinero ?? 0}</span>
               <CircleStackIcon className="shop-coins-icon" />
             </div>
           </div>
@@ -271,7 +287,9 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
 
           <div className="shop-content">
             <div className="shop-horizontal-scroll">
-              {chests.map(chest => (
+              {chests.map(chest => {
+                const canAfford = (user?.dinero ?? 0) >= chest.costo;
+                return (
                 <div key={chest.id} className="shop-item">
                   <div className="shop-item-image">
                     <img
@@ -296,10 +314,17 @@ const ShopPage: React.FC<ShopPageProps> = ({ styleId, onStyleChange }) => {
                         </div>
                       }
                       onClick={() => openChest(chest)}
+                      disabled={loading || !canAfford}
                     />
                   </div>
                 </div>
-              ))}
+                );
+              })}
+              {purchaseError && (
+                <p style={{ color: 'var(--color-mahindra-red)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                  {purchaseError}
+                </p>
+              )}
             </div>
           </div>
         </div>

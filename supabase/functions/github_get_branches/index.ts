@@ -111,8 +111,8 @@ Deno.serve(async (req: Request) => {
     return new Response('GitHub not configured for this project', { status: 404 });
   }
 
-  const appId      = Deno.env.get('GITHUB_APP_ID');
-  const privateKey = Deno.env.get('GITHUB_APP_PRIVATE_KEY');
+  const appId      = Deno.env.get('APP_ID_GITHUB');
+  const privateKey = Deno.env.get('APP_PRIVATE_KEY_GITHUB');
 
   if (!appId || !privateKey) {
     return new Response('Missing GitHub App credentials', { status: 500 });

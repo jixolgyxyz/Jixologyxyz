@@ -16,11 +16,6 @@ export default function NotificationTabs({ activeTab, totalCount, unreadCount, r
       onChange={onChange}
       items={[
         {
-          value: 'all',
-          label: 'Todas',
-          count: totalCount,
-        },
-        {
           value: 'unread',
           label: 'No leídas',
           count: unreadCount,
@@ -29,6 +24,11 @@ export default function NotificationTabs({ activeTab, totalCount, unreadCount, r
           value: 'read',
           label: 'Leídas',
           count: readCount,
+        },
+        {
+          value: 'all',
+          label: 'Todas',
+          count: totalCount,
         },
       ]}
     />

@@ -7,6 +7,7 @@ import UserDashboardPage from '@/features/dashboard/pages/UserDashboard';
 import AdminDashboardPage from '@/features/dashboard/pages/AdminDashboard';
 import ProjectDashboardPage from '@/features/dashboard/pages/ProjectDashboard';
 import EmailVerificationPage from '@/features/verification/pages/EmailVerification';
+import EmailVerificationCallbackPage from '@/features/verification/pages/EmailVerificationCallback';
 import AdminPage from '@/features/admin/pages/adminPage';
 import ProjectPage from '@/features/project/projectHub/pages/ProjectsPage';
 import ProjectTask from '@/features/project/ProjectTasks/pages';
@@ -72,6 +73,7 @@ export function AppRouter() {
 
       <Route path="/inicio-sesion"        element={<LoginPage />} />
       <Route path="/correo-verificacion"  element={<EmailVerificationPage />} />
+      <Route path="/correo-verificacion/redireccion" element={<EmailVerificationCallbackPage />} />
     </Routes>
   );
 }

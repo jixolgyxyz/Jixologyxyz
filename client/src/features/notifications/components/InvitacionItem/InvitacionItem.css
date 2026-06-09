@@ -28,15 +28,21 @@
 
 /* ── Actions ─────────────────────────────────────────────────── */
 .invitacion-item__actions {
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(7.5rem, 1fr));
+  align-items: center;
+  gap: 0.6rem;
   padding-right: 1.25rem;
 }
 
 .invitacion-item__btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
-  padding: 0.35rem 0.75rem;
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0.5rem 0.9rem;
   border-radius: 999px;
   font-family: inherit;
   font-size: 0.78rem;
@@ -79,4 +85,21 @@
   color: var(--color-anchor-gray-1);
   flex-shrink: 0;
   margin-left: 0.25rem;
+}
+
+@media (max-width: 700px) {
+  .invitacion-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .invitacion-item__actions {
+    width: 100%;
+    padding: 0 1.25rem 1rem;
+    box-sizing: border-box;
+  }
+
+  .invitacion-item__type-icon {
+    display: none;
+  }
 }
