@@ -1,0 +1,94 @@
+name: client-e2e-tests
+
+on:
+  push:
+    branches: [staging, main]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-e2e-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  client-e2e-tests:
+    name: Run Playwright E2E tests
+    runs-on: ubuntu-latest
+
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.ref == 'refs/heads/main' &&
+          vars.ENABLE_E2E_MAIN_TESTS == 'true'
+        ) ||
+        (
+          github.ref == 'refs/heads/staging' &&
+          vars.ENABLE_E2E_STAGING_TESTS == 'true'
+        )
+      }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Install Playwright Chromium with system dependencies
+        working-directory: client
+        run: npx playwright install --with-deps chromium
+
+      - name: Create E2E environment file
+        working-directory: client
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_PROJECT_ID: ${{ vars.E2E_PROJECT_ID }}
+          E2E_TESTER_NAME: ${{ vars.E2E_TESTER_NAME }}
+        run: |
+          {
+            printf 'E2E_EMAIL=%s\n' "$E2E_EMAIL"
+            printf 'E2E_PASSWORD=%s\n' "$E2E_PASSWORD"
+            printf 'E2E_PROJECT_ID=%s\n' "$E2E_PROJECT_ID"
+            printf 'E2E_TESTER_NAME=%s\n' "$E2E_TESTER_NAME"
+          } > .env.e2e
+
+      - name: Run Playwright E2E tests and generate report
+        id: e2e
+        working-directory: client
+        continue-on-error: true
+        run: npm run test:e2e:report -- --time
+
+      - name: Upload Playwright E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: client-e2e-report-${{ github.ref_name }}-${{ github.run_number }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            client/playwright-report/
+            client/e2e-reports/
+            client/test-results/
+
+      - name: Summarise E2E results
+        if: always()
+        run: |
+          if [ "${{ steps.e2e.outcome }}" = "failure" ]; then
+            echo "## ❌ E2E tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "Some Playwright tests did not pass. Download the artifact above for the full HTML report." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ E2E tests passed" >> $GITHUB_STEP_SUMMARY
+          fi

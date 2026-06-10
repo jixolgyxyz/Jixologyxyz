@@ -34,6 +34,7 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: process.env.E2E_REPORT_DIR ?? 'playwright-report' }],
+    ...(process.env.CI ? [['github'] as ['github']] : []),
   ],
   use: {
     baseURL: 'http://localhost:5173',

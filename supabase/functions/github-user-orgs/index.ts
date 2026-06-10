@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function getAuthId(authHeader: string): string | null {
   try {
@@ -12,18 +13,20 @@ function getAuthId(authHeader: string): string | null {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return handleCors();
+
   if (req.method !== 'GET') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
-    return new Response('Missing Authorization header', { status: 401 });
+    return new Response('Missing Authorization header', { status: 401, headers: corsHeaders });
   }
 
   const authId = getAuthId(authHeader);
   if (!authId) {
-    return new Response('Unauthorized', { status: 401 });
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
   const adminClient = createClient(
@@ -38,7 +41,7 @@ Deno.serve(async (req: Request) => {
     .single<{ id: number }>();
 
   if (usuarioErr || !usuarioRow) {
-    return new Response('User not found', { status: 404 });
+    return new Response('User not found', { status: 404, headers: corsHeaders });
   }
 
   const { data: ghRow, error: ghErr } = await adminClient
@@ -48,7 +51,7 @@ Deno.serve(async (req: Request) => {
     .single<{ github_access_token: string }>();
 
   if (ghErr || !ghRow) {
-    return new Response('GitHub not connected', { status: 404 });
+    return new Response('GitHub not connected', { status: 404, headers: corsHeaders });
   }
 
   const ghHeaders = {
@@ -63,7 +66,7 @@ Deno.serve(async (req: Request) => {
   );
 
   if (!installRes.ok) {
-    return new Response('Failed to fetch GitHub installations', { status: 502 });
+    return new Response('Failed to fetch GitHub installations', { status: 502, headers: corsHeaders });
   }
 
   const data = await installRes.json() as {
@@ -81,6 +84,6 @@ Deno.serve(async (req: Request) => {
 
   return new Response(
     JSON.stringify(result),
-    { headers: { 'Content-Type': 'application/json' } },
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   );
 });

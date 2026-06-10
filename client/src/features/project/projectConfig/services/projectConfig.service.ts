@@ -540,7 +540,7 @@ async function getAuthHeader(): Promise<string> {
   return `Bearer ${token}`;
 }
 
-const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const FUNCTIONS_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
 
 export class GithubNotConnectedError extends Error {}
 

@@ -613,6 +613,7 @@ const ProjectBacklog: React.FC = () => {
         isOpen={showCreateForm}
         onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
         onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
+        canSetTerminalStatus={isPM || isAdmin}
       />
       <CreateSprintForm
         key={editingSprint != null ? `edit-${editingSprint.id}` : 'create'}

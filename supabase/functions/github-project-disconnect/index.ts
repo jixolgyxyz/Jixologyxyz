@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 function getAuthId(authHeader: string): string | null {
   try {
@@ -12,29 +13,31 @@ function getAuthId(authHeader: string): string | null {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method !== 'DELETE') {
-    return new Response('Method not allowed', { status: 405 });
+  if (req.method === 'OPTIONS') return handleCors();
+
+  if (req.method !== 'DELETE' && req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
-    return new Response('Missing authorization header', { status: 401 });
+    return new Response('Missing authorization header', { status: 401, headers: corsHeaders });
   }
 
   const authId = getAuthId(authHeader);
   if (!authId) {
-    return new Response('Unauthorized', { status: 401 });
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
   let body: { projectId: number };
   try {
     body = await req.json() as { projectId: number };
   } catch {
-    return new Response('Invalid JSON body', { status: 400 });
+    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders });
   }
 
   if (!body.projectId) {
-    return new Response('Missing projectId', { status: 400 });
+    return new Response('Missing projectId', { status: 400, headers: corsHeaders });
   }
 
   const adminClient = createClient(
@@ -49,7 +52,7 @@ Deno.serve(async (req: Request) => {
     .single<{ id: number }>();
 
   if (usuarioErr || !usuarioRow) {
-    return new Response('User not found', { status: 404 });
+    return new Response('User not found', { status: 404, headers: corsHeaders });
   }
 
   const { error: deleteErr } = await adminClient
@@ -58,10 +61,10 @@ Deno.serve(async (req: Request) => {
     .eq('id_proyecto', body.projectId);
 
   if (deleteErr) {
-    return new Response(`DB error: ${deleteErr.message}`, { status: 500 });
+    return new Response(`DB error: ${deleteErr.message}`, { status: 500, headers: corsHeaders });
   }
 
   return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
