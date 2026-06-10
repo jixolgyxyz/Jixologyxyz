@@ -229,7 +229,7 @@ export async function fetchProjectEtiquetas(projectId: number): Promise<ProjectE
     .eq('id_proyecto', projectId);
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as ProjectEtiquetaRecord[];
+  return (data ?? []) as unknown as ProjectEtiquetaRecord[];
 }
 
 export async function deleteBacklogItem(id: number): Promise<void> {
