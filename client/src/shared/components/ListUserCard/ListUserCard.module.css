@@ -123,6 +123,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: right;
 }
 
 .emailLabel {

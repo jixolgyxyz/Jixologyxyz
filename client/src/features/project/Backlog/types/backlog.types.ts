@@ -115,6 +115,7 @@ export interface ProjectEtiquetaRecord {
   id_usuario: number;
   id_etiqueta_proyecto_predeterminada: number;
   id_proyecto: number;
+  catalogo_etiqueta_proyecto_predeterminada: { nombre: string } | null;
 }
 
 export interface BacklogMeta {

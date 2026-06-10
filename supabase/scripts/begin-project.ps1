@@ -199,7 +199,7 @@ try {
       "functions",
       "serve",
       "--env-file",
-      $envFilePath
+      "`"$envFilePath`""
     ) `
     -WorkingDirectory $repoRoot `
     -PassThru `

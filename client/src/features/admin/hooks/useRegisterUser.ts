@@ -49,7 +49,7 @@ export function useRegisterUser() {
       apellido: values.apellido.trim() || null,
       fecha_nacimiento: values.fecha_nacimiento || null,
       sobre_mi: values.sobre_mi.trim() || null,
-      jornada: values.jornada ? Number(values.jornada) : null,
+      jornada: values.jornada ? Number(values.jornada) : 40,
       id_zona_horaria: Number(values.id_zona_horaria),
       id_rol_global: Number(values.id_rol_global),
     };

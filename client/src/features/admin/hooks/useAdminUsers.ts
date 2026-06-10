@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getAdminUsers } from '../services/adminUsers.service';
 import type { AdminUserListItem } from '../types/admin.types';
+import { supabase } from '@/core/supabase/supabase.client';
 
 export function useAdminUsers(
   search: string,
@@ -32,6 +33,17 @@ export function useAdminUsers(
     }, 250);
 
     return () => window.clearTimeout(timeout);
+  }, [loadUsers]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-users-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'usuario' }, () => {
+        void loadUsers();
+      })
+      .subscribe();
+
+    return () => { void supabase.removeChannel(channel); };
   }, [loadUsers]);
 
   return {

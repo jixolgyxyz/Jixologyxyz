@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@/core/auth/userContext';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import FormPopUp from '@/shared/components/FormPopUp';
 import { RegisterUserForm } from '../../components/registerUserForm';
@@ -162,7 +163,7 @@ function UserProfileModal({
 }
 
 function getRoleBadge(idRolGlobal: number): AdminUserRoleBadge[] {
-  if (idRolGlobal === 1) {
+  if (idRolGlobal === 1 || idRolGlobal === 2) {
     return [
       {
         label: 'Administrador',
@@ -201,6 +202,7 @@ function getStatusBadge(activo: boolean): AdminUserRoleBadge[] {
 
 export default function RegisterUserPage() {
   const navigate = useNavigate();
+  const { user: currentUser } = useUser();
   const [search, setSearch] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [pageSuccess, setPageSuccess] = useState('');
@@ -327,14 +329,18 @@ export default function RegisterUserPage() {
           [user?.nombre, user?.apellido].filter(Boolean).join(' ').trim() ||
           'este usuario';
 
+        const canEdit = currentUser?.idRolGlobal != null && user?.id_rol_global != null
+          ? user.id_rol_global >= currentUser.idRolGlobal
+          : true;
+
         return [
-          {
+          ...(canEdit ? [{
             text: 'Editar perfil',
             onClick: () => {
               navigate(`/usuarios/${openUserMenu.userId}`);
               setOpenUserMenu(null);
             },
-          },
+          }] : []),
           {
             text: user?.activo ? 'Desactivar usuario' : 'Reactivar usuario',
             onClick: () => {
