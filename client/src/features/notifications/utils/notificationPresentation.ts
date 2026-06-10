@@ -32,10 +32,6 @@ export function getNotificationProjectPath(
   const basePath =
     `/proyectos/${notification.id_proyecto_destino}/${section.replace(/^\//, '')}`;
 
-  if (notification.tipo_codigo !== 'backlog_item_comment_created') {
-    return basePath;
-  }
-
   const backlogItemId = getNotificationBacklogItemId(notification);
   if (backlogItemId === null) return basePath;
 
