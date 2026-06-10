@@ -225,11 +225,11 @@ export async function fetchSugerencias(projectId: number): Promise<SugerenciaRec
 export async function fetchProjectEtiquetas(projectId: number): Promise<ProjectEtiquetaRecord[]> {
   const { data, error } = await supabase
     .from('etiqueta_proyecto_predeterminada')
-    .select('id_usuario, id_etiqueta_proyecto_predeterminada, id_proyecto')
+    .select('id_usuario, id_etiqueta_proyecto_predeterminada, id_proyecto, catalogo_etiqueta_proyecto_predeterminada(nombre)')
     .eq('id_proyecto', projectId);
 
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []) as ProjectEtiquetaRecord[];
 }
 
 export async function deleteBacklogItem(id: number): Promise<void> {

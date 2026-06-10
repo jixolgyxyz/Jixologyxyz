@@ -13,6 +13,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationTypeCode, string> = {
   creacion_backlog_item: 'Creación/asignación de backlog item',
   backlog_item_comment_created: 'Comentario de backlog item',
   sprint_proximo_vencer: 'Sprint próximo a vencer',
+  backlog_item_en_revision: 'Backlog item en revisión',
 };
 
 export function getNotificationProjectPath(

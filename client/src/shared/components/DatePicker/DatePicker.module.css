@@ -103,12 +103,86 @@
   color: var(--color-blueprint-navy);
 }
 
+.navBtn:disabled {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+
 .monthLabel {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-blueprint-navy);
   flex: 1;
   text-align: center;
+}
+
+/* Clickable month+year label */
+.monthYearLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+
+.monthYearLabel:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+/* Year chip inside the header label */
+.yearChip {
+  font-size: 0.875rem;
+}
+
+/* ── Year picker grid ─────────────────────────────────────────────── */
+.yearGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 0.25rem 0;
+}
+
+.yearBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--color-blueprint-navy);
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.yearBtn:hover {
+  background: var(--color-clarity-gray-1);
+}
+
+.yearBtnToday {
+  border-color: var(--color-blueprint-navy);
+  font-weight: 600;
+}
+
+.yearBtnActive {
+  background: var(--color-blueprint-navy) !important;
+  color: var(--color-white) !important;
+  border-color: var(--color-blueprint-navy) !important;
+  font-weight: 600;
 }
 
 /* ── Weekday row ──────────────────────────────────────────────────── */
@@ -157,10 +231,16 @@
   background: var(--color-clarity-gray-1);
 }
 
-/* Today — ring only (not selected) */
+/* Today — bold only */
 .dayToday {
-  border-color: var(--color-blueprint-navy);
   font-weight: 600;
+}
+
+/* Out-of-range days */
+.dayDisabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* Selected — filled navy */

@@ -33,9 +33,12 @@ type NotificationFeedRow = {
   id_backlog_item: number | string | null;
   nombre_backlog_item: string | null;
   id_backlog_item_sugerido: number | string | null;
+  sugerencia_aceptada: boolean | null;
+  id_usuario_acepto_sugerencia: number | string | null;
   id_backlog_item_cambio: number | string | null;
   id_backlog_item_creacion: number | string | null;
   id_backlog_item_por_vencer: number | string | null;
+  id_backlog_item_en_revision: number | string | null;
   id_comentario: number | string | null;
   id_comentario_padre: number | string | null;
   id_usuario_actor_comentario: number | string | null;
@@ -73,9 +76,12 @@ const NOTIFICATION_FEED_COLUMNS = `
   id_backlog_item,
   nombre_backlog_item,
   id_backlog_item_sugerido,
+  sugerencia_aceptada,
+  id_usuario_acepto_sugerencia,
   id_backlog_item_cambio,
   id_backlog_item_creacion,
   id_backlog_item_por_vencer,
+  id_backlog_item_en_revision,
   id_comentario,
   id_comentario_padre,
   id_usuario_actor_comentario,
@@ -97,6 +103,7 @@ const NOTIFICATION_TYPE_CODES: NotificationTypeCode[] = [
   'creacion_backlog_item',
   'backlog_item_comment_created',
   'sprint_proximo_vencer',
+  'backlog_item_en_revision',
 ];
 
 function asNotificationTypeCode(value: unknown): NotificationTypeCode {
@@ -139,9 +146,12 @@ function normalizeNotification(row: NotificationFeedRow): NotificationRecord {
     nombre_backlog_item: row.nombre_backlog_item ?? null,
 
     id_backlog_item_sugerido: asNumberOrNull(row.id_backlog_item_sugerido),
+    sugerencia_aceptada: row.sugerencia_aceptada ?? null,
+    id_usuario_acepto_sugerencia: asNumberOrNull(row.id_usuario_acepto_sugerencia),
     id_backlog_item_cambio: asNumberOrNull(row.id_backlog_item_cambio),
     id_backlog_item_creacion: asNumberOrNull(row.id_backlog_item_creacion),
     id_backlog_item_por_vencer: asNumberOrNull(row.id_backlog_item_por_vencer),
+    id_backlog_item_en_revision: asNumberOrNull(row.id_backlog_item_en_revision),
 
     id_comentario: asNumberOrNull(row.id_comentario),
     id_comentario_padre: asNumberOrNull(row.id_comentario_padre),
@@ -256,6 +266,24 @@ export async function rejectBacklogItemSuggestion(notificationId: number): Promi
   const { error } = await supabase.rpc(
     'rechazar_sugerencia_creacion_backlog_item',
     { p_id_notificacion: notificationId },
+  );
+
+  if (error) throw new Error(error.message);
+}
+
+export async function acceptBacklogItemSuggestionByItem(backlogItemId: number): Promise<void> {
+  const { error } = await supabase.rpc(
+    'aceptar_sugerencia_creacion_backlog_item_por_item',
+    { p_id_backlog_item: backlogItemId },
+  );
+
+  if (error) throw new Error(error.message);
+}
+
+export async function rejectBacklogItemSuggestionByItem(backlogItemId: number): Promise<void> {
+  const { error } = await supabase.rpc(
+    'rechazar_sugerencia_creacion_backlog_item_por_item',
+    { p_id_backlog_item: backlogItemId },
   );
 
   if (error) throw new Error(error.message);

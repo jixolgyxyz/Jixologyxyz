@@ -120,7 +120,7 @@ const Sidebar: React.FC<ISidebarProps> = () => {
               </NavLink>
             </li>
 
-            {user.idRolGlobal === 1 && (
+            {isAdmin && (
               <li className={styles.menuItem}>
                 <NavLink to="/usuarios">
                   <UserPlusIcon className={styles.icon} />

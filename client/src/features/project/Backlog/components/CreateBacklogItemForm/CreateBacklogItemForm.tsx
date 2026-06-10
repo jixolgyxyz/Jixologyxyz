@@ -428,7 +428,8 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
   const { submit, loading: submitting, error } = useCreateBacklogItem();
   const { user } = useUser();
   const isPM = meta.etiquetas.some(
-    e => e.id_usuario === userId && e.id_etiqueta_proyecto_predeterminada === 1,
+    e => e.id_usuario === userId &&
+         ['PM', 'Sr. Dev'].includes(e.catalogo_etiqueta_proyecto_predeterminada?.nombre ?? ''),
   );
   const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
   const canCreateDirectly = isPM || isAdmin;

@@ -31,6 +31,8 @@ export interface SelectProps {
   searchable?: boolean;
   /** Extra class applied to the trigger button */
   className?: string;
+  /** Limit the dropdown to show at most N items before scrolling */
+  maxVisibleItems?: number;
 }
 
 // ── Component ─────────────────────────────────────────────────────
@@ -47,7 +49,11 @@ export function Select({
   small = false,
   searchable = false,
   className,
+  maxVisibleItems,
 }: SelectProps) {
+  const optionListStyle: React.CSSProperties | undefined = maxVisibleItems
+    ? { maxHeight: `${maxVisibleItems * 32 + 12}px` }
+    : undefined;
   const [open,       setOpen]       = useState(false);
   const [query,      setQuery]      = useState('');
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
@@ -196,7 +202,7 @@ export function Select({
           )}
 
           {/* ── Option list ─── */}
-          <div className={styles.optionList}>
+          <div className={styles.optionList} style={optionListStyle}>
             {/* Blank option when not searchable */}
             {!searchable && !required && (
               <button
