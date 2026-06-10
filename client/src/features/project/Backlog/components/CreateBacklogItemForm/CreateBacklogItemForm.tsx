@@ -398,6 +398,7 @@ interface CreateBacklogItemFormProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  canSetTerminalStatus?: boolean;
 }
 
 interface FormState {
@@ -423,7 +424,7 @@ const EMPTY_FORM: FormState = {
 };
 
 const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
-  projectId, userId, meta, isOpen, onClose, onCreated,
+  projectId, userId, meta, isOpen, onClose, onCreated, canSetTerminalStatus = false,
 }) => {
   const { submit, loading: submitting, error } = useCreateBacklogItem();
   const { user } = useUser();
@@ -547,7 +548,7 @@ const CreateBacklogItemForm: React.FC<CreateBacklogItemFormProps> = ({
                 Estatus <span className={styles.required}>*</span>
               </label>
               <StatusPillSelect
-                statuses={meta.statuses}
+                statuses={meta.statuses.filter(s => canSetTerminalStatus || !s.es_terminal)}
                 value={form.id_estatus}
                 onChange={v => { setEstatusTouched(true); setForm(f => ({ ...f, id_estatus: v })); }}
                 onBlur={() => setEstatusTouched(true)}
