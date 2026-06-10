@@ -443,6 +443,27 @@ const ProjectBacklog: React.FC = () => {
                 console.error('Error actualizando estado:', err);
               }
             }}
+            onPriorityChange={async (newPriority) => {
+              const priorityRecord = meta.priorities.find(p => PRIORITY_MAP[p.nombre] === newPriority);
+              try {
+                await updateBacklogItem(item.id, {
+                  nombre:                 item.nombre,
+                  descripcion:            item.descripcion,
+                  id_tipo:                item.id_tipo,
+                  id_estatus:             item.id_estatus,
+                  id_prioridad:           priorityRecord?.id ?? null,
+                  id_sprint:              item.id_sprint,
+                  fecha_inicio:           item.fecha_inicio,
+                  fecha_vencimiento:      item.fecha_vencimiento,
+                  id_backlog_item_padre:  item.id_backlog_item_padre,
+                  id_usuario_responsable: item.id_usuario_responsable,
+                  complejidad:            item.complejidad,
+                });
+                refreshAll();
+              } catch (err) {
+                console.error('Error actualizando prioridad:', err);
+              }
+            }}
             onViewDetails={() => { setOpenInEditMode(false); setViewingItem(item); }}
             onEdit={() => { setOpenInEditMode(true); setViewingItem(item); }}
             onDelete={async () => {
