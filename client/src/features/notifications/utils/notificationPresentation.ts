@@ -63,6 +63,7 @@ export function getNotificationBacklogItemId(
     notification.id_backlog_item_cambio ??
     notification.id_backlog_item_creacion ??
     notification.id_backlog_item_por_vencer ??
+    notification.id_backlog_item_en_revision ??
     null
   );
 }
