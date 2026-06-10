@@ -15,7 +15,6 @@ export default function LogInPage() {
     error,
     info,
     handleLogin,
-    handleForgotPassword,
   } = useLogInPage();
 
   return (
