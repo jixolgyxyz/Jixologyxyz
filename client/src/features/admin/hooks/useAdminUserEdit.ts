@@ -40,9 +40,9 @@ export function useAdminUserEdit(userId?: number, enabled = true) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const loadUser = useCallback(async () => {
+  const loadUser = useCallback(async (silent = false) => {
     if (!enabled) {
-      setLoading(false);
+      if (!silent) setLoading(false);
       setError('');
       setSuccess('');
       return;
@@ -50,11 +50,11 @@ export function useAdminUserEdit(userId?: number, enabled = true) {
 
     if (!userId || Number.isNaN(userId)) {
       setError('ID de usuario inválido.');
-      setLoading(false);
+      if (!silent) setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError('');
     setSuccess('');
 
@@ -78,7 +78,7 @@ export function useAdminUserEdit(userId?: number, enabled = true) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar el usuario.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [enabled, userId]);
 
@@ -151,5 +151,6 @@ export function useAdminUserEdit(userId?: number, enabled = true) {
     handleChange,
     submit,
     reload: loadUser,
+    silentReload: () => loadUser(true),
   };
 }

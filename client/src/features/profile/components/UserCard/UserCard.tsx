@@ -8,6 +8,8 @@ import {
 import styles from './UserCard.module.css';
 import { useUserAvatarSvg } from '../../hooks/useUserAvatarSvg';
 import type { ZonaHorariaOption } from '../../services/profileEdit.service';
+import { Select } from '@/shared/components/Select/Select';
+import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
 
 export interface UserCardEditValues {
   nombre: string;
@@ -36,6 +38,7 @@ interface UserCardProps {
   editScope?: EditScope;
   saving?: boolean;
   zonaHorariaOptions?: ZonaHorariaOption[];
+  rolGlobalOptions?: { id: number; label: string }[];
   onEditAvatar?: () => void;
   onSaveAboutMe?: (sobreMi: string) => Promise<void>;
   onSubmitFullEdit?: () => Promise<void>;
@@ -43,6 +46,8 @@ interface UserCardProps {
   onFieldChange?: (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => void;
+  onBirthDateChange?: (value: string) => void;
+  onRolGlobalChange?: (value: string) => void;
 }
 
 const UserCard: React.FC<UserCardProps> = ({
@@ -57,11 +62,14 @@ const UserCard: React.FC<UserCardProps> = ({
   editScope = 'none',
   saving = false,
   zonaHorariaOptions = [],
+  rolGlobalOptions = [],
   onEditAvatar,
   onSaveAboutMe,
   onSubmitFullEdit,
   formValues,
   onFieldChange,
+  onBirthDateChange,
+  onRolGlobalChange,
 }) => {
   const { avatarSvg: dbSvg, loading: avatarLoading } = useUserAvatarSvg(userId);
   const avatarSvg = avatarSvgProp ?? dbSvg;
@@ -187,16 +195,14 @@ const UserCard: React.FC<UserCardProps> = ({
                 />
               </label>
 
-              <label className={styles.fieldGroup}>
+              <div className={styles.fieldGroup}>
                 <span className={styles.fieldLabel}>Fecha de nacimiento</span>
-                <input
-                  className={styles.inputField}
-                  type="date"
-                  name="fecha_nacimiento"
+                <DatePicker
                   value={formValues.birthDate}
-                  onChange={onFieldChange}
+                  onChange={onBirthDateChange ?? (() => {})}
+                  name="fecha_nacimiento"
                 />
-              </label>
+              </div>
 
               <label className={styles.fieldGroup}>
                 <span className={styles.fieldLabel}>Teléfono</span>
@@ -234,15 +240,16 @@ const UserCard: React.FC<UserCardProps> = ({
                 </span>
               </label>
 
-              <label className={styles.fieldGroup}>
+              <div className={styles.fieldGroup}>
                 <span className={styles.fieldLabel}>Rol global</span>
-                <input
-                  className={styles.inputField}
-                  name="id_rol_global"
+                <Select
+                  options={rolGlobalOptions.map(r => ({ value: String(r.id), label: r.label }))}
                   value={formValues.idRolGlobal ?? ''}
-                  onChange={onFieldChange}
+                  onChange={onRolGlobalChange ?? (() => {})}
+                  placeholder="Sin rol"
+                  emptyLabel="Sin rol"
                 />
-              </label>
+              </div>
             </div>
           )}
 

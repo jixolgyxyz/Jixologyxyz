@@ -15,11 +15,7 @@ import type { MenuComponent } from '@/shared/components/ContextMenu';
 import { useBacklogItems } from '@/features/project/Backlog/hooks/useBacklogItems';
 import { useBacklogMeta } from '@/features/project/Backlog/hooks/useBacklogMeta';
 import {updateBacklogItem, deleteBacklogItem, updateSprintStatus } from '@/features/project/Backlog/services/backlog.service';
-import {
-  acceptBacklogItemSuggestion,
-  getBacklogItemSuggestionNotificationId,
-  rejectBacklogItemSuggestion,
-} from '@/features/notifications/services/notificationsService';
+import { acceptBacklogItemSuggestionByItem, rejectBacklogItemSuggestionByItem } from '@/features/notifications/services/notificationsService';
 import { generateSprintReport, createImpedimento } from '@/features/project/Bitacora/services/bitacora.service';
 import { useUser } from '@/core/auth/userContext';
 import type { BacklogItemRecord, BacklogStatusRecord, BacklogPriorityRecord, SprintRecord } from '@/features/project/Backlog/types/backlog.types';
@@ -119,7 +115,8 @@ const ProjectBacklog: React.FC = () => {
   const { items, loading: itemsLoading, refresh } = useBacklogItems(PROJECT_ID);
   const { meta, loading: metaLoading, refresh: refreshMeta } = useBacklogMeta(PROJECT_ID);
   const isPM = user != null && meta.etiquetas.some(
-    e => e.id_usuario === user.id && e.id_etiqueta_proyecto_predeterminada === 1,
+    e => e.id_usuario === user.id &&
+         ['PM', 'Sr. Dev'].includes(e.catalogo_etiqueta_proyecto_predeterminada?.nombre ?? ''),
   );
   const isAdmin = (user?.idRolGlobal ?? 99) <= 2;
   const canManageSprints = isPM || isAdmin;
@@ -137,6 +134,8 @@ const ProjectBacklog: React.FC = () => {
   const [showImpedimentoForm,      setShowImpedimentoForm]      = useState(false);
   const [impedimentoPrefilledItem, setImpedimentoPrefilledItem] = useState<BacklogItemRecord | null>(null);
   const [impedimentoFormItemId,    setImpedimentoFormItemId]    = useState('');
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<BacklogItemRecord | null>(null);
+  const [deletingItem,      setDeletingItem]      = useState(false);
   const [impedimentoNombre,        setImpedimentoNombre]        = useState('');
   const [impedimentoDesc,          setImpedimentoDesc]          = useState('');
   const [impedimentoFormCosto,     setImpedimentoFormCosto]     = useState('');
@@ -262,27 +261,13 @@ const ProjectBacklog: React.FC = () => {
   const loading = itemsLoading || metaLoading;
   const allStatuses = meta.statuses.map(toBacklogStatus);
 
-  const resolveSuggestionNotificationId = async (itemId: number) => {
-    const notificationId = await getBacklogItemSuggestionNotificationId(itemId);
-
-    if (notificationId == null) {
-      throw new Error(
-        'No se encontró una notificación pendiente para responder esta sugerencia. Se necesita una RPC segura por id_backlog_item para resolverla desde el proyecto.',
-      );
-    }
-
-    return notificationId;
-  };
-
   const handleAcceptProjectSuggestion = async (item: BacklogItemRecord) => {
-    const notificationId = await resolveSuggestionNotificationId(item.id);
-    await acceptBacklogItemSuggestion(notificationId);
+    await acceptBacklogItemSuggestionByItem(item.id);
     refreshAll();
   };
 
   const handleRejectProjectSuggestion = async (item: BacklogItemRecord) => {
-    const notificationId = await resolveSuggestionNotificationId(item.id);
-    await rejectBacklogItemSuggestion(notificationId);
+    await rejectBacklogItemSuggestionByItem(item.id);
     if (viewingId === item.id) {
       setViewingItem(null);
       setOpenInEditMode(false);
@@ -443,18 +428,30 @@ const ProjectBacklog: React.FC = () => {
                 console.error('Error actualizando estado:', err);
               }
             }}
-            onViewDetails={() => { setOpenInEditMode(false); setViewingItem(item); }}
-            onEdit={() => { setOpenInEditMode(true); setViewingItem(item); }}
-            onDelete={async () => {
-              if (!window.confirm(`¿Eliminar "${item.nombre}"? Esta acción no se puede deshacer.`)) return;
+            onPriorityChange={async (newPriority) => {
+              const priorityRecord = meta.priorities.find(p => PRIORITY_MAP[p.nombre] === newPriority);
               try {
-                await deleteBacklogItem(item.id);
-                if (viewingId === item.id) { setViewingItem(null); setOpenInEditMode(false); }
+                await updateBacklogItem(item.id, {
+                  nombre:                 item.nombre,
+                  descripcion:            item.descripcion,
+                  id_tipo:                item.id_tipo,
+                  id_estatus:             item.id_estatus,
+                  id_prioridad:           priorityRecord?.id ?? null,
+                  id_sprint:              item.id_sprint,
+                  fecha_inicio:           item.fecha_inicio,
+                  fecha_vencimiento:      item.fecha_vencimiento,
+                  id_backlog_item_padre:  item.id_backlog_item_padre,
+                  id_usuario_responsable: item.id_usuario_responsable,
+                  complejidad:            item.complejidad,
+                });
                 refreshAll();
               } catch (err) {
-                console.error('Error eliminando ítem:', err);
+                console.error('Error actualizando prioridad:', err);
               }
             }}
+            onViewDetails={() => { setOpenInEditMode(false); setViewingItem(item); }}
+            onEdit={() => { setOpenInEditMode(true); setViewingItem(item); }}
+            onDelete={() => setPendingDeleteItem(item)}
             onAcceptSuggestion={isPM && isSuggestion ? () => {
               void handleAcceptProjectSuggestion(item).catch(err => {
                 console.error('Error aceptando sugerencia:', err);
@@ -637,6 +634,7 @@ const ProjectBacklog: React.FC = () => {
         isOpen={showCreateForm}
         onClose={() => {setShowCreateForm(false); setShowCreateSprintForm(false)}}
         onCreated={() => { refreshAll(); setShowCreateForm(false); setShowCreateSprintForm(false);}}
+        canSetTerminalStatus={isPM || isAdmin}
       />
       <CreateSprintForm
         key={editingSprint != null ? `edit-${editingSprint.id}` : 'create'}
@@ -749,6 +747,49 @@ const ProjectBacklog: React.FC = () => {
               Cancelar
             </button>
           </div>
+        </div>
+      </FormPopUp>
+
+      {/* ── Delete backlog item confirmation ── */}
+      <FormPopUp
+        title="Eliminar ítem"
+        isOpen={pendingDeleteItem !== null}
+        onClose={() => setPendingDeleteItem(null)}
+        closeOnOverlayClick={!deletingItem}
+      >
+        <p className={styles.modalBody}>
+          ¿Eliminar <strong>"{pendingDeleteItem?.nombre}"</strong>? Esta acción no se puede deshacer.
+        </p>
+        <div className={styles.modalActions}>
+          <button
+            type="button"
+            className={styles.modalSecondaryBtn}
+            onClick={() => setPendingDeleteItem(null)}
+            disabled={deletingItem}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={styles.modalDangerBtn}
+            disabled={deletingItem}
+            onClick={async () => {
+              if (!pendingDeleteItem) return;
+              setDeletingItem(true);
+              try {
+                await deleteBacklogItem(pendingDeleteItem.id);
+                if (viewingId === pendingDeleteItem.id) { setViewingItem(null); setOpenInEditMode(false); }
+                refreshAll();
+              } catch (err) {
+                console.error('Error eliminando ítem:', err);
+              } finally {
+                setDeletingItem(false);
+                setPendingDeleteItem(null);
+              }
+            }}
+          >
+            {deletingItem ? 'Eliminando…' : 'Eliminar'}
+          </button>
         </div>
       </FormPopUp>
 

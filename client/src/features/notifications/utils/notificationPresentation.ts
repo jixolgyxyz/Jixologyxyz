@@ -13,6 +13,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationTypeCode, string> = {
   creacion_backlog_item: 'Creación/asignación de backlog item',
   backlog_item_comment_created: 'Comentario de backlog item',
   sprint_proximo_vencer: 'Sprint próximo a vencer',
+  backlog_item_en_revision: 'Backlog item en revisión',
 };
 
 export function getNotificationProjectPath(
@@ -31,10 +32,6 @@ export function getNotificationProjectPath(
 
   const basePath =
     `/proyectos/${notification.id_proyecto_destino}/${section.replace(/^\//, '')}`;
-
-  if (notification.tipo_codigo !== 'backlog_item_comment_created') {
-    return basePath;
-  }
 
   const backlogItemId = getNotificationBacklogItemId(notification);
   if (backlogItemId === null) return basePath;
@@ -66,6 +63,7 @@ export function getNotificationBacklogItemId(
     notification.id_backlog_item_cambio ??
     notification.id_backlog_item_creacion ??
     notification.id_backlog_item_por_vencer ??
+    notification.id_backlog_item_en_revision ??
     null
   );
 }

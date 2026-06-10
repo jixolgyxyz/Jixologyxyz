@@ -38,6 +38,8 @@ interface DatePickerProps {
   onChange: (value: string) => void;
   placeholder?: string;
   name?: string;
+  minDate?: string;         // YYYY-MM-DD - earliest selectable date
+  maxDate?: string;         // YYYY-MM-DD - latest selectable date
 }
 
 export function DatePicker({
@@ -45,16 +47,26 @@ export function DatePicker({
   onChange,
   placeholder = 'Seleccionar fecha',
   name,
+  minDate,
+  maxDate,
 }: DatePickerProps) {
   const selected = parseDate(value);
 
   const todayDate = new Date();
   todayDate.setHours(0, 0, 0, 0);
 
-  const [open,       setOpen]       = useState(false);
-  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
-  const [viewYear,   setViewYear]   = useState(() => selected?.getFullYear()  ?? todayDate.getFullYear());
-  const [viewMonth,  setViewMonth]  = useState(() => selected?.getMonth()     ?? todayDate.getMonth());
+  const minDateParsed = minDate ? parseDate(minDate) : null;
+  const maxDateParsed = maxDate ? parseDate(maxDate) : null;
+
+  const [open,         setOpen]         = useState(false);
+  const [popupStyle,   setPopupStyle]   = useState<React.CSSProperties>({});
+  const [viewYear,     setViewYear]     = useState(() => selected?.getFullYear()  ?? todayDate.getFullYear());
+  const [viewMonth,    setViewMonth]    = useState(() => selected?.getMonth()     ?? todayDate.getMonth());
+  const [yearPicker,   setYearPicker]   = useState(false);
+  const [decadeStart,  setDecadeStart]  = useState(() => {
+    const y = selected?.getFullYear() ?? todayDate.getFullYear();
+    return Math.floor(y / 12) * 12;
+  });
   const ref        = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -83,13 +95,47 @@ export function DatePicker({
     };
   }, [open]);
 
+  const minYear = minDateParsed?.getFullYear() ?? null;
+  const maxYear = maxDateParsed?.getFullYear() ?? null;
+
+  const isYearInRange = (yr: number) =>
+    (minYear === null || yr >= minYear) && (maxYear === null || yr <= maxYear);
+
+  const canGoPrevDecade = () => {
+    if (minYear === null) return true;
+    return decadeStart - 1 >= minYear;
+  };
+
+  const canGoNextDecade = () => {
+    if (maxYear === null) return true;
+    return decadeStart + 12 <= maxYear;
+  };
+
+  const canGoPrevMonth = () => {
+    if (!minDateParsed) return true;
+    if (viewYear > minDateParsed.getFullYear()) return true;
+    return viewMonth > minDateParsed.getMonth();
+  };
+
+  const canGoNextMonth = () => {
+    if (!maxDateParsed) return true;
+    if (viewYear < maxDateParsed.getFullYear()) return true;
+    return viewMonth < maxDateParsed.getMonth();
+  };
+
   // Compute fixed position at open time
   function toggleOpen() {
-    if (open) { setOpen(false); return; }
+    if (open) { setOpen(false); setYearPicker(false); return; }
 
-    // Sync calendar view to the selected date each time the picker opens
+    // Sync calendar view to the selected date, or fall back to maxDate/minDate anchor
     const d = parseDate(value);
-    if (d) { setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); }
+    const anchor = d ?? maxDateParsed ?? minDateParsed ?? null;
+    if (anchor) {
+      setViewYear(anchor.getFullYear());
+      setViewMonth(anchor.getMonth());
+      setDecadeStart(Math.floor(anchor.getFullYear() / 12) * 12);
+    }
+    setYearPicker(false);
 
     const POPUP_H = 320;
     const POPUP_W = 268;
@@ -169,61 +215,104 @@ export function DatePicker({
       {open && (
         <div className={styles.popup} style={popupStyle}>
 
-          {/* Month / year header */}
-          <div className={styles.header}>
-            <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="Mes anterior">
-              <ChevronLeftIcon width={15} height={15} />
-            </button>
-            <span className={styles.monthLabel}>{MONTHS[viewMonth]} {viewYear}</span>
-            <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="Mes siguiente">
-              <ChevronRightIcon width={15} height={15} />
-            </button>
-          </div>
+          {yearPicker ? (
+            <>
+              {/* Year picker header */}
+              <div className={styles.header}>
+                <button type="button" className={styles.navBtn} onClick={() => setDecadeStart(d => d - 12)} aria-label="Década anterior" disabled={!canGoPrevDecade()}>
+                  <ChevronLeftIcon width={15} height={15} />
+                </button>
+                <span className={styles.monthLabel}>{decadeStart} – {decadeStart + 11}</span>
+                <button type="button" className={styles.navBtn} onClick={() => setDecadeStart(d => d + 12)} aria-label="Década siguiente" disabled={!canGoNextDecade()}>
+                  <ChevronRightIcon width={15} height={15} />
+                </button>
+              </div>
 
-          {/* Weekday row */}
-          <div className={styles.weekdays}>
-            {WEEKDAYS.map(d => <span key={d} className={styles.weekday}>{d}</span>)}
-          </div>
+              {/* Year grid — only show years within the valid range */}
+              <div className={styles.yearGrid}>
+                {Array.from({ length: 12 }, (_, i) => decadeStart + i)
+                  .filter(yr => isYearInRange(yr))
+                  .map(yr => (
+                    <button
+                      key={yr}
+                      type="button"
+                      className={[
+                        styles.yearBtn,
+                        yr === viewYear ? styles.yearBtnActive : '',
+                        yr === todayDate.getFullYear() && yr !== viewYear ? styles.yearBtnToday : '',
+                      ].filter(Boolean).join(' ')}
+                      onClick={() => { setViewYear(yr); setYearPicker(false); }}
+                    >
+                      {yr}
+                    </button>
+                  ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Month / year header */}
+              <div className={styles.header}>
+                <button type="button" className={styles.navBtn} onClick={prevMonth} aria-label="Mes anterior" disabled={!canGoPrevMonth()}>
+                  <ChevronLeftIcon width={15} height={15} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.monthYearLabel}
+                  onClick={() => { setDecadeStart(Math.floor(viewYear / 12) * 12); setYearPicker(true); }}
+                >
+                  {MONTHS[viewMonth]} <span className={styles.yearChip}>{viewYear}</span>
+                </button>
+                <button type="button" className={styles.navBtn} onClick={nextMonth} aria-label="Mes siguiente" disabled={!canGoNextMonth()}>
+                  <ChevronRightIcon width={15} height={15} />
+                </button>
+              </div>
 
-          {/* Day grid */}
-          <div className={styles.grid}>
-            {cells.map((day, i) =>
-              day === null
-                ? <span key={`pad-${i}`} />
-                : (
-                  <button
-                    key={day}
-                    type="button"
-                    className={[
-                      styles.day,
-                      isSelected(day) ? styles.daySelected : '',
-                      isToday(day) && !isSelected(day) ? styles.dayToday : '',
-                    ].join(' ')}
-                    onClick={() => selectDay(day)}
-                  >
-                    {day}
-                  </button>
-                )
-            )}
-          </div>
+              {/* Weekday row */}
+              <div className={styles.weekdays}>
+                {WEEKDAYS.map(d => <span key={d} className={styles.weekday}>{d}</span>)}
+              </div>
 
-          {/* Footer */}
-          <div className={styles.footer}>
-            <button
-              type="button"
-              className={styles.footerBtn}
-              onClick={() => { onChange(''); setOpen(false); }}
-            >
-              Limpiar
-            </button>
-            <button
-              type="button"
-              className={styles.footerBtn}
-              onClick={() => { onChange(toISO(todayDate)); setOpen(false); }}
-            >
-              Hoy
-            </button>
-          </div>
+              {/* Day grid */}
+              <div className={styles.grid}>
+                {cells.map((day, i) =>
+                  day === null
+                    ? <span key={`pad-${i}`} />
+                    : (
+                      <button
+                        key={day}
+                        type="button"
+                        className={[
+                          styles.day,
+                          isSelected(day) ? styles.daySelected : '',
+                          isToday(day) && !isSelected(day) ? styles.dayToday : '',
+                        ].filter(Boolean).join(' ')}
+                        onClick={() => selectDay(day)}
+                      >
+                        {day}
+                      </button>
+                    )
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className={styles.footer}>
+                <button
+                  type="button"
+                  className={styles.footerBtn}
+                  onClick={() => { onChange(''); setOpen(false); setYearPicker(false); }}
+                >
+                  Limpiar
+                </button>
+                <button
+                  type="button"
+                  className={styles.footerBtn}
+                  onClick={() => { onChange(toISO(todayDate)); setOpen(false); setYearPicker(false); }}
+                >
+                  Hoy
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

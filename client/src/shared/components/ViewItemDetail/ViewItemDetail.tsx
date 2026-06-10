@@ -42,8 +42,7 @@ const STATUS_COLORS: Record<number, { color: string; textColor: string }> = {
   1: { color: '#F3F4F6', textColor: '#6B7280' },
   2: { color: '#DBEAFE', textColor: '#1D4ED8' },
   3: { color: '#FEF3C7', textColor: '#D97706' },
-  4: { color: '#FDE68A', textColor: '#92400E' }, // Pendiente
-  5: { color: '#D1FAE5', textColor: '#065F46' }, // Completado
+  4: { color: '#D1FAE5', textColor: '#065F46' },
 };
 
 const TYPE_PREFIX: Record<string, string> = {
@@ -138,8 +137,7 @@ function StatusPillSelect({ statuses, value, onChange }: {
     1: { bg: '#F3F4F6', text: '#6B7280' },
     2: { bg: '#DBEAFE', text: '#1D4ED8' },
     3: { bg: '#FEF3C7', text: '#D97706' },
-    4: { bg: '#FDE68A', text: '#92400E' },
-    5: { bg: '#D1FAE5', text: '#065F46' },
+    4: { bg: '#D1FAE5', text: '#065F46' },
   };
   const selected = statuses.find(s => String(s.id) === value);
   const { bg, text } = selected ? (STATUS_COLORS_BG[selected.orden] ?? { bg: '#F3F4F6', text: '#6B7280' }) : { bg: 'var(--color-clarity-gray-1)', text: 'var(--color-anchor-gray-1)' };
@@ -341,8 +339,7 @@ const STATUS_COLORS_BG: Record<number, { color: string; textColor: string }> = {
   1: { color: '#F3F4F6', textColor: '#6B7280' },
   2: { color: '#DBEAFE', textColor: '#1D4ED8' },
   3: { color: '#FEF3C7', textColor: '#D97706' },
-  4: { color: '#FDE68A', textColor: '#92400E' },
-  5: { color: '#D1FAE5', textColor: '#065F46' },
+  4: { color: '#D1FAE5', textColor: '#065F46' },
 };
 
 interface SubtaskNodeProps {
