@@ -15,7 +15,7 @@ function getAuthId(authHeader: string): string | null {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return handleCors();
 
-  if (req.method !== 'DELETE') {
+  if (req.method !== 'DELETE' && req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 

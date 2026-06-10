@@ -32,6 +32,7 @@ const OPTIONS = [
   { value: 'creacion_backlog_item' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.creacion_backlog_item, ...typeIcon('creacion_backlog_item') },
   { value: 'backlog_item_comment_created' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.backlog_item_comment_created, ...typeIcon('backlog_item_comment_created') },
   { value: 'sprint_proximo_vencer' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.sprint_proximo_vencer, ...typeIcon('sprint_proximo_vencer') },
+  { value: 'backlog_item_en_revision' as NotificationTypeFilter, label: NOTIFICATION_TYPE_LABELS.backlog_item_en_revision, ...typeIcon('backlog_item_en_revision') },
 ];
 
 export default function NotificationTypeFilter({ value, onChange }: Props) {

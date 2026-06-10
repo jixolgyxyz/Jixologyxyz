@@ -15,7 +15,6 @@ export default function LogInPage() {
     error,
     info,
     handleLogin,
-    handleForgotPassword,
   } = useLogInPage();
 
   return (
@@ -74,17 +73,7 @@ export default function LogInPage() {
             </div>
           </div>
 
-          <div className="log-in-page__options">
-            <button
-              type="button"
-              className="log-in-page__forgot"
-              onClick={handleForgotPassword}
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
-          </div>
-
-          {(error || info) && (
+{(error || info) && (
             <div
               className={`log-in-page__status-card ${
                 error

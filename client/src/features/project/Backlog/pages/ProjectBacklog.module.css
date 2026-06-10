@@ -399,6 +399,24 @@
 .modalSecondaryBtn:hover:not(:disabled) { background: var(--color-clarity-gray-1); }
 .modalSecondaryBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.modalDangerBtn {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--color-mahindra-red);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.modalDangerBtn:hover:not(:disabled) { opacity: 0.85; }
+.modalDangerBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .modalItemRef {
   font-size: 0.78rem;
   color: var(--color-anchor-gray-1);

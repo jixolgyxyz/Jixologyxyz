@@ -27,6 +27,7 @@ import {
 } from '@/features/profile/services/profileEdit.service';
 import { useUser } from '@/core/auth/userContext';
 import { useAdminUserEdit } from '@/features/admin/hooks/useAdminUserEdit';
+import { getRolGlobalOptions, type RolGlobalOption } from '@/features/admin/services/adminUserOptions.service';
 
 import ContextMenu from '@/shared/components/ContextMenu';
 import type { MenuComponent } from '@/shared/components/ContextMenu';
@@ -111,7 +112,7 @@ function ProfileContent({
   const [zonaHorariaOptions, setZonaHorariaOptions] = useState<ZonaHorariaOption[]>([]);
 
   const isOwnProfile = currentUser?.id === userId;
-  const isAdmin = currentUser?.idRolGlobal === 1;
+  const isAdmin = currentUser?.idRolGlobal === 1 || currentUser?.idRolGlobal === 2;
 
   const {
     catalog,
@@ -224,16 +225,7 @@ function ProfileContent({
     { text: 'Desconectar GitHub', onClick: handleGithubDisconnect },
   ];
 
-  const editScope: EditScope =
-    adminEditMode && isAdmin
-      ? 'full'
-      : isOwnProfile
-        ? 'self'
-        : 'none';
-
-  const isSelfEdit = editScope === 'self';
-  const isFullEdit = editScope === 'full';
-  const canUseFormEdit = isSelfEdit || isFullEdit;
+  const isAdminMode = adminEditMode && isAdmin;
 
   //AvatarKey (Refresh)
   const [shopKey, setShopKey] = useState(0);
@@ -244,7 +236,42 @@ function ProfileContent({
     saving: adminSaving,
     handleChange: handleAdminChange,
     submit: submitAdminEdit,
-  } = useAdminUserEdit(userId, isFullEdit);
+    silentReload: silentReloadAdminUser,
+  } = useAdminUserEdit(userId, isAdminMode);
+
+  const targetRoleId = adminValues.id_rol_global ? Number(adminValues.id_rol_global) : null;
+  const canEditTarget = targetRoleId === null
+    || currentUser?.idRolGlobal == null
+    || targetRoleId >= currentUser.idRolGlobal;
+
+  const editScope: EditScope =
+    isAdminMode && canEditTarget
+      ? 'full'
+      : isOwnProfile
+        ? 'self'
+        : 'none';
+
+  const isSelfEdit = editScope === 'self';
+  const isFullEdit = editScope === 'full';
+  const canUseFormEdit = isSelfEdit || isFullEdit;
+
+  const [rolOptions, setRolOptions] = useState<RolGlobalOption[]>([]);
+  useEffect(() => {
+    if (!isFullEdit) return;
+    getRolGlobalOptions().then(setRolOptions).catch(() => {});
+  }, [isFullEdit]);
+
+  const filteredRolOptions = currentUser?.idRolGlobal != null
+    ? rolOptions.filter(r => r.id > currentUser.idRolGlobal!)
+    : rolOptions;
+
+  const handleAdminBirthDateChange = (value: string) => {
+    handleAdminChange({ target: { name: 'fecha_nacimiento', value } } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  const handleAdminRolGlobalChange = (value: string) => {
+    handleAdminChange({ target: { name: 'id_rol_global', value } } as React.ChangeEvent<HTMLInputElement>);
+  };
 
   useEffect(() => {
     if (!isSelfEdit) return;
@@ -329,7 +356,11 @@ function ProfileContent({
     : null;
 
   const birthDateForDisplay = userProfile?.fechaNacimiento
-    ? new Date(userProfile.fechaNacimiento).toLocaleDateString('es-MX')
+    ? (() => {
+        const raw = userProfile.fechaNacimiento!;
+        const datePart = raw.includes('T') ? raw.split('T')[0] : raw;
+        return new Date(datePart + 'T00:00:00').toLocaleDateString('es-MX');
+      })()
     : '—';
 
   const handleSelfChange = (
@@ -516,13 +547,17 @@ function ProfileContent({
                 : undefined
             }
             zonaHorariaOptions={zonaHorariaOptions}
+            rolGlobalOptions={isFullEdit ? filteredRolOptions : undefined}
+            onBirthDateChange={isFullEdit ? handleAdminBirthDateChange : undefined}
+            onRolGlobalChange={isFullEdit ? handleAdminRolGlobalChange : undefined}
             onSubmitFullEdit={
               canUseFormEdit
                 ? async () => {
                     try {
                       if (isFullEdit) {
                         const response = await submitAdminEdit();
-  
+                        await refreshUser();
+                        void silentReloadAdminUser();
                         setPopup({
                           type: 'notification',
                           title: 'Usuario actualizado',
@@ -532,7 +567,7 @@ function ProfileContent({
                       } else {
                         await submitSelfEdit();
                       }
-                      await refresh();
+                      refresh();
                     } catch (err) {
                       if (isFullEdit) {
                         const message =

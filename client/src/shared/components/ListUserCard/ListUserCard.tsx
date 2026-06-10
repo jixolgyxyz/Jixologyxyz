@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { UserIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import styles from './ListUserCard.module.css';
 import { useUserAvatarSvg } from '@/features/profile/hooks/useUserAvatarSvg';
@@ -44,38 +44,46 @@ const ListUserCard: React.FC<ListUserCardProps> = ({
   // Stable key that changes only when the candidate label set changes
   const rolesKey = candidateRoles.map(r => r.label).join('|');
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const container = rolesContainerRef.current;
-    if (!container || container.offsetWidth === 0) return;
+    if (!container) return;
 
-    const containerW = container.offsetWidth;
-    const gap = 6;
-    // Reserve for the "+N" badge (measured from the DOM if present, else estimate)
-    const overflowEl = container.querySelector('[data-type="overflow"]') as HTMLElement | null;
-    const overflowReserve = (overflowEl?.offsetWidth ?? 36) + gap;
+    function measure() {
+      if (!container || container.offsetWidth === 0) return;
 
-    const labelEl = container.querySelector('[data-type="label"]') as HTMLElement | null;
-    const badgeEls = Array.from(
-      container.querySelectorAll('[data-type="badge"]'),
-    ) as HTMLElement[];
+      const containerW = container.offsetWidth;
+      const gap = 6;
+      const overflowEl = container.querySelector('[data-type="overflow"]') as HTMLElement | null;
+      const overflowReserve = (overflowEl?.offsetWidth ?? 36) + gap;
+      const labelEl = container.querySelector('[data-type="label"]') as HTMLElement | null;
+      const badgeEls = Array.from(container.querySelectorAll('[data-type="badge"]')) as HTMLElement[];
+      const labelW = labelEl ? labelEl.offsetWidth + gap : 0;
 
-    let used = labelEl ? labelEl.offsetWidth + gap : 0;
-    let count = 0;
-    const totalRoles = roles.length;
+      // If every badge fits without an overflow badge, show them all
+      let totalNeeded = labelW;
+      for (const el of badgeEls) totalNeeded += el.offsetWidth + gap;
+      if (totalNeeded <= containerW) {
+        setFittingCount(badgeEls.length);
+        return;
+      }
 
-    for (let i = 0; i < badgeEls.length; i++) {
-      const w = badgeEls[i].offsetWidth + gap;
-      // If there will still be hidden roles after this badge, we must leave room for "+N".
-      // "Hidden after" = true when either more candidates follow OR total exceeds MAX.
-      const hiddenAfter = i < badgeEls.length - 1 || totalRoles > MAX_VISIBLE_ROLES;
-      const reserve = hiddenAfter ? overflowReserve : 0;
-
-      if (used + w + reserve > containerW) break;
-      used += w;
-      count++;
+      // Otherwise find how many fit while reserving room for "+N"
+      let used = labelW;
+      let count = 0;
+      for (let i = 0; i < badgeEls.length; i++) {
+        const w = badgeEls[i].offsetWidth + gap;
+        if (used + w + overflowReserve > containerW) break;
+        used += w;
+        count++;
+      }
+      setFittingCount(count);
     }
 
-    queueMicrotask(() => setFittingCount(count));
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    measure();
+
+    return () => ro.disconnect();
   }, [rolesKey, roles.length]);
 
   const overflowCount = roles.length - fittingCount;

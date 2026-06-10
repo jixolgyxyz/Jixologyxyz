@@ -1,7 +1,16 @@
 import { useState } from 'react';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { RegisterUserFormValues } from '../../types/admin.types';
+import { Select } from '@/shared/components/Select/Select';
+import { DatePicker } from '@/shared/components/DatePicker/DatePicker';
 import './registerUserForm.css';
+
+// Age constraints for the birth date picker
+const _today = new Date();
+_today.setHours(0, 0, 0, 0);
+const _pad = (n: number) => String(n).padStart(2, '0');
+const _iso = (d: Date) => `${d.getFullYear()}-${_pad(d.getMonth() + 1)}-${_pad(d.getDate())}`;
+const MAX_BIRTH_DATE = _iso(new Date(_today.getFullYear() - 18, _today.getMonth(), _today.getDate()));
+const MIN_BIRTH_DATE = _iso(new Date(_today.getFullYear() - 80, _today.getMonth(), _today.getDate()));
 
 type SelectOption = {
   id: number;
@@ -145,31 +154,24 @@ export function RegisterUserForm({
                 </div>
 
                 <div className="register-user-card__field">
-                  <label className="register-user-card__label" htmlFor="id_zona_horaria">
+                  <label className="register-user-card__label">
                     Zona horaria <span style={{ color: 'red' }}>*</span>
                   </label>
-                  <div className="register-user-card__select-wrapper">
-                    <select
-                      id="id_zona_horaria"
-                      className="register-user-card__control register-user-card__select"
-                      name="id_zona_horaria"
-                      value={values.id_zona_horaria}
-                      onChange={onChange}
-                      onBlur={() => handleBlur('id_zona_horaria')}
-                      aria-invalid={touchedFields.id_zona_horaria && !hasZonaHoraria}
-                      disabled={loading || optionsLoading}
-                    >
-                      <option value="">
-                        {optionsLoading ? 'Cargando zonas horarias...' : 'Selecciona zona horaria'}
-                      </option>
-                      {zonaHorariaOptions.map((zona) => (
-                        <option key={zona.id} value={String(zona.id)}>
-                          {zona.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDownIcon className="register-user-card__select-icon" />
-                  </div>
+                  <Select
+                    options={zonaHorariaOptions.map(z => ({ value: String(z.id), label: z.label }))}
+                    value={values.id_zona_horaria}
+                    onChange={(v) => {
+                      handleBlur('id_zona_horaria');
+                      onChange({ target: { name: 'id_zona_horaria', value: v } } as React.ChangeEvent<HTMLSelectElement>);
+                    }}
+                    placeholder={optionsLoading ? 'Cargando…' : 'Selecciona zona horaria'}
+                    emptyLabel="Selecciona zona horaria"
+                    hasError={touchedFields.id_zona_horaria && !hasZonaHoraria}
+                    disabled={loading || optionsLoading}
+                    searchable
+                    required
+                    maxVisibleItems={3}
+                  />
                   {touchedFields.id_zona_horaria && !hasZonaHoraria ? (
                     <p className="register-user-card__error">
                       Selecciona una zona horaria.
@@ -178,31 +180,22 @@ export function RegisterUserForm({
                 </div>
 
                 <div className="register-user-card__field">
-                  <label className="register-user-card__label" htmlFor="id_rol_global">
+                  <label className="register-user-card__label">
                     Rol <span style={{ color: 'red' }}>*</span>
                   </label>
-                  <div className="register-user-card__select-wrapper">
-                    <select
-                      id="id_rol_global"
-                      className="register-user-card__control register-user-card__select"
-                      name="id_rol_global"
-                      value={values.id_rol_global}
-                      onChange={onChange}
-                      onBlur={() => handleBlur('id_rol_global')}
-                      aria-invalid={touchedFields.id_rol_global && !hasRol}
-                      disabled={loading || optionsLoading}
-                    >
-                      <option value="">
-                        {optionsLoading ? 'Cargando roles...' : 'Selecciona rol'}
-                      </option>
-                      {rolOptions.map((rol) => (
-                        <option key={rol.id} value={String(rol.id)}>
-                          {rol.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDownIcon className="register-user-card__select-icon" />
-                  </div>
+                  <Select
+                    options={rolOptions.map(r => ({ value: String(r.id), label: r.label }))}
+                    value={values.id_rol_global}
+                    onChange={(v) => {
+                      handleBlur('id_rol_global');
+                      onChange({ target: { name: 'id_rol_global', value: v } } as React.ChangeEvent<HTMLSelectElement>);
+                    }}
+                    placeholder={optionsLoading ? 'Cargando…' : 'Selecciona rol'}
+                    emptyLabel="Selecciona rol"
+                    hasError={touchedFields.id_rol_global && !hasRol}
+                    disabled={loading || optionsLoading}
+                    required
+                  />
                   {touchedFields.id_rol_global && !hasRol ? (
                     <p className="register-user-card__error">
                       Selecciona un rol.
@@ -267,16 +260,16 @@ export function RegisterUserForm({
                 </div>
 
                 <div className="register-user-card__field">
-                  <label className="register-user-card__label" htmlFor="fecha_nacimiento">
+                  <label className="register-user-card__label">
                     Fecha de nacimiento
                   </label>
-                  <input
-                    id="fecha_nacimiento"
-                    className="register-user-card__control"
-                    name="fecha_nacimiento"
-                    type="date"
+                  <DatePicker
                     value={values.fecha_nacimiento}
-                    onChange={onChange}
+                    onChange={(v) => onChange({ target: { name: 'fecha_nacimiento', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+                    placeholder="Selecciona fecha de nacimiento"
+                    name="fecha_nacimiento"
+                    minDate={MIN_BIRTH_DATE}
+                    maxDate={MAX_BIRTH_DATE}
                   />
                 </div>
 
@@ -289,8 +282,9 @@ export function RegisterUserForm({
                     className="register-user-card__control"
                     name="jornada"
                     type="number"
-                    step="0.01"
-                    placeholder="Jornada"
+                    step="1"
+                    min="0"
+                    placeholder="40 (por defecto)"
                     value={values.jornada}
                     onChange={onChange}
                   />
